@@ -1,0 +1,16 @@
+import { proxy } from 'valtio/vanilla';
+
+import type { Store } from './types';
+
+export const defaultStore: Store = {
+  latency: 0,
+  balance: { used: 0, free: 0, total: 0, upnl: 0 },
+  markets: [],
+  tickers: [],
+  positions: [],
+  orders: [],
+};
+
+export const createStore = () => {
+  return proxy<Store>({ ...defaultStore });
+};
