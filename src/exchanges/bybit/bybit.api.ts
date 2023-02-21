@@ -48,11 +48,6 @@ export const createAPI = (options: ExchangeOptions) => {
       'X-BAPI-TIMESTAMP': timestamp,
     });
 
-    // bybit need CORS for this endpoint, don't really know why
-    if (nextConfig.url === ENDPOINTS.SET_TRADING_STOP) {
-      nextConfig.baseURL = `${options.corsAnywhere}/${config.baseURL}`;
-    }
-
     return { ...nextConfig, headers };
   });
 
