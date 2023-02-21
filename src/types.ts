@@ -12,6 +12,13 @@ export type Store = {
   tickers: Ticker[];
   orders: Order[];
   positions: Position[];
+  loaded: {
+    balance: boolean;
+    orders: boolean;
+    markets: boolean;
+    tickers: boolean;
+    positions: boolean;
+  };
 };
 
 export type Balance = {
@@ -138,8 +145,17 @@ export type PlaceOrderOpts = {
   reduceOnly?: boolean;
 };
 
-export type OHLVCOptions = {
+export type UpdateOrderOpts = {
+  order: Order;
+  update: { amount: number } | { price: number };
+};
+
+export type OHLCVOptions = {
   symbol: string;
   interval: Timeframe;
-  from?: number;
 };
+
+export type OrderFillEvent = Pick<
+  Order,
+  'amount' | 'price' | 'side' | 'symbol'
+>;

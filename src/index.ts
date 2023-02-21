@@ -1,5 +1,5 @@
-import { Binance } from './exchanges/binance';
-import { Bybit } from './exchanges/bybit';
+import { Binance } from './exchanges/binance/binance.exchange';
+import { Bybit } from './exchanges/bybit/bybit.exchange';
 import type { ExchangeOptions } from './types';
 
 const exchanges = {

@@ -9,8 +9,15 @@ export const defaultStore: Store = {
   tickers: [],
   positions: [],
   orders: [],
+  loaded: {
+    balance: false,
+    orders: false,
+    markets: false,
+    tickers: false,
+    positions: false,
+  },
 };
 
 export const createStore = () => {
-  return proxy<Store>({ ...defaultStore });
+  return proxy<Store>(JSON.parse(JSON.stringify(defaultStore)));
 };
