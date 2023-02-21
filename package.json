@@ -1,6 +1,6 @@
 {
   "name": "safe-cex",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "dist/index.js",
   "license": "MIT",
   "scripts": {
@@ -10,6 +10,9 @@
     "build": "rm -rf dist && tsc",
     "prepublish": "npm run build"
   },
+  "files": [
+    "dist"
+  ],
   "devDependencies": {
     "@babel/eslint-parser": "^7.19.1",
     "@types/create-hmac": "^1.1.0",
