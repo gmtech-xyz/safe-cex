@@ -13,7 +13,7 @@ import type {
   Store,
   UpdateOrderOpts,
 } from '../types';
-import { OrderSide, OrderType } from '../types';
+import { LogSeverity, OrderSide, OrderType } from '../types';
 import type { createWebSocket } from '../utils/universal-ws';
 
 export interface Exchange {
@@ -76,6 +76,10 @@ export class BaseExchange implements Exchange {
 
   validateAccount = async () => {
     return await Promise.resolve('Unsupported exchange');
+  };
+
+  log = (message: string, severity: LogSeverity = LogSeverity.Info) => {
+    this.emitter.emit('log', message, severity);
   };
 
   ping = () => {

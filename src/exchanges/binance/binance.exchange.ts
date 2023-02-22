@@ -62,6 +62,8 @@ export class Binance extends BaseExchange {
     const markets = await this.fetchMarkets();
     if (this.isDisposed) return;
 
+    this.log(`Loaded ${markets.length} Binance markets`);
+
     this.store.markets = markets;
     this.store.loaded.markets = true;
 
@@ -77,9 +79,13 @@ export class Binance extends BaseExchange {
     await this.tick();
     if (this.isDisposed) return;
 
+    this.log(`Ready to trade on Binance`);
+
     // fetch unfilled orders
     const orders = await this.fetchOrders();
     if (this.isDisposed) return;
+
+    this.log(`Loaded Binance orders`);
 
     this.store.orders = orders;
     this.store.loaded.orders = true;
@@ -143,8 +149,12 @@ export class Binance extends BaseExchange {
             JSON.stringify({ method: 'LIST_SUBSCRIPTIONS' })
           );
 
-          this.wsPrivate.once('open', () => this.ping());
           this.wsPrivate.on('message', handleMessage);
+          this.wsPrivate.once('open', () => {
+            this.ping();
+            this.log(`Listening to Binance positions updates`);
+            this.log(`Listening to Binance orders updates`);
+          });
         }
       };
 
@@ -478,6 +488,7 @@ export class Binance extends BaseExchange {
         const topic = `${opts.symbol.toLowerCase()}@kline_${opts.interval}`;
         const payload = { method: 'SUBSCRIBE', params: [topic], id: 1 };
         this.wsPublic?.send?.(JSON.stringify(payload));
+        this.log(`Switched to [${opts.symbol}:${opts.interval}]`);
       }
     };
 

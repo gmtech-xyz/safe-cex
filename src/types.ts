@@ -159,3 +159,9 @@ export type OrderFillEvent = Pick<
   Order,
   'amount' | 'price' | 'side' | 'symbol'
 >;
+
+export enum LogSeverity {
+  Info = 'info',
+  Warning = 'warning',
+  Error = 'error',
+}

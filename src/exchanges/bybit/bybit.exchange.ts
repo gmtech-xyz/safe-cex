@@ -69,6 +69,8 @@ export class Bybit extends BaseExchange {
     const markets = await this.fetchMarkets();
     if (this.isDisposed) return;
 
+    this.log(`Loaded ${markets.length} Bybit markets`);
+
     this.store.markets = markets;
     this.store.loaded.markets = true;
 
@@ -84,9 +86,13 @@ export class Bybit extends BaseExchange {
     await this.tick();
     if (this.isDisposed) return;
 
+    this.log(`Ready to trade on Bybit`);
+
     // fetch unfilled orders
     const orders = await this.fetchOrders();
     if (this.isDisposed) return;
+
+    this.log(`Loaded Bybit orders`);
 
     this.store.orders = orders;
     this.store.loaded.orders = true;
@@ -170,6 +176,8 @@ export class Bybit extends BaseExchange {
               auth();
               subscribe('user.order.contractAccount');
               subscribe('user.position.contractAccount');
+              this.log(`Listening to Bybit positions updates`);
+              this.log(`Listening to Bybit orders updates`);
             }
           });
 
@@ -445,6 +453,7 @@ export class Bybit extends BaseExchange {
       if (!this.isDisposed) {
         const payload = { op: 'subscribe', args: [topic] };
         this.wsPublic?.send?.(JSON.stringify(payload));
+        this.log(`Switched to [${opts.symbol}:${opts.interval}]`);
       }
     };
 

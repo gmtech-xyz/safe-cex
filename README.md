@@ -41,7 +41,7 @@ To initialize the exchange library, you will need:
 - A CORS-Anywhere server if you are using Binance testnet (they do not support CORS)
 
 ```ts
-import { createExchange } from "safe-fex";
+import { createExchange } from "safe-cex";
 
 // Initialize exchange class object
 const exchange = createExchange("bybit" | "binance", {
@@ -123,6 +123,22 @@ This event is called when an error has occured or the exchange API responded wit
 ```ts
 exchange.on("error", (event: string) => {
   window.alert(error);
+});
+```
+
+### `log`
+
+This event is called when a new log message is emitted, you can display those debuging purposes.
+
+```ts
+enum LogSeverity {
+  Warning = "warning",
+  Error = "error",
+  Info = "info",
+}
+
+exchange.on("log", (message: string, severity: LogSeverity) => {
+  console.log(`[${severity}] ${message}`);
 });
 ```
 

@@ -4,6 +4,7 @@
   "main": "dist/index.js",
   "license": "MIT",
   "scripts": {
+    "dev": "tsc -w",
     "lint-ts": "tsc --noEmit",
     "lint-js": "eslint --ext .js,.ts src",
     "lint": "npm run lint-ts && npm run lint-js",
