@@ -42,6 +42,11 @@ export class Bybit extends BaseExchange {
   xhr: Axios;
   unlimitedXHR: Axios;
 
+  // we use this Map to indicate if a position is on hedge mode
+  // so we can avoid counting positions on every `placeOrder()` call
+  // we could have used a memoized function instead but the Map is built only once
+  private hedgedPositionsMap: Record<string, boolean> = {};
+
   constructor(opts: ExchangeOptions) {
     super(opts);
 
@@ -316,6 +321,18 @@ export class Bybit extends BaseExchange {
       this.mapPosition(p.data)
     );
 
+    // reduce symbols into an object with symbol as key and boolean as value
+    // value is true if symbol is present more than once
+    // this means that we have a position on hedge mode
+    if (Object.keys(this.hedgedPositionsMap).length === 0) {
+      this.hedgedPositionsMap = positions
+        .map((p) => p.symbol)
+        .reduce<Record<string, boolean>>(
+          (acc, symbol) => ({ ...acc, [symbol]: Boolean(acc[symbol]) }),
+          {}
+        );
+    }
+
     return positions;
   };
 
@@ -540,8 +557,7 @@ export class Bybit extends BaseExchange {
       return;
     }
 
-    let positionIdx = opts.side === OrderSide.Buy ? 1 : 2;
-    if (opts.reduceOnly) positionIdx = positionIdx === 1 ? 2 : 1;
+    const positionIdx = this.getOrderPositionIdx(opts);
 
     const maxSize = market.limits.amount.max;
     const pPrice = market.precision.price;
@@ -591,7 +607,7 @@ export class Bybit extends BaseExchange {
   placeStopLossOrTakeProfit = async (opts: PlaceOrderOpts) => {
     const payload: Record<string, any> = {
       symbol: opts.symbol,
-      positionIdx: opts.side === OrderSide.Buy ? 2 : 1,
+      positionIdx: this.getStopOrderPositionIdx(opts),
     };
 
     if (opts.type === OrderType.StopLoss) {
@@ -739,10 +755,23 @@ export class Bybit extends BaseExchange {
   };
 
   setHedgeMode = async () => {
-    await this.xhr.post(ENDPOINTS.SET_POSITION_MODE, {
+    const { data } = await this.xhr.post(ENDPOINTS.SET_POSITION_MODE, {
       coin: 'USDT',
       mode: 3,
     });
+
+    if (data.retMsg === 'All symbols switched successfully.') {
+      this.store.options.isHedged = true;
+    }
+
+    // Bybit can switch partial symbols successfully,
+    // but we will treat this as a non-hedged mode
+    if (
+      data.retMsg ===
+      'Partial symbols switched successfully, excluding symbols with open orders or positions.'
+    ) {
+      this.store.options.isHedged = false;
+    }
   };
 
   private mapPosition(p: Record<string, any>) {
@@ -814,4 +843,21 @@ export class Bybit extends BaseExchange {
 
     return orders;
   }
+
+  private getOrderPositionIdx = (opts: PlaceOrderOpts) => {
+    // we can't use `this.store.options.isHedged` because
+    // it can be enabled on some symbols but not on others
+    const isHedged = this.hedgedPositionsMap[opts.symbol] || false;
+    if (!isHedged) return 0;
+
+    let positionIdx = opts.side === OrderSide.Buy ? 1 : 2;
+    if (opts.reduceOnly) positionIdx = positionIdx === 1 ? 2 : 1;
+
+    return positionIdx;
+  };
+
+  private getStopOrderPositionIdx = (opts: PlaceOrderOpts) => {
+    const positionIdx = this.getOrderPositionIdx(opts);
+    return { 0: 0, 1: 2, 2: 1 }[positionIdx];
+  };
 }
