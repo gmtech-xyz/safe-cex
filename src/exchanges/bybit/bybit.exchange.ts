@@ -328,7 +328,10 @@ export class Bybit extends BaseExchange {
       this.hedgedPositionsMap = positions
         .map((p) => p.symbol)
         .reduce<Record<string, boolean>>(
-          (acc, symbol) => ({ ...acc, [symbol]: Boolean(acc[symbol]) }),
+          (acc, symbol) => ({
+            ...acc,
+            [symbol]: typeof acc[symbol] !== 'undefined',
+          }),
           {}
         );
     }
