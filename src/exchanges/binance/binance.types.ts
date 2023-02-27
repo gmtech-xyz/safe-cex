@@ -25,7 +25,7 @@ export const ENDPOINTS = {
   TICKERS_24H: '/fapi/v1/ticker/24hr',
   TICKERS_BOOK: '/fapi/v1/ticker/bookTicker',
   TICKERS_PRICE: '/fapi/v1/premiumIndex',
-  POSITION_SIDE: '/fapi/v1/positionSide/dual',
+  HEDGE_MODE: '/fapi/v1/positionSide/dual',
   SET_LEVERAGE: '/fapi/v1/leverage',
   OPEN_ORDERS: '/fapi/v1/openOrders',
   CANCEL_SYMBOL_ORDERS: '/fapi/v1/allOpenOrders',

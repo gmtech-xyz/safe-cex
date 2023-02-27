@@ -16,6 +16,9 @@ export const defaultStore: Store = {
     tickers: false,
     positions: false,
   },
+  options: {
+    isHedged: false,
+  },
 };
 
 export const createStore = () => {

@@ -19,6 +19,9 @@ export type Store = {
     tickers: boolean;
     positions: boolean;
   };
+  options: {
+    isHedged: boolean;
+  };
 };
 
 export type Balance = {

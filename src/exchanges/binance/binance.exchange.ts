@@ -541,11 +541,21 @@ export class Binance extends BaseExchange {
 
   setHedgeMode = async () => {
     try {
-      await this.xhr.post(ENDPOINTS.POSITION_SIDE, {
-        dualSidePosition: 'true',
-      });
-    } catch {
-      // do nothing, hedge mode is already set
+      await this.xhr.post(ENDPOINTS.HEDGE_MODE, { dualSidePosition: 'true' });
+      this.store.options.isHedged = true;
+    } catch (err: any) {
+      // hedge mode is already set
+      if (err?.response?.data?.msg === 'No need to change position side.') {
+        this.store.options.isHedged = true;
+      }
+
+      // has positions open and can't switch to hedge mode
+      if (
+        err?.response?.data?.msg ===
+        'Position side cannot be changed if there exists position.'
+      ) {
+        this.store.options.isHedged = false;
+      }
     }
   };
 
@@ -651,10 +661,16 @@ export class Binance extends BaseExchange {
     const isStopOrTP =
       opts.type === OrderType.StopLoss || opts.type === OrderType.TakeProfit;
 
-    let pSide = opts.side === OrderSide.Buy ? 'LONG' : 'SHORT';
+    let pSide = 'BOTH';
 
-    if (isStopOrTP || opts.reduceOnly) {
-      pSide = pSide === 'LONG' ? 'SHORT' : 'LONG';
+    // We need to specify side of the position to interract with
+    // if we are in hedged mode on the binance account
+    if (this.store.options.isHedged) {
+      pSide = opts.side === OrderSide.Buy ? 'LONG' : 'SHORT';
+
+      if (isStopOrTP || opts.reduceOnly) {
+        pSide = pSide === 'LONG' ? 'SHORT' : 'LONG';
+      }
     }
 
     const maxSize = market.limits.amount.max;
