@@ -5,7 +5,7 @@ import { omit } from 'lodash';
 import qs from 'qs';
 
 import type { ExchangeOptions } from '../../types';
-import { getUTCTimestamp } from '../../utils/utc';
+import { virtualClock } from '../../utils/virtual-clock';
 
 import { BASE_URL, ENDPOINTS, RECV_WINDOW } from './binance.types';
 
@@ -32,7 +32,7 @@ export const createAPI = (options: ExchangeOptions) => {
     }
 
     const nextConfig = { ...config };
-    const timestamp = getUTCTimestamp().valueOf();
+    const timestamp = virtualClock.getCurrentTime();
 
     const data = config.data || config.params || {};
     data.timestamp = timestamp;

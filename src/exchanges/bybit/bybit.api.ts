@@ -4,7 +4,7 @@ import createHmac from 'create-hmac';
 import qs from 'qs';
 
 import type { ExchangeOptions } from '../../types';
-import { getUTCTimestamp } from '../../utils/utc';
+import { virtualClock } from '../../utils/virtual-clock';
 
 import { BASE_URL, ENDPOINTS, RECV_WINDOW } from './bybit.types';
 
@@ -31,7 +31,7 @@ export const createAPI = (options: ExchangeOptions) => {
       return { ...nextConfig, headers: new AxiosHeaders({}) };
     }
 
-    const timestamp = getUTCTimestamp().valueOf();
+    const timestamp = virtualClock.getCurrentTime();
     const data =
       config.method === 'get'
         ? qs.stringify(config.params)
