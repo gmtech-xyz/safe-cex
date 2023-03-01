@@ -26,7 +26,7 @@ class VirtualClock {
 
   private fetchServerTime = async () => {
     const { data } = await axios.get(
-      'http://worldtimeapi.org/api/timezone/etc/utc'
+      'https://worldtimeapi.org/api/timezone/etc/utc'
     );
 
     this.server = dayjs.utc(data.utc_datetime);
