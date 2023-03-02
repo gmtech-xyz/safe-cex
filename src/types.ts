@@ -21,6 +21,7 @@ export type Store = {
   };
   options: {
     isHedged: boolean;
+    isSpot: boolean;
   };
 };
 

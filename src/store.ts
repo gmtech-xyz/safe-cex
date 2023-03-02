@@ -18,6 +18,7 @@ export const defaultStore: Store = {
   },
   options: {
     isHedged: false,
+    isSpot: false,
   },
 };
 
