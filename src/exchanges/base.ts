@@ -1,3 +1,5 @@
+import type { Axios } from 'axios';
+import axios from 'axios';
 import { uniq } from 'lodash';
 import { forEachSeries } from 'p-iteration';
 import Emitter from 'tiny-emitter';
@@ -57,6 +59,9 @@ export class BaseExchange implements Exchange {
   on: Emitter.TinyEmitter['on'];
   once: Emitter.TinyEmitter['once'];
   off: Emitter.TinyEmitter['off'];
+
+  xhr: Axios = axios.create();
+  unlimitedXHR: Axios = axios.create();
 
   constructor(opts: ExchangeOptions) {
     this.options = opts;
