@@ -58,6 +58,8 @@ export class Bybit extends BaseExchange {
     const { data } = await this.xhr.get(ENDPOINTS.BALANCE);
 
     if (data.retMsg !== 'OK') {
+      this.emitter.emit('error', data.retMsg);
+
       if (data.retMsg.includes('timestamp and recv_window param')) {
         return 'Check your computer time and date';
       }
