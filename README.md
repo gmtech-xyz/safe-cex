@@ -25,7 +25,7 @@ Currently, the library supports Bybit and Binance Futures contracts, with plans 
 ## Exchanges supported
 
 - [Bybit](https://www.bybit.com/app/register?ref=7APGQQ) futures USDT contracts (not the unified margin)
-- [Binance](https://www.binance.com/en/activity/referral/offers/claim?ref=CPA_00BA8WSMFW) USD-M futures (USDT & BUSD contracts)
+- [Binance](https://accounts.binance.com/en/register?ref=KOLLSXK0) USD-M futures (USDT & BUSD contracts)
 
 ---
 
@@ -361,7 +361,7 @@ await exchange.dispose();
 If you found this project interesting or useful, create accounts with my referral links:
 
 - [Bybit](https://www.bybit.com/app/register?ref=7APGQQ)
-- [Binance](https://www.binance.com/en/activity/referral/offers/claim?ref=CPA_00BA8WSMFW)
+- [Binance](https://accounts.binance.com/en/register?ref=KOLLSXK0)
 
 Or buy me a coffee with a crypto donation:
 
