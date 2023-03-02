@@ -1,6 +1,7 @@
 import type { Axios } from 'axios';
 import axiosRateLimit from 'axios-rate-limit';
 import BigNumber from 'bignumber.js';
+import { partition } from 'lodash';
 import { forEachSeries } from 'p-iteration';
 
 import type {
@@ -10,10 +11,12 @@ import type {
   Market,
   OHLCVOptions,
   Order,
+  Position,
   Ticker,
 } from '../../types';
-import { OrderStatus } from '../../types';
+import { PositionSide, OrderStatus } from '../../types';
 import { v } from '../../utils/get-key';
+import { createWebSocket } from '../../utils/universal-ws';
 import { BaseBinanceExchange } from '../base.binance';
 
 import { createAPI } from './binance-spot.api';
@@ -27,6 +30,8 @@ import {
 export class BinanceSpot extends BaseBinanceExchange {
   xhr: Axios;
   unlimitedXHR: Axios;
+
+  tickersWS?: ReturnType<typeof createWebSocket>;
 
   constructor(opts: ExchangeOptions) {
     super(opts);
@@ -58,8 +63,22 @@ export class BinanceSpot extends BaseBinanceExchange {
     this.store.markets = markets;
     this.store.loaded.markets = true;
 
-    await this.tick();
+    const tickers = await this.fetchTickers();
     if (this.isDisposed) return;
+
+    this.store.tickers = tickers;
+    this.store.loaded.tickers = true;
+
+    this.listenMarkets();
+
+    const { balance, positions } = await this.fetchBalanceAndPositions();
+    if (this.isDisposed) return;
+
+    this.store.balance = balance;
+    this.store.positions = positions;
+
+    this.store.loaded.balance = true;
+    this.store.loaded.positions = true;
 
     this.log(`Ready to trade on Binance spot`);
 
@@ -72,68 +91,68 @@ export class BinanceSpot extends BaseBinanceExchange {
     this.store.loaded.orders = true;
   };
 
-  tick = async () => {
-    if (!this.isDisposed) {
-      try {
-        const balance = await this.fetchBalance();
-        if (this.isDisposed) return;
-
-        const tickers = await this.fetchTickers();
-        if (this.isDisposed) return;
-
-        this.store.balance = balance;
-        this.store.tickers = tickers;
-        this.store.positions = [];
-
-        this.store.loaded.balance = true;
-        this.store.loaded.tickers = true;
-        this.store.loaded.positions = true;
-      } catch (error: any) {
-        this.emitter.emit('error', error?.response?.data);
-      }
-
-      if (typeof window === 'undefined') {
-        setTimeout(() => this.tick(), 0);
-      } else {
-        requestAnimationFrame(() => this.tick());
-      }
-    }
-  };
-
-  fetchBalance = async () => {
+  fetchBalanceAndPositions = async () => {
     try {
-      const price = await this.getBTCUSDTPrice();
-
       const { data } = await this.xhr.post<Array<Record<string, any>>>(
-        ENDPOINTS.BALANCE,
-        { needBtcValuation: true }
+        ENDPOINTS.BALANCE
       );
 
-      const stables = data.filter(({ asset }) =>
-        ['USDT', 'USDC', 'BUSD'].includes(asset)
+      const [stables, others] = partition(data, (p) =>
+        ['USDT', 'USDC', 'BUSD'].includes(p.asset)
       );
 
-      const free = stables.reduce<number>((acc, { btcValuation }) => {
-        return acc + btcValuation * price;
+      const free = stables.reduce<number>((acc, p) => {
+        return acc + parseFloat(p.free);
       }, 0);
 
-      const total = data.reduce<number>((acc, { btcValuation }) => {
-        return acc + btcValuation * price;
+      const used = others.reduce<number>((acc, p) => {
+        const ticker = this.store.tickers.find(
+          (t) => t.symbol === `${p.asset}USDT`
+        );
+
+        return acc + parseFloat(p.free) * (ticker?.last ?? 0);
       }, 0);
 
       const balance: Balance = {
         free,
-        total,
-        used: total - free,
+        used,
+        total: free + used,
         // Implement by fetching past orders and calculating
         // average entry price on each spot position
         upnl: 0,
       };
 
-      return balance;
+      const positions = others.reduce<Position[]>((acc, p) => {
+        const ticker = this.store.tickers.find(
+          (t) => t.symbol === `${p.asset}USDT`
+        );
+
+        if (!ticker) {
+          return acc;
+        }
+
+        const position = {
+          symbol: `${p.asset}USDT`,
+          side: PositionSide.Long,
+          notional: parseFloat(p.free) * ticker.last,
+          contracts: parseFloat(p.free),
+          leverage: 1,
+          unrealizedPnl: 0,
+          entryPrice: 0,
+          liquidationPrice: 0,
+        };
+
+        return [...acc, position];
+      }, []);
+
+      return { balance, positions };
     } catch (error: any) {
-      this.emitter.emit('error', error?.response?.data);
-      return this.store.balance;
+      this.emitter.emit('error', error?.response?.data || error?.message);
+
+      return {
+        balance: this.store.balance,
+        positions: this.store.positions,
+      };
     }
   };
 
@@ -197,6 +216,44 @@ export class BinanceSpot extends BaseBinanceExchange {
       this.emitter.emit('error', error?.response?.data);
       return this.store.markets;
     }
+  };
+
+  listenMarkets = () => {
+    this.tickersWS = createWebSocket(
+      BASE_WS_URL[this.options.testnet ? 'testnet' : 'livenet']
+    );
+
+    this.tickersWS.on('open', () => {
+      const payload = { method: 'SUBSCRIBE', params: ['!ticker@arr'], id: 1 };
+      if (this.tickersWS) this.tickersWS.send(JSON.stringify(payload));
+    });
+
+    this.tickersWS.on('message', (event) => {
+      const tickers: Array<Record<string, any>> = JSON.parse(event.data);
+
+      if (Array.isArray(tickers)) {
+        tickers.forEach((tickerUpdate) => {
+          const tickerIdx = this.store.tickers.findIndex(
+            (t) => t.symbol === tickerUpdate.s
+          );
+
+          if (tickerIdx) {
+            const price = parseFloat(v(tickerUpdate, 'c'));
+            this.store.tickers[tickerIdx] = {
+              ...this.store.tickers[tickerIdx],
+              bid: parseFloat(v(tickerUpdate, 'b')),
+              ask: parseFloat(v(tickerUpdate, 'a')),
+              percentage: parseFloat(v(tickerUpdate, 'P')),
+              volume: parseFloat(v(tickerUpdate, 'v')),
+              quoteVolume: parseFloat(v(tickerUpdate, 'q')),
+              last: price,
+              mark: price,
+              index: price,
+            };
+          }
+        });
+      }
+    });
   };
 
   fetchTickers = async () => {
@@ -295,17 +352,10 @@ export class BinanceSpot extends BaseBinanceExchange {
     );
   };
 
-  private getBTCUSDTPrice = async () => {
-    // find in this.tickers.store first
-    const btcusdt = this.store.tickers.find((t) => t.symbol === 'BTCUSDT');
-    if (btcusdt) return btcusdt.last;
+  dispose() {
+    super.dispose();
 
-    const {
-      data: { price },
-    } = await this.xhr.get(ENDPOINTS.AVG_PRICE, {
-      params: { symbol: 'BTCUSDT' },
-    });
-
-    return parseFloat(price);
-  };
+    this.tickersWS?.close?.();
+    this.tickersWS = undefined;
+  }
 }
