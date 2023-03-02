@@ -31,7 +31,7 @@ export class BinanceSpot extends BaseBinanceExchange {
   constructor(opts: ExchangeOptions) {
     super(opts);
 
-    this.xhr = axiosRateLimit(createAPI(opts), { maxRPS: 3 });
+    this.xhr = axiosRateLimit(createAPI(opts), { maxRPS: 2 });
     this.unlimitedXHR = createAPI(opts);
 
     this.store.options.isSpot = true;
@@ -91,16 +91,18 @@ export class BinanceSpot extends BaseBinanceExchange {
       } catch (error: any) {
         this.emitter.emit('error', error?.response?.data);
       }
+
+      if (typeof window === 'undefined') {
+        setTimeout(() => this.tick(), 0);
+      } else {
+        requestAnimationFrame(() => this.tick());
+      }
     }
   };
 
   fetchBalance = async () => {
     try {
-      const {
-        data: { price },
-      } = await this.xhr.get(ENDPOINTS.AVG_PRICE, {
-        params: { symbol: 'BTCUSDT' },
-      });
+      const price = await this.getBTCUSDTPrice();
 
       const { data } = await this.xhr.post<Array<Record<string, any>>>(
         ENDPOINTS.BALANCE,
@@ -199,7 +201,7 @@ export class BinanceSpot extends BaseBinanceExchange {
 
   fetchTickers = async () => {
     try {
-      const { data } = await this.unlimitedXHR.get<Array<Record<string, any>>>(
+      const { data } = await this.xhr.get<Array<Record<string, any>>>(
         ENDPOINTS.TICKERS
       );
 
@@ -291,5 +293,19 @@ export class BinanceSpot extends BaseBinanceExchange {
     this.removeOrdersFromStore(
       this.store.orders.filter((o) => o.symbol === symbol).map((o) => o.id)
     );
+  };
+
+  private getBTCUSDTPrice = async () => {
+    // find in this.tickers.store first
+    const btcusdt = this.store.tickers.find((t) => t.symbol === 'BTCUSDT');
+    if (btcusdt) return btcusdt.last;
+
+    const {
+      data: { price },
+    } = await this.xhr.get(ENDPOINTS.AVG_PRICE, {
+      params: { symbol: 'BTCUSDT' },
+    });
+
+    return parseFloat(price);
   };
 }
