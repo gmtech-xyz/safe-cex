@@ -535,9 +535,7 @@ export class Binance extends BaseBinanceExchange {
         await this.xhr.delete(ENDPOINTS.BATCH_ORDERS, { params: request });
       }
 
-      this.store.orders = this.store.orders.filter(
-        (o) => !request.origClientOrderIdList.includes(o.id)
-      );
+      this.removeOrdersFromStore(request.origClientOrderIdList);
     });
   };
 
@@ -546,7 +544,9 @@ export class Binance extends BaseBinanceExchange {
       params: { symbol },
     });
 
-    this.store.orders = this.store.orders.filter((o) => o.symbol !== symbol);
+    this.removeOrdersFromStore(
+      this.store.orders.filter((o) => o.symbol === symbol).map((o) => o.id)
+    );
   };
 
   updateOrder = async ({ order, update }: UpdateOrderOpts) => {

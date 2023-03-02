@@ -276,28 +276,20 @@ export class BinanceSpot extends BaseBinanceExchange {
   };
 
   cancelOrder = async (order: Order) => {
-    try {
-      await this.xhr.delete(ENDPOINTS.ORDER, {
-        data: { symbol: order.symbol, origClientOrderId: order.id },
-      });
+    await this.xhr.delete(ENDPOINTS.ORDER, {
+      data: { symbol: order.symbol, origClientOrderId: order.id },
+    });
 
-      this.removeOrderFromStore(order.id);
-    } catch (error: any) {
-      this.emitter.emit('error', error?.response?.data);
-    }
+    this.removeOrderFromStore(order.id);
   };
 
   cancelSymbolOrders = async (symbol: string) => {
-    try {
-      await this.xhr.delete(ENDPOINTS.OPEN_ORDERS, {
-        data: { symbol },
-      });
+    await this.xhr.delete(ENDPOINTS.OPEN_ORDERS, {
+      data: { symbol },
+    });
 
-      this.removeOrdersFromStore(
-        this.store.orders.filter((o) => o.symbol === symbol).map((o) => o.id)
-      );
-    } catch (error: any) {
-      this.emitter.emit('error', error?.response?.data);
-    }
+    this.removeOrdersFromStore(
+      this.store.orders.filter((o) => o.symbol === symbol).map((o) => o.id)
+    );
   };
 }
