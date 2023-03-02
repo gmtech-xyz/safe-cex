@@ -1,4 +1,5 @@
 import { Binance } from './exchanges/binance/binance.exchange';
+import { BinanceSpot } from './exchanges/binance-spot/binance-spot.exchange';
 import { Bybit } from './exchanges/bybit/bybit.exchange';
 import type { ExchangeOptions } from './types';
 import { virtualClock } from './utils/virtual-clock';
@@ -6,6 +7,7 @@ import { virtualClock } from './utils/virtual-clock';
 const exchanges = {
   bybit: Bybit,
   binance: Binance,
+  'binance-spot': BinanceSpot,
 };
 
 export const createExchange = (
