@@ -4,7 +4,7 @@ import BigNumber from 'bignumber.js';
 import createHmac from 'create-hmac';
 import type { ManipulateType } from 'dayjs';
 import dayjs from 'dayjs';
-import { orderBy, times, uniqBy } from 'lodash';
+import { omit, orderBy, times, uniqBy } from 'lodash';
 import { forEachSeries, mapSeries } from 'p-iteration';
 
 import type {
@@ -594,7 +594,17 @@ export class Bybit extends BaseExchange {
 
     const lotSize = adjust((amount - rest) / lots, pAmount);
 
-    const payloads = times(lots, () => ({ ...req, qty: `${lotSize}` }));
+    const payloads = times(lots, (idx) => {
+      // We want to remove stopLoss and takeProfit from the rest of the orders
+      // because they are already set on the first one
+      const payload =
+        idx > 0
+          ? omit(req, ['stopLoss', 'takeProfit', 'slTriggerBy', 'tpTriggerBy'])
+          : req;
+
+      return { ...payload, qty: `${lotSize}` };
+    });
+
     if (rest) payloads.push({ ...req, qty: `${rest}` });
 
     const responses = await mapSeries(payloads, async (p) => {
