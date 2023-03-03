@@ -589,46 +589,54 @@ export class Binance extends BaseExchange {
   };
 
   cancelOrders = async (orders: Order[]) => {
-    const groupedBySymbol = groupBy(orders, 'symbol');
-    const requests = Object.entries(groupedBySymbol).map(
-      ([symbol, symbolOrders]) => ({
-        symbol,
-        origClientOrderIdList: symbolOrders.map((o) => o.id),
-      })
-    );
+    try {
+      const groupedBySymbol = groupBy(orders, 'symbol');
+      const requests = Object.entries(groupedBySymbol).map(
+        ([symbol, symbolOrders]) => ({
+          symbol,
+          origClientOrderIdList: symbolOrders.map((o) => o.id),
+        })
+      );
 
-    await forEachSeries(requests, async (request) => {
-      if (request.origClientOrderIdList.length === 1) {
-        await this.xhr.delete(ENDPOINTS.ORDER, {
-          params: {
-            symbol: request.symbol,
-            origClientOrderId: request.origClientOrderIdList[0],
-          },
-        });
-      } else {
-        const lots = chunk(request.origClientOrderIdList, 10);
-        await forEachSeries(lots, async (lot) => {
-          await this.xhr.delete(ENDPOINTS.BATCH_ORDERS, {
+      await forEachSeries(requests, async (request) => {
+        if (request.origClientOrderIdList.length === 1) {
+          await this.xhr.delete(ENDPOINTS.ORDER, {
             params: {
               symbol: request.symbol,
-              origClientOrderIdList: JSON.stringify(lot),
+              origClientOrderId: request.origClientOrderIdList[0],
             },
           });
-        });
-      }
+        } else {
+          const lots = chunk(request.origClientOrderIdList, 10);
+          await forEachSeries(lots, async (lot) => {
+            await this.xhr.delete(ENDPOINTS.BATCH_ORDERS, {
+              params: {
+                symbol: request.symbol,
+                origClientOrderIdList: JSON.stringify(lot),
+              },
+            });
+          });
+        }
 
-      this.store.orders = this.store.orders.filter(
-        (o) => !request.origClientOrderIdList.includes(o.id)
-      );
-    });
+        this.store.orders = this.store.orders.filter(
+          (o) => !request.origClientOrderIdList.includes(o.id)
+        );
+      });
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.msg || err?.message);
+    }
   };
 
   cancelSymbolOrders = async (symbol: string) => {
-    await this.xhr.delete(ENDPOINTS.CANCEL_SYMBOL_ORDERS, {
-      params: { symbol },
-    });
+    try {
+      await this.xhr.delete(ENDPOINTS.CANCEL_SYMBOL_ORDERS, {
+        params: { symbol },
+      });
 
-    this.store.orders = this.store.orders.filter((o) => o.symbol !== symbol);
+      this.store.orders = this.store.orders.filter((o) => o.symbol !== symbol);
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.msg || err?.message);
+    }
   };
 
   updateOrder = async ({ order, update }: UpdateOrderOpts) => {
