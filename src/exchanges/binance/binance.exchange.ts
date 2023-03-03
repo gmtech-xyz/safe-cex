@@ -606,7 +606,15 @@ export class Binance extends BaseExchange {
           },
         });
       } else {
-        await this.xhr.delete(ENDPOINTS.BATCH_ORDERS, { params: request });
+        const lots = chunk(request.origClientOrderIdList, 10);
+        await forEachSeries(lots, async (lot) => {
+          await this.xhr.delete(ENDPOINTS.BATCH_ORDERS, {
+            params: {
+              symbol: request.symbol,
+              origClientOrderIdList: JSON.stringify(lot),
+            },
+          });
+        });
       }
 
       this.store.orders = this.store.orders.filter(
