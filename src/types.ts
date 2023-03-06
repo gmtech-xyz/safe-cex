@@ -86,6 +86,13 @@ export enum OrderSide {
   Sell = 'sell',
 }
 
+export enum OrderTimeInForce {
+  GoodTillCancel = 'GoodTillCancel',
+  ImmediateOrCancel = 'ImmediateOrCancel',
+  FillOrKill = 'FillOrKill',
+  PostOnly = 'PostOnly',
+}
+
 export type Order = {
   id: string;
   status: OrderStatus;
@@ -146,6 +153,7 @@ export type PlaceOrderOpts = {
   stopLoss?: number;
   takeProfit?: number;
   reduceOnly?: boolean;
+  timeInForce?: OrderTimeInForce;
 };
 
 export type UpdateOrderOpts = {

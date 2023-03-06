@@ -20,7 +20,7 @@ import type {
   OHLCVOptions,
   UpdateOrderOpts,
 } from '../../types';
-import { OrderType, OrderSide } from '../../types';
+import { OrderTimeInForce, OrderType, OrderSide } from '../../types';
 import { adjust } from '../../utils/adjust';
 import { v } from '../../utils/get-key';
 import { inverseObj } from '../../utils/inverse-obj';
@@ -573,6 +573,7 @@ export class Bybit extends BaseExchange {
     const price = opts.price ? adjust(opts.price, pPrice) : null;
     const stopLoss = opts.stopLoss ? adjust(opts.stopLoss, pPrice) : null;
     const takeProfit = opts.takeProfit ? adjust(opts.takeProfit, pPrice) : null;
+    const timeInForce = opts.timeInForce || OrderTimeInForce.GoodTillCancel;
 
     const req = omitUndefined({
       symbol: opts.symbol,
@@ -585,6 +586,7 @@ export class Bybit extends BaseExchange {
       reduceOnly: opts.reduceOnly || false,
       slTriggerBy: opts.stopLoss ? 'MarkPrice' : undefined,
       tpTriggerBy: opts.takeProfit ? 'MarkPrice' : undefined,
+      timeInForce: opts.type === OrderType.Limit ? timeInForce : undefined,
       closeOnTrigger: false,
       positionIdx,
     });

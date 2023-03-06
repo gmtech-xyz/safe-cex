@@ -1,4 +1,9 @@
-import { OrderType, OrderSide, PositionSide } from '../../types';
+import {
+  OrderType,
+  OrderSide,
+  PositionSide,
+  OrderTimeInForce,
+} from '../../types';
 
 export const RECV_WINDOW = 5000;
 export const BASE_URL = {
@@ -50,4 +55,11 @@ export const ORDER_SIDE: Record<string, OrderSide> = {
 export const POSITION_SIDE: Record<string, PositionSide> = {
   LONG: PositionSide.Long,
   SHORT: PositionSide.Short,
+};
+
+export const TIME_IN_FORCE: Record<string, OrderTimeInForce> = {
+  GTC: OrderTimeInForce.GoodTillCancel,
+  IOC: OrderTimeInForce.ImmediateOrCancel,
+  FOK: OrderTimeInForce.FillOrKill,
+  GTX: OrderTimeInForce.PostOnly,
 };

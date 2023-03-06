@@ -17,7 +17,13 @@ import type {
   Ticker,
   UpdateOrderOpts,
 } from '../../types';
-import { PositionSide, OrderSide, OrderStatus, OrderType } from '../../types';
+import {
+  OrderTimeInForce,
+  PositionSide,
+  OrderSide,
+  OrderStatus,
+  OrderType,
+} from '../../types';
 import { adjust } from '../../utils/adjust';
 import { v } from '../../utils/get-key';
 import { inverseObj } from '../../utils/inverse-obj';
@@ -32,6 +38,7 @@ import {
   ORDER_SIDE,
   POSITION_SIDE,
   ENDPOINTS,
+  TIME_IN_FORCE,
 } from './binance.types';
 
 export class Binance extends BaseExchange {
@@ -706,6 +713,10 @@ export class Binance extends BaseExchange {
     // Binance stopPrice only for SL or TP orders
     const priceField = isStopOrTP ? 'stopPrice' : 'price';
 
+    const timeInForce = opts.timeInForce
+      ? inverseObj(TIME_IN_FORCE)[opts.timeInForce]
+      : inverseObj(TIME_IN_FORCE)[OrderTimeInForce.GoodTillCancel];
+
     const req = omitUndefined({
       symbol: opts.symbol,
       positionSide: pSide,
@@ -713,7 +724,7 @@ export class Binance extends BaseExchange {
       type: inverseObj(ORDER_TYPE)[opts.type],
       quantity: amount ? `${amount}` : undefined,
       [priceField]: price ? `${price}` : undefined,
-      timeInForce: opts.type === OrderType.Limit ? 'GTC' : undefined,
+      timeInForce: opts.type === OrderType.Limit ? timeInForce : undefined,
       closePosition: isStopOrTP ? 'true' : undefined,
     });
 

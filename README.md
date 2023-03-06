@@ -232,6 +232,13 @@ enum OrderSide {
   Sell = "sell",
 }
 
+enum OrderTimeInForce {
+  GoodTillCancel = "GoodTillCancel",
+  ImmediateOrCancel = "ImmediateOrCancel",
+  FillOrKill = "FillOrKill",
+  PostOnly = "PostOnly",
+}
+
 type PlaceOrderOpts = {
   symbol: string;
   type: OrderType;
@@ -241,6 +248,7 @@ type PlaceOrderOpts = {
   stopLoss?: number;
   takeProfit?: number;
   reduceOnly?: boolean;
+  timeInForce?: OrderTimeInForce;
 };
 
 // Place a market order of 0.25 BTC
@@ -262,6 +270,7 @@ const orderIds: string[] = await exchange.placeOrder({
   price: 1700,
   stopLoss: 1650,
   takeProfit: 1750,
+  timeInForce: OrderTimeInForce.GoodTillCancel,
 });
 ```
 
