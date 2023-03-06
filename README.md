@@ -217,6 +217,7 @@ dispose();
 
 - Method to create an order on exchange
 - Can set stopLoss / takeProfit at the same time
+- Returns an Array of orderIds
 
 ```ts
 enum OrderType {
@@ -253,7 +254,7 @@ await exchange.placeOrder({
 // Place a limit order of 1 ETH at 1700$
 // and set stopLoss at 1650
 // and set takeProfit at 1750
-await exchange.placeOrder({
+const orderIds: string[] = await exchange.placeOrder({
   symbol: "ETHUSDT",
   type: OrderType.Limit,
   side: OrderSide.Buy,
@@ -269,6 +270,7 @@ await exchange.placeOrder({
 - Same method as `placeOrder()` but for multiple orders
 - Pease use this method when possible, it will batch orders creations on exchanges API
 - There's no limit of orders to be passed
+- Returns an Array of orderIds
 
 ### `updateOrder()`
 

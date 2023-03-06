@@ -1,5 +1,5 @@
 import { uniq } from 'lodash';
-import { forEachSeries } from 'p-iteration';
+import { forEachSeries, mapSeries } from 'p-iteration';
 import Emitter from 'tiny-emitter';
 import { snapshot, subscribe } from 'valtio/vanilla';
 
@@ -30,8 +30,8 @@ export interface Exchange {
   nuke: () => Promise<void>;
   setLeverage: (symbol: string, leverage: number) => Promise<void>;
   setAllLeverage: (leverage: number) => Promise<void>;
-  placeOrder: (opts: PlaceOrderOpts) => Promise<void>;
-  placeOrders: (orders: PlaceOrderOpts[]) => Promise<void>;
+  placeOrder: (opts: PlaceOrderOpts) => Promise<string[]>;
+  placeOrders: (orders: PlaceOrderOpts[]) => Promise<string[]>;
   updateOrder: (opts: UpdateOrderOpts) => Promise<void>;
   cancelOrders: (orders: Order[]) => Promise<void>;
   cancelSymbolOrders: (symbol: string) => Promise<void>;
@@ -114,14 +114,12 @@ export class BaseExchange implements Exchange {
 
   placeOrder = async (_opts: PlaceOrderOpts) => {
     await Promise.reject(new Error('Not implemented'));
+    return [] as string[];
   };
 
   placeOrders = async (orders: PlaceOrderOpts[]) => {
-    await forEachSeries(orders, async (order) => {
-      if (!this.isDisposed) {
-        await this.placeOrder(order);
-      }
-    });
+    const orderIds = await mapSeries(orders, (order) => this.placeOrder(order));
+    return orderIds.flat();
   };
 
   updateOrder = async (_opts: UpdateOrderOpts) => {

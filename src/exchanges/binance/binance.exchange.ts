@@ -657,12 +657,12 @@ export class Binance extends BaseExchange {
 
   placeOrder = async (opts: PlaceOrderOpts) => {
     const payloads = this.formatCreateOrder(opts);
-    await this.placeOrderBatch(payloads);
+    return await this.placeOrderBatch(payloads);
   };
 
   placeOrders = async (orders: PlaceOrderOpts[]) => {
     const requests = orders.flatMap((o) => this.formatCreateOrder(o));
-    await this.placeOrderBatch(requests);
+    return await this.placeOrderBatch(requests);
   };
 
   // eslint-disable-next-line complexity
@@ -769,24 +769,33 @@ export class Binance extends BaseExchange {
 
   private placeOrderBatch = async (payloads: any[]) => {
     const lots = chunk(payloads, 5);
+    const orderIds = [] as string[];
 
-    await forEachSeries(lots, async (lot) => {
-      try {
-        if (lot.length === 1) {
+    for (const lot of lots) {
+      if (lot.length === 1) {
+        try {
           await this.unlimitedXHR.post(ENDPOINTS.ORDER, lot[0]);
-        } else {
-          const { data } = await this.unlimitedXHR.post(
-            ENDPOINTS.BATCH_ORDERS,
-            { batchOrders: JSON.stringify(lot) }
-          );
-
-          data?.forEach?.((o: any) => {
-            if (o.code) this.emitter.emit('error', o.msg);
-          });
+          orderIds.push(lot[0].newClientOrderId);
+        } catch (err: any) {
+          this.emitter.emit('error', err?.response?.data?.msg || err?.message);
         }
-      } catch (err: any) {
-        this.emitter.emit('error', err?.response?.data?.msg || err?.message);
       }
-    });
+
+      if (lot.length > 1) {
+        const { data } = await this.unlimitedXHR.post(ENDPOINTS.BATCH_ORDERS, {
+          batchOrders: JSON.stringify(lot),
+        });
+
+        data?.forEach?.((o: any) => {
+          if (o.code) {
+            this.emitter.emit('error', o.msg);
+          } else {
+            orderIds.push(o.clientOrderId);
+          }
+        });
+      }
+    }
+
+    return orderIds;
   };
 }

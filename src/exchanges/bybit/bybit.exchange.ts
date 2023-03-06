@@ -558,8 +558,7 @@ export class Bybit extends BaseExchange {
       opts.type === OrderType.StopLoss ||
       opts.type === OrderType.TakeProfit
     ) {
-      await this.placeStopLossOrTakeProfit(opts);
-      return;
+      return this.placeStopLossOrTakeProfit(opts);
     }
 
     const positionIdx = this.getOrderPositionIdx(opts);
@@ -617,6 +616,8 @@ export class Bybit extends BaseExchange {
         this.emitter.emit('error', v(resp, 'retMsg'));
       }
     });
+
+    return responses.map((resp) => resp.result.orderId);
   };
 
   placeStopLossOrTakeProfit = async (opts: PlaceOrderOpts) => {
@@ -640,6 +641,8 @@ export class Bybit extends BaseExchange {
     if (data.retMsg !== 'OK') {
       this.emitter.emit('error', data.retMsg);
     }
+
+    return [data.result.orderId];
   };
 
   updateOrder = async ({ order, update }: UpdateOrderOpts) => {
