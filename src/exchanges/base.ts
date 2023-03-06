@@ -32,7 +32,7 @@ export interface Exchange {
   setAllLeverage: (leverage: number) => Promise<void>;
   placeOrder: (opts: PlaceOrderOpts) => Promise<string[]>;
   placeOrders: (orders: PlaceOrderOpts[]) => Promise<string[]>;
-  updateOrder: (opts: UpdateOrderOpts) => Promise<void>;
+  updateOrder: (opts: UpdateOrderOpts) => Promise<string[]>;
   cancelOrders: (orders: Order[]) => Promise<void>;
   cancelSymbolOrders: (symbol: string) => Promise<void>;
   cancelAllOrders: () => Promise<void>;
@@ -124,6 +124,7 @@ export class BaseExchange implements Exchange {
 
   updateOrder = async (_opts: UpdateOrderOpts) => {
     await Promise.reject(new Error('Not implemented'));
+    return [] as string[];
   };
 
   cancelOrders = async (_orders: Order[]) => {

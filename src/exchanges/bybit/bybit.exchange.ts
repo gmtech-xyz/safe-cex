@@ -1,3 +1,4 @@
+/* eslint-disable complexity */
 import type { Axios } from 'axios';
 import rateLimit from 'axios-rate-limit';
 import BigNumber from 'bignumber.js';
@@ -646,25 +647,39 @@ export class Bybit extends BaseExchange {
   };
 
   updateOrder = async ({ order, update }: UpdateOrderOpts) => {
+    const updatedOrderIds = [] as string[];
+
     // Special use-case when position is not open yet
     // and we want to update the stop loss or take profit
     // we need to do it on the original ask/bid order
-    if (
-      'price' in update &&
-      (order.id.endsWith('__stop_loss') || order.id.endsWith('__take_profit'))
-    ) {
+    const isVirtualSLorTP =
+      order.id.endsWith('__stop_loss') || order.id.endsWith('__take_profit');
+
+    if ('price' in update && isVirtualSLorTP) {
       const og = this.store.orders.find(
-        (o) => o.id === order.id.replace('__stop_loss', '')
+        (o) =>
+          o.id ===
+          order.id.replace('__stop_loss', '').replace('__take_profit', '')
       );
 
       if (og) {
+        const key = order.id.endsWith('__stop_loss')
+          ? 'stopLoss'
+          : 'takeProfit';
+
         const payload: Record<string, any> = {
           orderId: og.id,
           symbol: order.symbol,
-          stopLoss: `${update.price}`,
+          [key]: `${update.price}`,
         };
 
-        await this.xhr.post(ENDPOINTS.REPLACE_ORDER, payload);
+        const { data } = await this.xhr.post(ENDPOINTS.REPLACE_ORDER, payload);
+
+        if (data.retMsg === 'OK') {
+          updatedOrderIds.push(data.result.orderId);
+        } else {
+          this.emitter.emit('error', data.retMsg);
+        }
       }
     }
 
@@ -679,14 +694,20 @@ export class Bybit extends BaseExchange {
       if ('amount' in update) payload.qty = `${update.amount}`;
       if ('price' in update) payload.price = `${update.price}`;
 
-      await this.xhr.post(ENDPOINTS.REPLACE_ORDER, payload);
+      const { data } = await this.xhr.post(ENDPOINTS.REPLACE_ORDER, payload);
+
+      if (data.retMsg === 'OK') {
+        updatedOrderIds.push(data.result.orderId);
+      } else {
+        this.emitter.emit('error', data.retMsg);
+      }
     }
 
     // If we want to update the stop loss or take profit order
     // we need to do it on the opened position
     if (
-      order.type === OrderType.StopLoss ||
-      order.type === OrderType.TakeProfit
+      !isVirtualSLorTP &&
+      (order.type === OrderType.StopLoss || order.type === OrderType.TakeProfit)
     ) {
       const payload: Record<string, any> = {
         symbol: order.symbol,
@@ -712,6 +733,8 @@ export class Bybit extends BaseExchange {
       if ('price' in update) storeOrder.price = update.price;
       if ('amount' in update) storeOrder.amount = update.amount;
     }
+
+    return [] as string[];
   };
 
   cancelOrders = async (orders: Order[]) => {

@@ -276,19 +276,20 @@ const orderIds: string[] = await exchange.placeOrder({
 
 - Method to be called for updating an order price or amount
 - This supports updating price of take profit and stop loss orders
+- Returns an Array of orderIds
 
 ```ts
 //  we take the first existing order as example
 const originalOrder = exchange.store.orders[0];
 
 // update price of order
-await exchange.updateOrder({
+const updatedOrderIds: string[] = await exchange.updateOrder({
   order: originalOrder,
   update: { price: 1700 },
 });
 
 // update amount of order
-await exchange.updateOrder({
+const updatedOrderIds: string[] = await exchange.updateOrder({
   order: originalOrder,
   update: { amount: 2 },
 });

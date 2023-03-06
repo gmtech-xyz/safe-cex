@@ -652,7 +652,7 @@ export class Binance extends BaseExchange {
     if ('amount' in update) newOrder.amount = update.amount;
 
     await this.cancelOrders([order]);
-    await this.placeOrder(newOrder);
+    return await this.placeOrder(newOrder);
   };
 
   placeOrder = async (opts: PlaceOrderOpts) => {
