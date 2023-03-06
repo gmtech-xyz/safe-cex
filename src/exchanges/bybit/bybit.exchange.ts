@@ -736,7 +736,7 @@ export class Bybit extends BaseExchange {
       if ('amount' in update) storeOrder.amount = update.amount;
     }
 
-    return [] as string[];
+    return updatedOrderIds;
   };
 
   cancelOrders = async (orders: Order[]) => {
