@@ -191,6 +191,7 @@ export class Binance extends BaseExchange {
         amount: parseFloat(data.q),
         filled: parseFloat(data.z),
         remaining: parseFloat(data.q) - parseFloat(data.z),
+        reduceOnly: data.R || false,
       });
     }
 
@@ -453,6 +454,7 @@ export class Binance extends BaseExchange {
         side: ORDER_SIDE[o.side],
         price: parseFloat(o.price) || parseFloat(v(o, 'stopPrice')),
         amount: parseFloat(v(o, 'origQty')),
+        reduceOnly: v(o, 'reduceOnly') || false,
         filled: parseFloat(v(o, 'executedQty')),
         remaining: new BigNumber(v(o, 'origQty'))
           .minus(v(o, 'executedQty'))
@@ -653,6 +655,7 @@ export class Binance extends BaseExchange {
       side: order.side,
       price: order.price,
       amount: order.amount,
+      reduceOnly: order.reduceOnly || false,
     };
 
     if ('price' in update) newOrder.price = update.price;
@@ -713,6 +716,7 @@ export class Binance extends BaseExchange {
     // Binance stopPrice only for SL or TP orders
     const priceField = isStopOrTP ? 'stopPrice' : 'price';
 
+    const reduceOnly = !this.store.options.isHedged && opts.reduceOnly;
     const timeInForce = opts.timeInForce
       ? inverseObj(TIME_IN_FORCE)[opts.timeInForce]
       : inverseObj(TIME_IN_FORCE)[OrderTimeInForce.GoodTillCancel];
@@ -726,6 +730,7 @@ export class Binance extends BaseExchange {
       [priceField]: price ? `${price}` : undefined,
       timeInForce: opts.type === OrderType.Limit ? timeInForce : undefined,
       closePosition: isStopOrTP ? 'true' : undefined,
+      reduceOnly: reduceOnly ? 'true' : undefined,
     });
 
     const lots = amount > maxSize ? Math.ceil(amount / maxSize) : 1;

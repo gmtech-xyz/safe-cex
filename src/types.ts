@@ -103,6 +103,7 @@ export type Order = {
   amount: number;
   filled: number;
   remaining: number;
+  reduceOnly: boolean;
 };
 
 export enum PositionSide {

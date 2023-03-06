@@ -848,6 +848,7 @@ export class Bybit extends BaseExchange {
         price: parseFloat(oPrice),
         amount: parseFloat(o.qty ?? 0),
         filled: parseFloat(v(o, 'cumExecQty') ?? 0),
+        reduceOnly: v(o, 'reduceOnly') || false,
         remaining: new BigNumber(o.qty ?? 0)
           .minus(v(o, 'cumExecQty') ?? 0)
           .toNumber(),
