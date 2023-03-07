@@ -368,6 +368,12 @@ await exchange.dispose();
 
 ---
 
+## Known issues
+
+### VueJS
+
+You need to add [vite-plugin-node-stdlib-browser](https://github.com/sodatea/vite-plugin-node-stdlib-browser) to your vite config.
+
 ## Donations
 
 If you found this project interesting or useful, create accounts with my referral links:
