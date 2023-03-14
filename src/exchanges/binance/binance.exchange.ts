@@ -405,21 +405,21 @@ export class Binance extends BaseExchange {
 
   fetchPositions = async () => {
     try {
-      const { data } = await this.xhr.get<{
-        positions: Array<Record<string, any>>;
-      }>(ENDPOINTS.ACCOUNT);
+      const { data } = await this.xhr.get<Array<Record<string, any>>>(
+        ENDPOINTS.POSITIONS
+      );
 
       // We need to filter out positions that corresponds to
       // markets that are not supported by safe-cex
 
-      const supportedPositions = data.positions.filter((p) =>
+      const supportedPositions = data.filter((p) =>
         this.store.markets.some((m) => m.symbol === p.symbol)
       );
 
       const positions: Position[] = supportedPositions.map((p) => {
         const entryPrice = parseFloat(v(p, 'entryPrice'));
         const contracts = parseFloat(v(p, 'positionAmt'));
-        const upnl = parseFloat(v(p, 'unrealizedProfit'));
+        const upnl = parseFloat(v(p, 'unRealizedProfit'));
         const pSide = v(p, 'positionSide');
 
         // If account is not on hedge mode,
@@ -436,7 +436,7 @@ export class Binance extends BaseExchange {
           leverage: parseFloat(p.leverage),
           unrealizedPnl: upnl,
           contracts: Math.abs(contracts),
-          liquidationPrice: 0, // Binance doesn't provides on all positions data
+          liquidationPrice: parseFloat(v(p, 'liquidationPrice')),
         };
       });
 

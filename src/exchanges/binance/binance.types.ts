@@ -26,6 +26,7 @@ export const ENDPOINTS = {
   BALANCE: '/fapi/v2/balance',
   MARKETS: '/fapi/v1/exchangeInfo',
   ACCOUNT: '/fapi/v2/account',
+  POSITIONS: '/fapi/v2/positionRisk',
   LEVERAGE_BRACKET: '/fapi/v1/leverageBracket',
   TICKERS_24H: '/fapi/v1/ticker/24hr',
   TICKERS_BOOK: '/fapi/v1/ticker/bookTicker',
