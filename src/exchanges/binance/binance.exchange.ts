@@ -409,7 +409,14 @@ export class Binance extends BaseExchange {
         positions: Array<Record<string, any>>;
       }>(ENDPOINTS.ACCOUNT);
 
-      const positions: Position[] = data.positions.map((p) => {
+      // We need to filter out positions that corresponds to
+      // markets that are not supported by safe-cex
+
+      const supportedPositions = data.positions.filter((p) =>
+        this.store.markets.some((m) => m.symbol === p.symbol)
+      );
+
+      const positions: Position[] = supportedPositions.map((p) => {
         const entryPrice = parseFloat(v(p, 'entryPrice'));
         const contracts = parseFloat(v(p, 'positionAmt'));
         const upnl = parseFloat(v(p, 'unrealizedProfit'));
