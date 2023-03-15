@@ -57,10 +57,10 @@ export class Binance extends BaseExchange {
       await this.xhr.get(ENDPOINTS.ACCOUNT);
       return '';
     } catch (err: any) {
-      this.emitter.emit('error', err?.response?.data || err?.message);
+      this.emitter.emit('error', err?.response?.data?.msg || err?.message);
       return err?.message?.toLowerCase()?.includes?.('network error')
         ? 'Error while contacting Binance API'
-        : 'Invalid API key or secret';
+        : err?.response?.data?.msg || 'Invalid API key or secret';
     }
   };
 

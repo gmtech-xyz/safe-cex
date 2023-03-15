@@ -65,7 +65,7 @@ export class Bybit extends BaseExchange {
         return 'Check your computer time and date';
       }
 
-      return 'Invalid API key or secret';
+      return data.retMsg;
     }
 
     return '';
