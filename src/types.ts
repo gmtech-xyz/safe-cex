@@ -79,6 +79,7 @@ export enum OrderType {
   Limit = 'limit',
   StopLoss = 'stop_market',
   TakeProfit = 'take_profit_market',
+  TrailingStopLoss = 'trailing_stop_market',
 }
 
 export enum OrderSide {

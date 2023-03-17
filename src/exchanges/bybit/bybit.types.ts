@@ -70,6 +70,7 @@ export const ORDER_TYPE: Record<string, OrderType> = {
   Market: OrderType.Market,
   StopLoss: OrderType.StopLoss,
   TakeProfit: OrderType.TakeProfit,
+  TrailingStop: OrderType.TrailingStopLoss,
 };
 
 export const ORDER_SIDE: Record<string, OrderSide> = {

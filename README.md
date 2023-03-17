@@ -225,6 +225,7 @@ enum OrderType {
   Limit = "limit",
   StopLoss = "stop_market",
   TakeProfit = "take_profit_market",
+  TralingStopLoss = "trailing_stop_market",
 }
 
 enum OrderSide {

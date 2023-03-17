@@ -544,19 +544,23 @@ export class Bybit extends BaseExchange {
   };
 
   placeOrder = async (opts: PlaceOrderOpts) => {
+    if (
+      opts.type === OrderType.StopLoss ||
+      opts.type === OrderType.TakeProfit
+    ) {
+      return this.placeStopLossOrTakeProfit(opts);
+    }
+
+    if (opts.type === OrderType.TrailingStopLoss) {
+      return this.placeTrailingStopLoss(opts);
+    }
+
     const market = this.store.markets.find(
       ({ symbol }) => symbol === opts.symbol
     );
 
     if (!market) {
       throw new Error(`Market ${opts.symbol} not found`);
-    }
-
-    if (
-      opts.type === OrderType.StopLoss ||
-      opts.type === OrderType.TakeProfit
-    ) {
-      return this.placeStopLossOrTakeProfit(opts);
     }
 
     const positionIdx = this.getOrderPositionIdx(opts);
@@ -633,8 +637,36 @@ export class Bybit extends BaseExchange {
 
     if (opts.type === OrderType.TakeProfit) {
       payload.takeProfit = `${opts.price}`;
-      payload.tpTriggerBy = 'MarkPrice';
+      payload.tpTriggerBy = 'LastPrice';
     }
+
+    const { data } = await this.xhr.post(ENDPOINTS.SET_TRADING_STOP, payload);
+
+    if (data.retMsg !== 'OK') {
+      this.emitter.emit('error', data.retMsg);
+    }
+
+    return [data.result.orderId];
+  };
+
+  placeTrailingStopLoss = async (opts: PlaceOrderOpts) => {
+    const ticker = this.store.tickers.find((t) => t.symbol === opts.symbol);
+    const market = this.store.markets.find((m) => m.symbol === opts.symbol);
+
+    if (!ticker || !market) {
+      throw new Error(`Ticker ${opts.symbol} not found`);
+    }
+
+    const distance = adjust(
+      Math.max(ticker.last, opts.price!) - Math.min(ticker.last, opts.price!),
+      market.precision.price
+    );
+
+    const payload: Record<string, any> = {
+      symbol: opts.symbol,
+      positionIdx: this.getStopOrderPositionIdx(opts),
+      trailingStop: `${distance}`,
+    };
 
     const { data } = await this.xhr.post(ENDPOINTS.SET_TRADING_STOP, payload);
 
