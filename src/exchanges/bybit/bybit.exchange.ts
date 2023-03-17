@@ -24,6 +24,7 @@ import { OrderTimeInForce, OrderType, OrderSide } from '../../types';
 import { adjust } from '../../utils/adjust';
 import { v } from '../../utils/get-key';
 import { inverseObj } from '../../utils/inverse-obj';
+import { loop } from '../../utils/loop';
 import { omitUndefined } from '../../utils/omit-undefined';
 import { createWebSocket } from '../../utils/universal-ws';
 import { BaseExchange } from '../base';
@@ -129,11 +130,7 @@ export class Bybit extends BaseExchange {
         this.emitter.emit('error', err?.message);
       }
 
-      if (typeof window === 'undefined') {
-        setTimeout(() => this.tick(), 0);
-      } else {
-        requestAnimationFrame(() => this.tick());
-      }
+      loop(() => this.tick());
     }
   };
 
