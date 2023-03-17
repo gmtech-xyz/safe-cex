@@ -681,6 +681,10 @@ export class Binance extends BaseExchange {
 
   // eslint-disable-next-line complexity
   private formatCreateOrder = (opts: PlaceOrderOpts) => {
+    if (opts.type === OrderType.TrailingStopLoss) {
+      return this.formatCreateTrailingStopLossOrder(opts);
+    }
+
     const market = this.store.markets.find(({ symbol }) => {
       return symbol === opts.symbol;
     });
@@ -692,17 +696,7 @@ export class Binance extends BaseExchange {
     const isStopOrTP =
       opts.type === OrderType.StopLoss || opts.type === OrderType.TakeProfit;
 
-    let pSide = 'BOTH';
-
-    // We need to specify side of the position to interract with
-    // if we are in hedged mode on the binance account
-    if (this.store.options.isHedged) {
-      pSide = opts.side === OrderSide.Buy ? 'LONG' : 'SHORT';
-
-      if (isStopOrTP || opts.reduceOnly) {
-        pSide = pSide === 'LONG' ? 'SHORT' : 'LONG';
-      }
-    }
+    const pSide = this.getOrderPositionSide(opts);
 
     const maxSize = market.limits.amount.max;
     const pPrice = market.precision.price;
@@ -785,6 +779,67 @@ export class Binance extends BaseExchange {
     }
 
     return payloads;
+  };
+
+  private formatCreateTrailingStopLossOrder = (opts: PlaceOrderOpts) => {
+    const market = this.store.markets.find((m) => m.symbol === opts.symbol);
+    const ticker = this.store.tickers.find((t) => t.symbol === opts.symbol);
+
+    const pSide =
+      opts.side === OrderSide.Buy ? PositionSide.Short : PositionSide.Long;
+
+    const position = this.store.positions.find(
+      (p) => p.symbol === opts.symbol && p.side === pSide
+    );
+
+    if (!market) throw new Error(`Market ${opts.symbol} not found`);
+    if (!ticker) throw new Error(`Ticker ${opts.symbol} not found`);
+
+    if (!position) {
+      throw new Error(`Position ${opts.symbol} and side ${pSide} not found`);
+    }
+
+    const priceDistance = adjust(
+      Math.max(ticker.last, opts.price!) - Math.min(ticker.last, opts.price!),
+      market.precision.price
+    );
+
+    const distancePercentage =
+      Math.round(((priceDistance * 100) / ticker.last) * 10) / 10;
+
+    const payload = {
+      symbol: opts.symbol,
+      positionSide: this.getOrderPositionSide(opts),
+      side: inverseObj(ORDER_SIDE)[opts.side],
+      type: inverseObj(ORDER_TYPE)[OrderType.TrailingStopLoss],
+      quantity: `${position.contracts}`,
+      callbackRate: `${distancePercentage}`,
+      priceProtect: 'true',
+      newClientOrderId: v4().replace(/-/g, ''),
+    };
+
+    return [payload];
+  };
+
+  private getOrderPositionSide = (opts: PlaceOrderOpts) => {
+    let positionSide = 'BOTH';
+
+    // We need to specify side of the position to interract with
+    // if we are in hedged mode on the binance account
+    if (this.store.options.isHedged) {
+      positionSide = opts.side === OrderSide.Buy ? 'LONG' : 'SHORT';
+
+      if (
+        opts.type === OrderType.StopLoss ||
+        opts.type === OrderType.TakeProfit ||
+        opts.type === OrderType.TrailingStopLoss ||
+        opts.reduceOnly
+      ) {
+        positionSide = positionSide === 'LONG' ? 'SHORT' : 'LONG';
+      }
+    }
+
+    return positionSide;
   };
 
   private placeOrderBatch = async (payloads: any[]) => {
