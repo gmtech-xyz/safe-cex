@@ -2,7 +2,6 @@
 import type { Axios } from 'axios';
 import rateLimit from 'axios-rate-limit';
 import BigNumber from 'bignumber.js';
-import createHmac from 'create-hmac';
 import type { ManipulateType } from 'dayjs';
 import dayjs from 'dayjs';
 import { omit, orderBy, times, uniqBy } from 'lodash';
@@ -39,6 +38,7 @@ import {
   ORDER_TYPE,
   POSITION_SIDE,
 } from './bybit.types';
+import { BybitPrivateWebsocket } from './bybit.ws-private';
 import { BybitPublicWebsocket } from './bybit.ws-public';
 
 export class Bybit extends BaseExchange {
@@ -46,6 +46,7 @@ export class Bybit extends BaseExchange {
   unlimitedXHR: Axios;
 
   publicWebsocket: BybitPublicWebsocket;
+  privateWebsocket: BybitPrivateWebsocket;
 
   // we use this Map to indicate if a position is on hedge mode
   // so we can avoid counting positions on every `placeOrder()` call
@@ -59,6 +60,7 @@ export class Bybit extends BaseExchange {
     this.unlimitedXHR = createAPI(opts);
 
     this.publicWebsocket = new BybitPublicWebsocket(this);
+    this.privateWebsocket = new BybitPrivateWebsocket(this);
   }
 
   dispose = () => {
@@ -107,9 +109,6 @@ export class Bybit extends BaseExchange {
     await this.setHedgeMode();
     if (this.isDisposed) return;
 
-    // listen to websocket
-    this.listenWS();
-
     // start ticking live data
     // balance, tickers, positions
     await this.tick();
@@ -147,127 +146,6 @@ export class Bybit extends BaseExchange {
 
       loop(() => this.tick());
     }
-  };
-
-  listenWS = () => {
-    if (!this.isDisposed) {
-      const auth = () => {
-        const expires = new Date().getTime() + 10_000;
-        const signature = createHmac('sha256', this.options.secret)
-          .update(`GET/realtime${expires}`)
-          .digest('hex');
-
-        const payload = {
-          op: 'auth',
-          args: [this.options.key, expires.toFixed(0), signature],
-        };
-
-        this.wsPrivate?.send?.(JSON.stringify(payload));
-      };
-
-      // subscribe to topics
-      const subscribe = (topic: string) => {
-        const payload = { op: 'subscribe', args: [topic] };
-        this.wsPrivate?.send?.(JSON.stringify(payload));
-      };
-
-      const handleMessage = ({ data }: MessageEvent) => {
-        if (!this.isDisposed) {
-          const json = JSON.parse(data);
-
-          if (json.topic === 'user.order.contractAccount') {
-            this.handleOrderTopic(json.data);
-          }
-
-          if (json.topic === 'user.position.contractAccount') {
-            this.handlePositionTopic(json.data);
-          }
-        }
-      };
-
-      const connect = () => {
-        if (!this.isDisposed) {
-          this.wsPrivate = createWebSocket(
-            BASE_WS_URL.private[this.options.testnet ? 'testnet' : 'livenet']
-          );
-
-          this.wsPrivate.on('open', () => {
-            if (!this.isDisposed) {
-              auth();
-              subscribe('user.order.contractAccount');
-              subscribe('user.position.contractAccount');
-              this.log(`Listening to Bybit positions updates`);
-              this.log(`Listening to Bybit orders updates`);
-            }
-          });
-
-          this.wsPrivate.once('open', () => this.ping());
-          this.wsPrivate.on('message', handleMessage);
-        }
-      };
-
-      connect();
-    }
-  };
-
-  handleOrderTopic = (data: Array<Record<string, any>>) => {
-    data.forEach((order: Record<string, any>) => {
-      const orders = this.mapOrder(order);
-
-      const price = parseFloat(v(order, 'lastExecPrice'));
-      const amount = parseFloat(v(order, 'lastExecQty'));
-
-      if (order.orderStatus === 'PartiallyFilled') {
-        // False positive when order is replaced
-        // it emits a partially filled with 0 amount & price
-        if (price <= 0 && amount <= 0) return;
-      }
-
-      if (
-        order.orderStatus === 'Filled' ||
-        order.orderStatus === 'PartiallyFilled'
-      ) {
-        this.emitter.emit('fill', {
-          side: orders[0].side,
-          symbol: orders[0].symbol,
-          price,
-          amount,
-        });
-      }
-
-      if (
-        order.orderStatus === 'Cancelled' ||
-        order.orderStatus === 'Filled' ||
-        order.orderStatus === 'Deactivated'
-      ) {
-        // We remove the order and its stop loss and take profit
-        // if they exists, because they will be replaced with correct IDs
-        this.removeOrdersFromStore([
-          orders[0].id,
-          `${orders[0].id}__stop_loss`,
-          `${orders[0].id}__take_profit`,
-        ]);
-      }
-
-      if (
-        order.orderStatus === 'New' ||
-        order.orderStatus === 'Untriggered' ||
-        order.orderStatus === 'PartiallyFilled'
-      ) {
-        orders.forEach((o) => this.addOrReplaceOrderFromStore(o));
-      }
-    });
-  };
-
-  handlePositionTopic = (data: Array<Record<string, any>>) => {
-    const positions: Position[] = data.map(this.mapPosition);
-    this.store.positions = this.store.positions.map((p) => {
-      const pos = positions.find(
-        (p2) => p2.symbol === p.symbol && p2.side === p.side
-      );
-
-      return pos || p;
-    });
   };
 
   fetchBalance = async () => {
@@ -861,7 +739,7 @@ export class Bybit extends BaseExchange {
     }
   };
 
-  private mapPosition(p: Record<string, any>) {
+  mapPosition(p: Record<string, any>) {
     const position: Position = {
       symbol: p.symbol,
       side: POSITION_SIDE[p.side],
@@ -876,7 +754,7 @@ export class Bybit extends BaseExchange {
     return position;
   }
 
-  private mapOrder(o: Record<string, any>) {
+  mapOrder(o: Record<string, any>) {
     const isStop = o.stopOrderType !== 'UNKNOWN';
 
     const oPrice = isStop ? v(o, 'triggerPrice') : o.price;
