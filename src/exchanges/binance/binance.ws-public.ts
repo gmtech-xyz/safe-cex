@@ -1,3 +1,5 @@
+import { groupBy } from 'lodash';
+
 import { v } from '../../utils/get-key';
 
 import type { Binance } from './binance.exchange';
@@ -34,16 +36,10 @@ export class BinancePublicWebsocket {
   onMessage = ({ data }: MessageEvent) => {
     if (!this.parent.isDisposed) {
       const json = JSON.parse(data);
-      const events = Array.isArray(json) ? json : [json];
-
-      const tickerEvents = events.filter((e) => e.e === '24hrTicker');
-      this.handleTickerStreamEvents(tickerEvents);
-
-      const bookTickersEvents = events.filter((e) => e.e === 'bookTicker');
-      this.handleBookTickersStreamEvents(bookTickersEvents);
-
-      const markPriceEvents = events.filter((e) => e.e === 'markPriceUpdate');
-      this.handleMarkPriceStreamEvents(markPriceEvents);
+      const events = groupBy(Array.isArray(json) ? json : [json], 'e');
+      this.handleTickerStreamEvents(events['24hrTicker'] || []);
+      this.handleBookTickersStreamEvents(events.bookTicker || []);
+      this.handleMarkPriceStreamEvents(events.markPriceUpdate || []);
     }
   };
 
