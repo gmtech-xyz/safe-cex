@@ -41,17 +41,31 @@ import {
   ENDPOINTS,
   TIME_IN_FORCE,
 } from './binance.types';
+import { BinancePrivateWebsocket } from './binance.ws-private';
+import { BinancePublicWebsocket } from './binance.ws-public';
 
 export class Binance extends BaseExchange {
   xhr: Axios;
   unlimitedXHR: Axios;
+
+  publicWebsocket: BinancePublicWebsocket;
+  privateWebsocket: BinancePrivateWebsocket;
 
   constructor(opts: ExchangeOptions) {
     super(opts);
 
     this.xhr = rateLimit(createAPI(opts), { maxRPS: 3 });
     this.unlimitedXHR = createAPI(opts);
+
+    this.publicWebsocket = new BinancePublicWebsocket(this);
+    this.privateWebsocket = new BinancePrivateWebsocket(this);
   }
+
+  dispose = () => {
+    super.dispose();
+    this.publicWebsocket.dispose();
+    this.privateWebsocket.dispose();
+  };
 
   validateAccount = async () => {
     try {
@@ -76,12 +90,19 @@ export class Binance extends BaseExchange {
     this.store.markets = markets;
     this.store.loaded.markets = true;
 
+    // load initial tickers data
+    // then we use websocket for live data
+    const tickers = await this.fetchTickers();
+    if (this.isDisposed) return;
+
+    this.log(`Loaded ${tickers.length} Binance tickers`);
+
+    this.store.tickers = tickers;
+    this.store.loaded.tickers = true;
+
     // set hedge mode before fetching positions
     await this.setHedgeMode();
     if (this.isDisposed) return;
-
-    // listen to websocket
-    this.listenWS();
 
     // start ticking live data
     // balance, tickers, positions
@@ -106,143 +127,19 @@ export class Binance extends BaseExchange {
         const balance = await this.fetchBalance();
         if (this.isDisposed) return;
 
-        const tickers = await this.fetchTickers();
-        if (this.isDisposed) return;
-
         const positions = await this.fetchPositions();
         if (this.isDisposed) return;
 
         this.store.balance = balance;
-        this.store.tickers = tickers;
         this.store.positions = positions;
 
         this.store.loaded.balance = true;
-        this.store.loaded.tickers = true;
         this.store.loaded.positions = true;
       } catch (err: any) {
         this.emitter.emit('error', err?.message);
       }
 
       loop(() => this.tick());
-    }
-  };
-
-  listenWS = async () => {
-    if (!this.isDisposed) {
-      const listenKey = await this.fetchListenKey();
-
-      const key = this.options.testnet ? 'testnet' : 'livenet';
-      const base = BASE_WS_URL.private[key];
-
-      const url = this.options.testnet
-        ? `${base}/${listenKey}`
-        : `${base}/${listenKey}?listenKey=${listenKey}`;
-
-      const handleMessage = ({ data }: MessageEvent) => {
-        if (!this.isDisposed) {
-          const json = JSON.parse(data);
-          if (json.e === 'ACCOUNT_UPDATE') this.handlePositionTopic(json.a.P);
-          if (json.e === 'ORDER_TRADE_UPDATE') this.handleOrderTopic(json.o);
-        }
-      };
-
-      const connect = () => {
-        if (!this.isDisposed) {
-          this.wsPrivate = createWebSocket(
-            url,
-            // use this send data as ping command
-            JSON.stringify({ method: 'LIST_SUBSCRIPTIONS' })
-          );
-
-          this.wsPrivate.on('message', handleMessage);
-          this.wsPrivate.once('open', () => {
-            this.ping();
-            this.log(`Listening to Binance positions updates`);
-            this.log(`Listening to Binance orders updates`);
-          });
-        }
-      };
-
-      connect();
-    }
-  };
-
-  handleOrderTopic = (data: Record<string, any>) => {
-    if (data.X === 'PARTIALLY_FILLED' || data.X === 'FILLED') {
-      this.emitter.emit('fill', {
-        side: ORDER_SIDE[data.S],
-        symbol: data.s,
-        price: parseFloat(data.ap),
-        amount: parseFloat(data.l),
-      });
-    }
-
-    if (data.X === 'NEW') {
-      this.addOrReplaceOrderFromStore({
-        id: data.c,
-        status: OrderStatus.Open,
-        symbol: data.s,
-        type: ORDER_TYPE[data.ot],
-        side: ORDER_SIDE[data.S],
-        price: parseFloat(data.p) || parseFloat(data.sp),
-        amount: parseFloat(data.q),
-        filled: parseFloat(data.z),
-        remaining: parseFloat(data.q) - parseFloat(data.z),
-        reduceOnly: data.R || false,
-      });
-    }
-
-    if (data.X === 'PARTIALLY_FILLED') {
-      const order = this.store.orders.find((o) => o.id === data.c);
-
-      if (order) {
-        order.filled = parseFloat(data.z);
-        order.remaining = parseFloat(data.q) - parseFloat(data.z);
-      }
-    }
-
-    if (data.X === 'CANCELED' || data.X === 'FILLED') {
-      this.removeOrderFromStore(data.c);
-    }
-  };
-
-  handlePositionTopic = (data: Array<Record<string, any>>) => {
-    data.forEach((p: any) => {
-      const symbol = p.s;
-      const side = POSITION_SIDE[p.ps];
-
-      const position = this.store.positions.find(
-        (p2) => p2.symbol === symbol && p2.side === side
-      );
-
-      if (position) {
-        const entryPrice = parseFloat(p.ep);
-        const contracts = parseFloat(p.pa);
-        const upnl = parseFloat(p.up);
-
-        position.entryPrice = entryPrice;
-        position.contracts = contracts;
-        position.notional = contracts * entryPrice + upnl;
-        position.unrealizedPnl = upnl;
-      }
-    });
-  };
-
-  fetchListenKey = async () => {
-    const {
-      data: { listenKey },
-    } = await this.xhr.post<{ listenKey: string }>(ENDPOINTS.LISTEN_KEY);
-
-    // keep connection alive with a 30 minute interval
-    setTimeout(() => this.updateListenKey(), 1000 * 60 * 30);
-
-    return listenKey;
-  };
-
-  updateListenKey = async () => {
-    if (!this.isDisposed) {
-      await this.xhr.put(ENDPOINTS.LISTEN_KEY);
-      setTimeout(() => this.updateListenKey(), 1000 * 60 * 30);
     }
   };
 
