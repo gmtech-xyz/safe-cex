@@ -19,6 +19,8 @@ export const BASE_WS_URL = {
 };
 
 export const ENDPOINTS = {
+  // V5
+  BATCH_ORDERS: '/v5/order/create-batch',
   // V3
   BALANCE: '/contract/v3/private/account/wallet/balance',
   UNFILLED_ORDERS: '/contract/v3/private/order/unfilled-orders',

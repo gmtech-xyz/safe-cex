@@ -5,7 +5,7 @@ import BigNumber from 'bignumber.js';
 import createHmac from 'create-hmac';
 import type { ManipulateType } from 'dayjs';
 import dayjs from 'dayjs';
-import { omit, orderBy, times, uniqBy } from 'lodash';
+import { chunk, omit, orderBy, partition, times, uniqBy } from 'lodash';
 import { forEachSeries, mapSeries } from 'p-iteration';
 
 import type {
@@ -555,61 +555,7 @@ export class Bybit extends BaseExchange {
       return this.placeTrailingStopLoss(opts);
     }
 
-    const market = this.store.markets.find(
-      ({ symbol }) => symbol === opts.symbol
-    );
-
-    if (!market) {
-      throw new Error(`Market ${opts.symbol} not found`);
-    }
-
-    const positionIdx = this.getOrderPositionIdx(opts);
-
-    const maxSize = market.limits.amount.max;
-    const pPrice = market.precision.price;
-    const pAmount = market.precision.amount;
-
-    const amount = adjust(opts.amount, pAmount);
-
-    const price = opts.price ? adjust(opts.price, pPrice) : null;
-    const stopLoss = opts.stopLoss ? adjust(opts.stopLoss, pPrice) : null;
-    const takeProfit = opts.takeProfit ? adjust(opts.takeProfit, pPrice) : null;
-    const timeInForce = opts.timeInForce || OrderTimeInForce.GoodTillCancel;
-
-    const req = omitUndefined({
-      symbol: opts.symbol,
-      side: inverseObj(ORDER_SIDE)[opts.side],
-      orderType: inverseObj(ORDER_TYPE)[opts.type],
-      qty: `${amount}`,
-      price: opts.type === OrderType.Limit ? `${price}` : undefined,
-      stopLoss: opts.stopLoss ? `${stopLoss}` : undefined,
-      takeProfit: opts.takeProfit ? `${takeProfit}` : undefined,
-      reduceOnly: opts.reduceOnly || false,
-      slTriggerBy: opts.stopLoss ? 'MarkPrice' : undefined,
-      tpTriggerBy: opts.takeProfit ? 'MarkPrice' : undefined,
-      timeInForce: opts.type === OrderType.Limit ? timeInForce : undefined,
-      closeOnTrigger: false,
-      positionIdx,
-    });
-
-    const lots = amount > maxSize ? Math.ceil(amount / maxSize) : 1;
-    const rest = amount > maxSize ? adjust(amount % maxSize, pAmount) : 0;
-
-    const lotSize = adjust((amount - rest) / lots, pAmount);
-
-    const payloads = times(lots, (idx) => {
-      // We want to remove stopLoss and takeProfit from the rest of the orders
-      // because they are already set on the first one
-      const payload =
-        idx > 0
-          ? omit(req, ['stopLoss', 'takeProfit', 'slTriggerBy', 'tpTriggerBy'])
-          : req;
-
-      return { ...payload, qty: `${lotSize}` };
-    });
-
-    if (rest) payloads.push({ ...req, qty: `${rest}` });
-
+    const payloads = this.formatCreateOrder(opts);
     const responses = await mapSeries(payloads, async (p) => {
       const { data } = await this.unlimitedXHR.post(ENDPOINTS.CREATE_ORDER, p);
       return data;
@@ -622,6 +568,35 @@ export class Bybit extends BaseExchange {
     });
 
     return responses.map((resp) => resp.result.orderId);
+  };
+
+  placeOrders = async (opts: PlaceOrderOpts[]) => {
+    const orderIds: string[] = [];
+    const [batchSupported, batchUnsupported] = partition(
+      opts,
+      (o) => o.type === OrderType.Limit || o.type === OrderType.Market
+    );
+
+    if (batchUnsupported.length > 0) {
+      const ids = await mapSeries(batchUnsupported, (o) => this.placeOrder(o));
+      orderIds.push(...ids.flat());
+    }
+
+    if (batchSupported.length > 0) {
+      const requests = batchSupported.flatMap((o) => this.formatCreateOrder(o));
+      const lots = chunk(requests, 20);
+
+      for (const lot of lots) {
+        const { data } = await this.unlimitedXHR.post(ENDPOINTS.BATCH_ORDERS, {
+          category: 'linear',
+          request: lot,
+        });
+
+        console.log(data);
+      }
+    }
+
+    return orderIds;
   };
 
   placeStopLossOrTakeProfit = async (opts: PlaceOrderOpts) => {
@@ -844,6 +819,67 @@ export class Bybit extends BaseExchange {
     ) {
       this.store.options.isHedged = false;
     }
+  };
+
+  private formatCreateOrder = (opts: PlaceOrderOpts) => {
+    const market = this.store.markets.find(
+      ({ symbol }) => symbol === opts.symbol
+    );
+
+    if (!market) {
+      throw new Error(`Market ${opts.symbol} not found`);
+    }
+
+    const positionIdx = this.getOrderPositionIdx(opts);
+
+    const maxSize = market.limits.amount.max;
+    const pPrice = market.precision.price;
+    const pAmount = market.precision.amount;
+
+    const amount = adjust(opts.amount, pAmount);
+
+    const price = opts.price ? adjust(opts.price, pPrice) : null;
+    const stopLoss = opts.stopLoss ? adjust(opts.stopLoss, pPrice) : null;
+    const takeProfit = opts.takeProfit ? adjust(opts.takeProfit, pPrice) : null;
+    const timeInForce = opts.timeInForce || OrderTimeInForce.GoodTillCancel;
+
+    const req = omitUndefined({
+      symbol: opts.symbol,
+      side: inverseObj(ORDER_SIDE)[opts.side],
+      orderType: inverseObj(ORDER_TYPE)[opts.type],
+      qty: `${amount}`,
+      price: opts.type === OrderType.Limit ? `${price}` : undefined,
+      stopLoss: opts.stopLoss ? `${stopLoss}` : undefined,
+      takeProfit: opts.takeProfit ? `${takeProfit}` : undefined,
+      reduceOnly: opts.reduceOnly || false,
+      slTriggerBy: opts.stopLoss ? 'MarkPrice' : undefined,
+      tpTriggerBy: opts.takeProfit ? 'MarkPrice' : undefined,
+      timeInForce: opts.type === OrderType.Limit ? timeInForce : undefined,
+      closeOnTrigger: false,
+      positionIdx,
+    });
+
+    const lots = amount > maxSize ? Math.ceil(amount / maxSize) : 1;
+    const rest = amount > maxSize ? adjust(amount % maxSize, pAmount) : 0;
+
+    const lotSize = adjust((amount - rest) / lots, pAmount);
+
+    const payloads = times(lots, (idx) => {
+      // We want to remove stopLoss and takeProfit from the rest of the orders
+      // because they are already set on the first one
+      const payload =
+        idx > 0
+          ? omit(req, ['stopLoss', 'takeProfit', 'slTriggerBy', 'tpTriggerBy'])
+          : req;
+
+      return { ...payload, qty: `${lotSize}` };
+    });
+
+    if (rest) {
+      payloads.push({ ...req, qty: `${rest}` });
+    }
+
+    return payloads;
   };
 
   private mapPosition(p: Record<string, any>) {
