@@ -85,8 +85,6 @@ export class Binance extends BaseExchange {
     const markets = await this.fetchMarkets();
     if (this.isDisposed) return;
 
-    this.log(`Loaded ${markets.length} Binance markets`);
-
     this.store.markets = markets;
     this.store.loaded.markets = true;
 
@@ -95,7 +93,9 @@ export class Binance extends BaseExchange {
     const tickers = await this.fetchTickers();
     if (this.isDisposed) return;
 
-    this.log(`Loaded ${tickers.length} Binance tickers`);
+    this.log(
+      `Loaded ${Math.min(tickers.length, markets.length)} Binance markets`
+    );
 
     this.store.tickers = tickers;
     this.store.loaded.tickers = true;
