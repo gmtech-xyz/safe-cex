@@ -39,10 +39,13 @@ import {
   ORDER_TYPE,
   POSITION_SIDE,
 } from './bybit.types';
+import { BybitPublicWebsocket } from './bybit.ws-public';
 
 export class Bybit extends BaseExchange {
   xhr: Axios;
   unlimitedXHR: Axios;
+
+  publicWebsocket: BybitPublicWebsocket;
 
   // we use this Map to indicate if a position is on hedge mode
   // so we can avoid counting positions on every `placeOrder()` call
@@ -54,7 +57,14 @@ export class Bybit extends BaseExchange {
 
     this.xhr = rateLimit(createAPI(opts), { maxRPS: 3 });
     this.unlimitedXHR = createAPI(opts);
+
+    this.publicWebsocket = new BybitPublicWebsocket(this);
   }
+
+  dispose = () => {
+    super.dispose();
+    this.publicWebsocket.dispose();
+  };
 
   validateAccount = async () => {
     const { data } = await this.xhr.get(ENDPOINTS.BALANCE);
@@ -78,10 +88,20 @@ export class Bybit extends BaseExchange {
     const markets = await this.fetchMarkets();
     if (this.isDisposed) return;
 
-    this.log(`Loaded ${markets.length} Bybit markets`);
-
     this.store.markets = markets;
     this.store.loaded.markets = true;
+
+    // load initial tickers data
+    // then we use websocket for live data
+    const tickers = await this.fetchTickers();
+    if (this.isDisposed) return;
+
+    this.log(
+      `Loaded ${Math.min(tickers.length, markets.length)} Bybit markets`
+    );
+
+    this.store.tickers = tickers;
+    this.store.loaded.tickers = true;
 
     // set hedge mode before fetching positions
     await this.setHedgeMode();
@@ -113,18 +133,13 @@ export class Bybit extends BaseExchange {
         const balance = await this.fetchBalance();
         if (this.isDisposed) return;
 
-        const tickers = await this.fetchTickers();
-        if (this.isDisposed) return;
-
         const positions = await this.fetchPositions();
         if (this.isDisposed) return;
 
         this.store.balance = balance;
-        this.store.tickers = tickers;
         this.store.positions = positions;
 
         this.store.loaded.balance = true;
-        this.store.loaded.tickers = true;
         this.store.loaded.positions = true;
       } catch (err: any) {
         this.emitter.emit('error', err?.message);
