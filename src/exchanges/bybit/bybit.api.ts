@@ -6,7 +6,7 @@ import qs from 'qs';
 import type { ExchangeOptions } from '../../types';
 import { virtualClock } from '../../utils/virtual-clock';
 
-import { BASE_URL, ENDPOINTS, RECV_WINDOW } from './bybit.types';
+import { BASE_URL, BROKER_ID, ENDPOINTS, RECV_WINDOW } from './bybit.types';
 
 export const createAPI = (options: ExchangeOptions) => {
   const xhr = axios.create({
@@ -16,6 +16,7 @@ export const createAPI = (options: ExchangeOptions) => {
       serialize: (params) => qs.stringify(params),
     },
     headers: {
+      Referer: BROKER_ID,
       'X-BAPI-RECV-WINDOW': RECV_WINDOW,
       'Content-Type': 'application/json, charset=utf-8',
     },

@@ -2,6 +2,8 @@ import type { Timeframe } from '../../types';
 import { OrderStatus, OrderType, OrderSide, PositionSide } from '../../types';
 
 export const RECV_WINDOW = 5000;
+export const BROKER_ID = 'Gi000266';
+
 export const BASE_URL = {
   livenet: 'https://api.bybit.com',
   testnet: 'https://api-testnet.bybit.com',
