@@ -16,7 +16,7 @@ export const createAPI = (options: ExchangeOptions) => {
       serialize: (params) => qs.stringify(params),
     },
     headers: {
-      Referer: BROKER_ID,
+      'X-Referer': BROKER_ID,
       'X-BAPI-RECV-WINDOW': RECV_WINDOW,
       'Content-Type': 'application/json, charset=utf-8',
     },
