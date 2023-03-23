@@ -68,7 +68,7 @@ export class BybitPublicWebsocket {
 
     if (ticker) {
       if (d.bid_1_price) ticker.bid = parseFloat(d.bid_1_price);
-      if (d.ask1_price) ticker.ask = parseFloat(d.ask1_price);
+      if (d.ask_1_price) ticker.ask = parseFloat(d.ask_1_price);
       if (d.last_price) ticker.last = parseFloat(d.last_price);
       if (d.mark_price) ticker.mark = parseFloat(d.mark_price);
       if (d.index_price) ticker.index = parseFloat(d.index_price);
