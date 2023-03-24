@@ -4,6 +4,8 @@ export class BaseWebSocket<T extends BaseExchange> {
   ws?: WebSocket;
   parent: T;
 
+  pingAt = 0;
+
   constructor(parent: T) {
     this.parent = parent;
   }

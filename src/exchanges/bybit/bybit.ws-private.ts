@@ -26,6 +26,7 @@ export class BybitPrivateWebsocket extends BaseWebSocket<Bybit> {
   onOpen = () => {
     this.auth();
     this.subscribe();
+    this.ping();
   };
 
   onMessage = ({ data }: MessageEvent) => {
@@ -37,6 +38,19 @@ export class BybitPrivateWebsocket extends BaseWebSocket<Bybit> {
 
     if (json.topic === 'user.position.contractAccount') {
       this.handlePositionTopic(json.data);
+    }
+
+    if (json.op === 'pong') {
+      const diff = performance.now() - this.pingAt;
+      this.parent.store.latency = Math.round(diff / 2);
+      setTimeout(() => this.ping(), 10_000);
+    }
+  };
+
+  ping = () => {
+    if (!this.parent.isDisposed) {
+      this.pingAt = performance.now();
+      this.ws?.send?.(JSON.stringify({ op: 'ping' }));
     }
   };
 

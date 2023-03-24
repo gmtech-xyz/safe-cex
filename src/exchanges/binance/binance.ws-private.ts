@@ -29,18 +29,32 @@ export class BinancePrivateWebsocket extends BaseWebSocket<Binance> {
     this.ws = new WebSocket(url);
     this.ws.addEventListener('message', this.onMessage);
     this.ws.addEventListener('close', this.onClose);
+    this.ws.addEventListener('open', this.onOpen);
+  };
+
+  onOpen = () => {
+    this.ping();
   };
 
   onMessage = ({ data }: MessageEvent) => {
     if (!this.parent.isDisposed) {
       const json = JSON.parse(data);
-      const events = Array.isArray(json) ? json : [json];
 
-      const orderEvents = events.filter((e) => e.e === 'ORDER_TRADE_UPDATE');
-      this.handleOrderEvents(orderEvents);
+      if (json.e === 'ACCOUNT_UPDATE') this.handleAccountEvents([json]);
+      if (json.e === 'ORDER_TRADE_UPDATE') this.handleOrderEvents([json]);
 
-      const accountEvents = events.filter((e) => e.e === 'ACCOUNT_UPDATE');
-      this.handleAccountEvents(accountEvents);
+      if (json.id === 42) {
+        const diff = performance.now() - this.pingAt;
+        this.parent.store.latency = Math.round(diff / 2);
+        setTimeout(() => this.ping(), 10_000);
+      }
+    }
+  };
+
+  ping = () => {
+    if (!this.parent.isDisposed) {
+      this.pingAt = performance.now();
+      this.ws?.send?.(JSON.stringify({ id: 42, method: 'LIST_SUBSCRIPTIONS' }));
     }
   };
 
