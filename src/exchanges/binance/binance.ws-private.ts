@@ -1,4 +1,5 @@
 import { OrderStatus } from '../../types';
+import { BaseWebSocket } from '../base.ws';
 
 import type { Binance } from './binance.exchange';
 import {
@@ -9,12 +10,9 @@ import {
   POSITION_SIDE,
 } from './binance.types';
 
-export class BinancePrivateWebsocket {
-  ws?: WebSocket;
-  parent: Binance;
-
+export class BinancePrivateWebsocket extends BaseWebSocket<Binance> {
   constructor(parent: Binance) {
-    this.parent = parent;
+    super(parent);
     this.connectAndSubscribe();
   }
 
@@ -43,16 +41,6 @@ export class BinancePrivateWebsocket {
 
       const accountEvents = events.filter((e) => e.e === 'ACCOUNT_UPDATE');
       this.handleAccountEvents(accountEvents);
-    }
-  };
-
-  onClose = () => {
-    this.ws?.removeEventListener?.('message', this.onMessage);
-    this.ws?.removeEventListener?.('close', this.onClose);
-    this.ws = undefined;
-
-    if (!this.parent.isDisposed) {
-      this.connectAndSubscribe();
     }
   };
 
@@ -110,10 +98,6 @@ export class BinancePrivateWebsocket {
         }
       })
     );
-  };
-
-  dispose = () => {
-    this.ws?.close?.();
   };
 
   private fetchListenKey = async () => {

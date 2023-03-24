@@ -1,14 +1,13 @@
 import { subscribe } from 'valtio/vanilla';
 
+import { BaseWebSocket } from '../base.ws';
+
 import type { Bybit } from './bybit.exchange';
 import { BASE_WS_URL } from './bybit.types';
 
-export class BybitPublicWebsocket {
-  ws?: WebSocket;
-  parent: Bybit;
-
+export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
   constructor(parent: Bybit) {
-    this.parent = parent;
+    super(parent);
 
     // we use this little trick to make sure we connect and subscribe
     // after loaded the markets and tickers first with xhr API
@@ -93,20 +92,5 @@ export class BybitPublicWebsocket {
         ticker.quoteVolume = ticker.volume * ticker.last;
       }
     }
-  };
-
-  onClose = () => {
-    this.ws?.removeEventListener?.('open', this.onOpen);
-    this.ws?.removeEventListener?.('message', this.onMessage);
-    this.ws?.removeEventListener?.('close', this.onClose);
-    this.ws = undefined;
-
-    if (!this.parent.isDisposed) {
-      this.connectAndSubscribe();
-    }
-  };
-
-  dispose = () => {
-    this.ws?.close?.();
   };
 }

@@ -2,16 +2,14 @@ import createHmac from 'create-hmac';
 
 import type { Position } from '../../types';
 import { v } from '../../utils/get-key';
+import { BaseWebSocket } from '../base.ws';
 
 import type { Bybit } from './bybit.exchange';
 import { BASE_WS_URL } from './bybit.types';
 
-export class BybitPrivateWebsocket {
-  ws?: WebSocket;
-  parent: Bybit;
-
+export class BybitPrivateWebsocket extends BaseWebSocket<Bybit> {
   constructor(parent: Bybit) {
-    this.parent = parent;
+    super(parent);
     this.connectAndSubscribe();
   }
 
@@ -103,21 +101,6 @@ export class BybitPrivateWebsocket {
         this.parent.store.positions[idx] = updated;
       }
     });
-  };
-
-  onClose = () => {
-    this.ws?.removeEventListener?.('open', this.onOpen);
-    this.ws?.removeEventListener?.('message', this.onMessage);
-    this.ws?.removeEventListener?.('close', this.onClose);
-    this.ws = undefined;
-
-    if (!this.parent.isDisposed) {
-      this.connectAndSubscribe();
-    }
-  };
-
-  dispose = () => {
-    this.ws?.close();
   };
 
   private auth = () => {

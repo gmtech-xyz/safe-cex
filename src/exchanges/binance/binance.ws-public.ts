@@ -1,16 +1,14 @@
 import { groupBy } from 'lodash';
 
 import { v } from '../../utils/get-key';
+import { BaseWebSocket } from '../base.ws';
 
 import type { Binance } from './binance.exchange';
 import { BASE_WS_URL } from './binance.types';
 
-export class BinancePublicWebsocket {
-  ws?: WebSocket;
-  parent: Binance;
-
+export class BinancePublicWebsocket extends BaseWebSocket<Binance> {
   constructor(parent: Binance) {
-    this.parent = parent;
+    super(parent);
     this.connectAndSubscribe();
   }
 
@@ -40,17 +38,6 @@ export class BinancePublicWebsocket {
       this.handleTickerStreamEvents(events['24hrTicker'] || []);
       this.handleBookTickersStreamEvents(events.bookTicker || []);
       this.handleMarkPriceStreamEvents(events.markPriceUpdate || []);
-    }
-  };
-
-  onClose = () => {
-    this.ws?.removeEventListener?.('open', this.onOpen);
-    this.ws?.removeEventListener?.('message', this.onMessage);
-    this.ws?.removeEventListener?.('close', this.onClose);
-    this.ws = undefined;
-
-    if (!this.parent.isDisposed) {
-      this.connectAndSubscribe();
     }
   };
 
@@ -94,9 +81,5 @@ export class BinancePublicWebsocket {
         ticker.fundingRate = parseFloat(v(event, 'r'));
       }
     });
-  };
-
-  dispose = () => {
-    this.ws?.close?.();
   };
 }
