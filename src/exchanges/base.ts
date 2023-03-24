@@ -51,7 +51,6 @@ export class BaseExchange implements Exchange {
   isDisposed: boolean = false;
   isNuking: boolean = false;
 
-  wsPrivate?: ReturnType<typeof createWebSocket>;
   wsPublic?: ReturnType<typeof createWebSocket>;
 
   on: Emitter.TinyEmitter['on'];
@@ -71,7 +70,6 @@ export class BaseExchange implements Exchange {
     });
   }
 
-  onWSPrivateClose = () => {};
   onWSPublicClose = () => {};
 
   validateAccount = async () => {
@@ -80,20 +78,6 @@ export class BaseExchange implements Exchange {
 
   log = (message: string, severity: LogSeverity = LogSeverity.Info) => {
     this.emitter.emit('log', message, severity);
-  };
-
-  ping = () => {
-    const pong = (start: number) => () => {
-      if (!this.isDisposed) {
-        const diff = performance.now() - start;
-        this.store.latency = Math.round(diff / 2);
-        setTimeout(() => this.ping(), 10_000);
-      }
-    };
-
-    if (!this.isDisposed) {
-      this.wsPrivate?.ping?.(pong(performance.now()));
-    }
   };
 
   start = async () => {
@@ -211,12 +195,6 @@ export class BaseExchange implements Exchange {
     this.store.tickers = [];
     this.store.balance = { ...defaultStore.balance };
     this.store.loaded = { ...defaultStore.loaded };
-
-    if (this.wsPrivate) {
-      this.wsPrivate.off('close', this.onWSPrivateClose);
-      this.wsPrivate.close();
-      this.wsPrivate = undefined;
-    }
 
     if (this.wsPublic) {
       this.wsPublic.off('close', this.onWSPublicClose);
