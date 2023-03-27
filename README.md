@@ -349,6 +349,19 @@ await exchange.setLeverage("BTCUSDT", 125);
 await exchange.setAllLeverage(100);
 ```
 
+### `changePositionMode()`
+
+- Method to be used to switch between Hedge/One-way mode
+- It acts on every contracts
+- You must have no positions open to user
+
+```ts
+// switch hedge-mode
+await exchange.changePositionMode(true);
+// switch one-way
+await exchange.changePositionMode(false);
+```
+
 ### `nuke()`
 
 - Closes all positions at market price

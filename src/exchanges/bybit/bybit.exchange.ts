@@ -105,10 +105,6 @@ export class Bybit extends BaseExchange {
     this.store.tickers = tickers;
     this.store.loaded.tickers = true;
 
-    // set hedge mode before fetching positions
-    await this.setHedgeMode();
-    if (this.isDisposed) return;
-
     // start ticking live data
     // balance, tickers, positions
     await this.tick();
@@ -217,7 +213,7 @@ export class Bybit extends BaseExchange {
     // reduce symbols into an object with symbol as key and boolean as value
     // value is true if symbol is present more than once
     // this means that we have a position on hedge mode
-    if (Object.keys(this.hedgedPositionsMap).length === 0) {
+    if (!this.store.loaded.positions) {
       this.hedgedPositionsMap = positions
         .map((p) => p.symbol)
         .reduce<Record<string, boolean>>(
@@ -227,6 +223,10 @@ export class Bybit extends BaseExchange {
           }),
           {}
         );
+
+      this.store.options.isHedged = Object.values(this.hedgedPositionsMap).some(
+        (value) => value === true
+      );
     }
 
     return positions;
@@ -719,23 +719,25 @@ export class Bybit extends BaseExchange {
     }
   };
 
-  setHedgeMode = async () => {
+  changePositionMode = async (hedged: boolean) => {
+    if (this.store.positions.filter((p) => p.contracts > 0).length > 0) {
+      this.emitter.emit(
+        'error',
+        'Please close all positions before switching position mode'
+      );
+      return;
+    }
+
     const { data } = await this.xhr.post(ENDPOINTS.SET_POSITION_MODE, {
       coin: 'USDT',
-      mode: 3,
+      mode: hedged ? 3 : 0,
     });
 
     if (data.retMsg === 'All symbols switched successfully.') {
-      this.store.options.isHedged = true;
-    }
-
-    // Bybit can switch partial symbols successfully,
-    // but we will treat this as a non-hedged mode
-    if (
-      data.retMsg ===
-      'Partial symbols switched successfully, excluding symbols with open orders or positions.'
-    ) {
-      this.store.options.isHedged = false;
+      this.store.options.isHedged = hedged;
+      if (!hedged) this.hedgedPositionsMap = {};
+    } else {
+      this.emitter.emit('error', data.retMsg);
     }
   };
 

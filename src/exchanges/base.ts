@@ -28,6 +28,7 @@ export interface Exchange {
   validateAccount: () => Promise<string>;
   start: () => Promise<void>;
   nuke: () => Promise<void>;
+  changePositionMode: (hedged: boolean) => Promise<void>;
   setLeverage: (symbol: string, leverage: number) => Promise<void>;
   setAllLeverage: (leverage: number) => Promise<void>;
   placeOrder: (opts: PlaceOrderOpts) => Promise<string[]>;
@@ -85,6 +86,10 @@ export class BaseExchange implements Exchange {
   };
 
   setLeverage = async (_symbol: string, _leverage: number) => {
+    await Promise.reject(new Error('Not implemented'));
+  };
+
+  changePositionMode = async (_hedged: boolean) => {
     await Promise.reject(new Error('Not implemented'));
   };
 

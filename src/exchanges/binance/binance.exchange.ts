@@ -100,9 +100,8 @@ export class Binance extends BaseExchange {
     this.store.tickers = tickers;
     this.store.loaded.tickers = true;
 
-    // set hedge mode before fetching positions
-    await this.setHedgeMode();
-    if (this.isDisposed) return;
+    // fetch current position mode (Hedge/One-way)
+    this.store.options.isHedged = await this.fetchPositionMode();
 
     // start ticking live data
     // balance, tickers, positions
@@ -450,23 +449,27 @@ export class Binance extends BaseExchange {
     return dispose;
   };
 
-  setHedgeMode = async () => {
-    try {
-      await this.xhr.post(ENDPOINTS.HEDGE_MODE, { dualSidePosition: 'true' });
-      this.store.options.isHedged = true;
-    } catch (err: any) {
-      // hedge mode is already set
-      if (err?.response?.data?.msg === 'No need to change position side.') {
-        this.store.options.isHedged = true;
-      }
+  fetchPositionMode = async () => {
+    const { data } = await this.xhr.get(ENDPOINTS.HEDGE_MODE);
+    return data.dualSidePosition === true;
+  };
 
-      // has positions open and can't switch to hedge mode
-      if (
-        err?.response?.data?.msg ===
-        'Position side cannot be changed if there exists position.'
-      ) {
-        this.store.options.isHedged = false;
-      }
+  changePositionMode = async (hedged: boolean) => {
+    if (this.store.positions.filter((p) => p.contracts > 0).length > 0) {
+      this.emitter.emit(
+        'error',
+        'Please close all positions before switching position mode'
+      );
+      return;
+    }
+
+    try {
+      await this.xhr.post(ENDPOINTS.HEDGE_MODE, {
+        dualSidePosition: hedged ? 'true' : 'false',
+      });
+      this.store.options.isHedged = hedged;
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.msg || err?.message);
     }
   };
 
