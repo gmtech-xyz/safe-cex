@@ -1,6 +1,7 @@
 export type ExchangeOptions = {
   key: string;
   secret: string;
+  applicationId?: string;
   testnet?: boolean;
   corsAnywhere?: string;
 };
