@@ -15,10 +15,11 @@ import type {
 import { OrderStatus, PositionSide } from '../../types';
 import { v } from '../../utils/get-key';
 import { loop } from '../../utils/loop';
+import { createWebSocket } from '../../utils/universal-ws';
 import { BaseExchange } from '../base';
 
 import { createAPI } from './woo.api';
-import { ENDPOINTS, ORDER_SIDE, ORDER_TYPE } from './woo.types';
+import { BASE_WS_URL, ENDPOINTS, ORDER_SIDE, ORDER_TYPE } from './woo.types';
 import { normalizeSymbol, reverseSymbol } from './woo.utils';
 import { WooPublicWebsocket } from './woo.ws-public';
 
@@ -314,6 +315,66 @@ export class Woo extends BaseExchange {
     });
 
     return candles.reverse();
+  };
+
+  listenOHLCV = (opts: OHLCVOptions, callback: (candle: Candle) => void) => {
+    const topic = `${reverseSymbol(opts.symbol)}@kline_${opts.interval}`;
+
+    const subscribe = () => {
+      if (!this.isDisposed) {
+        const payload = { event: 'subscribe', topic };
+        this.wsPublic?.send(JSON.stringify(payload));
+        this.log(`Switched to [${opts.symbol}:${opts.interval}]`);
+      }
+    };
+
+    const handleMessage = ({ data }: MessageEvent) => {
+      if (!this.isDisposed) {
+        const json = JSON.parse(data);
+
+        if (json.topic === topic) {
+          const candle: Candle = {
+            timestamp: json.data.startTime / 1000,
+            open: json.data.open,
+            high: json.data.high,
+            low: json.data.low,
+            close: json.data.close,
+            volume: json.data.amount,
+          };
+
+          callback(candle);
+        }
+      }
+    };
+
+    const connect = () => {
+      if (!this.isDisposed) {
+        if (this.wsPublic) {
+          this.wsPublic?.close();
+          this.wsPublic = undefined;
+        }
+
+        this.wsPublic = createWebSocket(
+          BASE_WS_URL.public[this.options.testnet ? 'testnet' : 'livenet'] +
+            this.options.applicationId
+        );
+
+        this.wsPublic?.on('open', subscribe);
+        this.wsPublic?.on('message', handleMessage);
+      }
+    };
+
+    const dispose = () => {
+      if (this.wsPublic) {
+        this.wsPublic.off('message', handleMessage);
+        this.wsPublic.close();
+        this.wsPublic = undefined;
+      }
+    };
+
+    connect();
+
+    return dispose;
   };
 
   private fetchLimitOrders = async () => {
