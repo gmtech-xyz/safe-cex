@@ -1,3 +1,5 @@
+import { OrderSide, OrderType } from '../../types';
+
 export const RECV_WINDOW = 5000;
 
 export const BASE_URL = {
@@ -21,7 +23,21 @@ export const ENDPOINTS = {
   ACCOUNT: '/v3/accountinfo',
   BALANCE: '/v3/balances',
   POSITIONS: '/v3/positions',
+  ALGO_ORDERS: '/v3/algo/orders',
   // v1
   MARKETS: '/v1/public/info',
   TICKERS: '/v1/public/futures',
+  ORDERS: '/v1/orders',
+};
+
+export const ORDER_TYPE: Record<string, OrderType> = {
+  LIMIT: OrderType.Limit,
+  MARKET: OrderType.Market,
+  TAKE_PROFIT: OrderType.TakeProfit,
+  STOP_LOSS: OrderType.StopLoss,
+};
+
+export const ORDER_SIDE: Record<string, OrderSide> = {
+  BUY: OrderSide.Buy,
+  SELL: OrderSide.Sell,
 };

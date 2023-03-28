@@ -1,15 +1,22 @@
 import type { Axios } from 'axios';
 import rateLimit from 'axios-rate-limit';
+import BigNumber from 'bignumber.js';
 import { sumBy } from 'lodash';
 
-import type { ExchangeOptions, Market, Position, Ticker } from '../../types';
-import { PositionSide } from '../../types';
+import type {
+  ExchangeOptions,
+  Market,
+  Order,
+  Position,
+  Ticker,
+} from '../../types';
+import { OrderStatus, PositionSide } from '../../types';
 import { v } from '../../utils/get-key';
 import { loop } from '../../utils/loop';
 import { BaseExchange } from '../base';
 
 import { createAPI } from './woo.api';
-import { ENDPOINTS } from './woo.types';
+import { ENDPOINTS, ORDER_SIDE, ORDER_TYPE } from './woo.types';
 import { normalizeSymbol } from './woo.utils';
 import { WooPublicWebsocket } from './woo.ws-public';
 
@@ -60,7 +67,9 @@ export class Woo extends BaseExchange {
     const tickers = await this.fetchTickers();
     if (this.isDisposed) return;
 
-    this.log(`Loaded ${Math.min(tickers.length, markets.length)} Woo markerts`);
+    this.log(
+      `Loaded ${Math.min(tickers.length, markets.length)} Woo X markerts`
+    );
 
     this.store.tickers = tickers;
     this.store.loaded.tickers = true;
@@ -68,7 +77,15 @@ export class Woo extends BaseExchange {
     await this.tick();
     if (this.isDisposed) return;
 
-    this.log(`Ready to trade on Woo`);
+    this.log(`Ready to trade on Woo X`);
+
+    const orders = await this.fetchOrders();
+    if (this.isDisposed) return;
+
+    this.log(`Loaded Woo X orders`);
+
+    this.store.orders = orders;
+    this.store.loaded.orders = true;
   };
 
   tick = async () => {
@@ -260,6 +277,95 @@ export class Woo extends BaseExchange {
     } catch (err: any) {
       this.emitter.emit('error', err?.response?.data?.message || err?.message);
       return this.store.positions;
+    }
+  };
+
+  fetchOrders = async () => {
+    const limitOrders = await this.fetchLimitOrders();
+    const algoOrders = await this.fetchAlgoOrders();
+    return [...limitOrders, ...algoOrders];
+  };
+
+  private fetchLimitOrders = async () => {
+    try {
+      const { data } = await this.xhr.get<{ rows: Array<Record<string, any>> }>(
+        ENDPOINTS.ORDERS,
+        { params: { status: 'INCOMPLETE' } }
+      );
+
+      const orders: Order[] = data.rows.reduce<Order[]>((acc, o) => {
+        const symbol = normalizeSymbol(o.symbol);
+        const market = this.store.markets.find((m) => m.symbol === symbol);
+
+        if (!market) {
+          return acc;
+        }
+
+        const order: Order = {
+          id: v(o, 'order_id'),
+          status: OrderStatus.Open,
+          symbol,
+          type: ORDER_TYPE[o.type],
+          side: ORDER_SIDE[o.side],
+          price: o.price,
+          amount: o.quantity,
+          reduceOnly: v(o, 'reduce_only'),
+          filled: o.executed,
+          remaining: new BigNumber(o.quantity).minus(o.executed).toNumber(),
+        };
+
+        return [...acc, order];
+      }, []);
+
+      return orders;
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.message || err?.message);
+      return [];
+    }
+  };
+
+  private fetchAlgoOrders = async () => {
+    try {
+      const {
+        data: {
+          data: { rows },
+        },
+      } = await this.xhr.get<{
+        data: { rows: Array<Record<string, any>> };
+      }>(ENDPOINTS.ALGO_ORDERS, { params: { status: 'INCOMPLETE' } });
+
+      const orders = rows.reduce<Order[]>((acc, o) => {
+        const symbol = normalizeSymbol(o.symbol);
+        const market = this.store.markets.find((m) => m.symbol === symbol);
+
+        if (!market) {
+          return acc;
+        }
+
+        const childOrders = o.childOrders.map((co: Record<string, any>) => {
+          const filled = v(co, 'totalExecutedQuantity');
+
+          return {
+            id: v(co, 'algoOrderId'),
+            status: OrderStatus.Open,
+            symbol,
+            type: ORDER_TYPE[v(co, 'algoType')],
+            side: ORDER_SIDE[co.side],
+            price: v(co, 'triggerPrice'),
+            amount: co.quantity,
+            reduceOnly: v(co, 'reduceOnly'),
+            filled,
+            remaining: new BigNumber(co.quantity).minus(filled).toNumber(),
+          };
+        });
+
+        return [...acc, ...childOrders];
+      }, []);
+
+      return orders;
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.message || err?.message);
+      return [];
     }
   };
 }
