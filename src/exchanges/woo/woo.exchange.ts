@@ -11,8 +11,9 @@ import type {
   Order,
   Position,
   Ticker,
+  UpdateOrderOpts,
 } from '../../types';
-import { OrderStatus, PositionSide } from '../../types';
+import { OrderType, OrderStatus, PositionSide } from '../../types';
 import { v } from '../../utils/get-key';
 import { loop } from '../../utils/loop';
 import { createWebSocket } from '../../utils/universal-ws';
@@ -21,6 +22,7 @@ import { BaseExchange } from '../base';
 import { createAPI } from './woo.api';
 import { BASE_WS_URL, ENDPOINTS, ORDER_SIDE, ORDER_TYPE } from './woo.types';
 import { normalizeSymbol, reverseSymbol } from './woo.utils';
+import { WooPrivateWebscoket } from './woo.ws-private';
 import { WooPublicWebsocket } from './woo.ws-public';
 
 export class Woo extends BaseExchange {
@@ -28,6 +30,7 @@ export class Woo extends BaseExchange {
   unlimitedXHR: Axios;
 
   publicWebsocket: WooPublicWebsocket;
+  privateWebsocket: WooPrivateWebscoket;
 
   // Woo store leverage per account, not per position
   // as workaround we store the account leverage here when
@@ -41,11 +44,13 @@ export class Woo extends BaseExchange {
     this.unlimitedXHR = createAPI(opts);
 
     this.publicWebsocket = new WooPublicWebsocket(this);
+    this.privateWebsocket = new WooPrivateWebscoket(this);
   }
 
   dispose = () => {
     this.isDisposed = true;
     this.publicWebsocket.dispose();
+    this.privateWebsocket.dispose();
   };
 
   validateAccount = async () => {
@@ -377,7 +382,47 @@ export class Woo extends BaseExchange {
     return dispose;
   };
 
-  private fetchLimitOrders = async () => {
+  updateOrder = async ({ order, update }: UpdateOrderOpts) => {
+    if (
+      order.type === OrderType.StopLoss ||
+      order.type === OrderType.TakeProfit ||
+      order.type === OrderType.TrailingStopLoss
+    ) {
+      return this.updateAlgoOrder({ order, update });
+    }
+
+    const payload: Record<string, any> = { orderId: order.id };
+    if ('price' in update) payload.price = `${update.price}`;
+    if ('amount' in update) payload.quantity = `${update.amount}`;
+
+    try {
+      await this.xhr.put(`${ENDPOINTS.ORDER}/${order.id}`, payload);
+      return [order.id];
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.message || err?.message);
+      return [];
+    }
+  };
+
+  updateAlgoOrder = async ({ order, update }: UpdateOrderOpts) => {
+    const payload: Record<string, any> = {};
+
+    if ('price' in update) {
+      payload.childOrders = [
+        { algoOrderId: order.id, triggerPrice: `${update.price}` },
+      ];
+    }
+
+    try {
+      await this.xhr.put(`${ENDPOINTS.ALGO_ORDER}/${order.parentId}`, payload);
+      return [order.id];
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.message || err?.message);
+      return [];
+    }
+  };
+
+  fetchLimitOrders = async () => {
     try {
       const { data } = await this.xhr.get<{ rows: Array<Record<string, any>> }>(
         ENDPOINTS.ORDERS,
@@ -385,27 +430,8 @@ export class Woo extends BaseExchange {
       );
 
       const orders: Order[] = data.rows.reduce<Order[]>((acc, o) => {
-        const symbol = normalizeSymbol(o.symbol);
-        const market = this.store.markets.find((m) => m.symbol === symbol);
-
-        if (!market) {
-          return acc;
-        }
-
-        const order: Order = {
-          id: v(o, 'order_id'),
-          status: OrderStatus.Open,
-          symbol,
-          type: ORDER_TYPE[o.type],
-          side: ORDER_SIDE[o.side],
-          price: o.price,
-          amount: o.quantity,
-          reduceOnly: v(o, 'reduce_only'),
-          filled: o.executed,
-          remaining: new BigNumber(o.quantity).minus(o.executed).toNumber(),
-        };
-
-        return [...acc, order];
+        const order = this.mapLimitOrder(o);
+        return order !== null ? [...acc, order] : acc;
       }, []);
 
       return orders;
@@ -415,7 +441,29 @@ export class Woo extends BaseExchange {
     }
   };
 
-  private fetchAlgoOrders = async () => {
+  mapLimitOrder = (o: Record<string, any>) => {
+    const symbol = normalizeSymbol(o.symbol);
+    const market = this.store.markets.find((m) => m.symbol === symbol);
+
+    if (!market) return null;
+
+    const order: Order = {
+      id: `${v(o, 'order_id')}`,
+      status: OrderStatus.Open,
+      symbol,
+      type: ORDER_TYPE[o.type],
+      side: ORDER_SIDE[o.side],
+      price: o.price,
+      amount: o.quantity,
+      reduceOnly: v(o, 'reduce_only'),
+      filled: o.executed,
+      remaining: new BigNumber(o.quantity).minus(o.executed).toNumber(),
+    };
+
+    return order;
+  };
+
+  fetchAlgoOrders = async () => {
     try {
       const {
         data: {
@@ -426,30 +474,7 @@ export class Woo extends BaseExchange {
       }>(ENDPOINTS.ALGO_ORDERS, { params: { status: 'INCOMPLETE' } });
 
       const orders = rows.reduce<Order[]>((acc, o) => {
-        const symbol = normalizeSymbol(o.symbol);
-        const market = this.store.markets.find((m) => m.symbol === symbol);
-
-        if (!market) {
-          return acc;
-        }
-
-        const childOrders = o.childOrders.map((co: Record<string, any>) => {
-          const filled = v(co, 'totalExecutedQuantity');
-
-          return {
-            id: v(co, 'algoOrderId'),
-            status: OrderStatus.Open,
-            symbol,
-            type: ORDER_TYPE[v(co, 'algoType')],
-            side: ORDER_SIDE[co.side],
-            price: v(co, 'triggerPrice'),
-            amount: co.quantity,
-            reduceOnly: v(co, 'reduceOnly'),
-            filled,
-            remaining: new BigNumber(co.quantity).minus(filled).toNumber(),
-          };
-        });
-
+        const childOrders = this.mapAlgoOrder(o);
         return [...acc, ...childOrders];
       }, []);
 
@@ -458,5 +483,32 @@ export class Woo extends BaseExchange {
       this.emitter.emit('error', err?.response?.data?.message || err?.message);
       return [];
     }
+  };
+
+  mapAlgoOrder = (o: Record<string, any>) => {
+    const symbol = normalizeSymbol(o.symbol);
+    const market = this.store.markets.find((m) => m.symbol === symbol);
+
+    if (!market) return [];
+
+    const childOrders = o.childOrders.map((co: Record<string, any>) => {
+      const filled = v(co, 'totalExecutedQuantity');
+
+      return {
+        id: `${v(co, 'algoOrderId')}`,
+        parentId: `${v(o, 'algoOrderId') || v(co, 'rootAlgoOrderId')}`,
+        status: OrderStatus.Open,
+        symbol,
+        type: ORDER_TYPE[v(co, 'algoType')],
+        side: ORDER_SIDE[co.side],
+        price: v(co, 'triggerPrice'),
+        amount: co.quantity,
+        reduceOnly: v(co, 'reduceOnly'),
+        filled,
+        remaining: new BigNumber(co.quantity).minus(filled).toNumber(),
+      };
+    });
+
+    return childOrders;
   };
 }

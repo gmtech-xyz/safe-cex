@@ -24,6 +24,8 @@ export const ENDPOINTS = {
   BALANCE: '/v3/balances',
   POSITIONS: '/v3/positions',
   ALGO_ORDERS: '/v3/algo/orders',
+  ORDER: '/v3/order',
+  ALGO_ORDER: '/v3/algo/order',
   // v1
   MARKETS: '/v1/public/info',
   TICKERS: '/v1/public/futures',

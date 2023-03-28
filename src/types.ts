@@ -97,6 +97,7 @@ export enum OrderTimeInForce {
 
 export type Order = {
   id: string;
+  parentId?: string;
   status: OrderStatus;
   symbol: string;
   type: OrderType;
