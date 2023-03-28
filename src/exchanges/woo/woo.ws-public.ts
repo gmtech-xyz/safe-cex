@@ -2,6 +2,7 @@ import { BaseWebSocket } from '../base.ws';
 
 import type { Woo } from './woo.exchange';
 import { BASE_WS_URL } from './woo.types';
+import { normalizeSymbol } from './woo.utils';
 
 export class WooPublicWebsocket extends BaseWebSocket<Woo> {
   constructor(parent: Woo) {
@@ -53,8 +54,9 @@ export class WooPublicWebsocket extends BaseWebSocket<Woo> {
   handleTickersStreamEvents = (data: Array<Record<string, any>>) => {
     data.forEach((row) => {
       if (row.symbol.startsWith('PERP_')) {
+        const symbol = normalizeSymbol(row.symbol);
         const ticker = this.parent.store.tickers.find(
-          (t) => t.symbol === row.symbol
+          (t) => t.symbol === symbol
         );
 
         if (ticker) {
@@ -69,8 +71,9 @@ export class WooPublicWebsocket extends BaseWebSocket<Woo> {
   handleBBOStreamEvents = (data: Array<Record<string, any>>) => {
     data.forEach((row) => {
       if (row.symbol.startsWith('PERP_')) {
+        const symbol = normalizeSymbol(row.symbol);
         const ticker = this.parent.store.tickers.find(
-          (t) => t.symbol === row.symbol
+          (t) => t.symbol === symbol
         );
 
         if (ticker) {
@@ -84,8 +87,9 @@ export class WooPublicWebsocket extends BaseWebSocket<Woo> {
   handleMarkPricesStreamEvents = (data: Array<Record<string, any>>) => {
     data.forEach((row) => {
       if (row.symbol.startsWith('PERP_')) {
+        const symbol = normalizeSymbol(row.symbol);
         const ticker = this.parent.store.tickers.find(
-          (t) => t.symbol === row.symbol
+          (t) => t.symbol === symbol
         );
 
         if (ticker) {

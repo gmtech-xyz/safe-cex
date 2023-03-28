@@ -10,6 +10,7 @@ import { BaseExchange } from '../base';
 
 import { createAPI } from './woo.api';
 import { ENDPOINTS } from './woo.types';
+import { normalizeSymbol } from './woo.utils';
 import { WooPublicWebsocket } from './woo.ws-public';
 
 export class Woo extends BaseExchange {
@@ -137,7 +138,7 @@ export class Woo extends BaseExchange {
 
           return {
             id: `${baseAsset}/${quoteAsset}:USDT`,
-            symbol: r.symbol,
+            symbol: `${baseAsset}${quoteAsset}`,
             base: baseAsset,
             quote: quoteAsset,
             active: true,
@@ -174,7 +175,9 @@ export class Woo extends BaseExchange {
       );
 
       const tickers: Ticker[] = rows.reduce((acc: Ticker[], row) => {
-        const market = this.store.markets.find((m) => m.symbol === row.symbol);
+        const symbol = normalizeSymbol(row.symbol);
+        const market = this.store.markets.find((m) => m.symbol === symbol);
+
         if (!market) return acc;
 
         const open = v(row, '24h_open');
@@ -219,7 +222,9 @@ export class Woo extends BaseExchange {
       }>(ENDPOINTS.POSITIONS);
 
       const formatted: Position[] = positions.reduce<Position[]>((acc, p) => {
-        const ticker = this.store.tickers.find((t) => t.symbol === p.symbol);
+        const symbol = normalizeSymbol(p.symbol);
+        const ticker = this.store.tickers.find((t) => t.symbol === symbol);
+
         if (!ticker) return acc;
 
         const entryPrice = v(p, 'averageOpenPrice');
@@ -238,7 +243,7 @@ export class Woo extends BaseExchange {
         const upnl = Math.round((isLoss ? -absUPNL : absUPNL) * 100) / 100;
 
         const position = {
-          symbol: p.symbol,
+          symbol,
           side,
           entryPrice,
           notional: contracts * ticker.mark,
