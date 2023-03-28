@@ -439,6 +439,7 @@ export class Binance extends BaseExchange {
     const dispose = () => {
       if (this.wsPublic) {
         this.wsPublic.off('message', handleMessage);
+        this.wsPublic.close();
         this.wsPublic = undefined;
       }
     };
