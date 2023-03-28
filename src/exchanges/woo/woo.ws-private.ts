@@ -60,10 +60,12 @@ export class WooPrivateWebscoket extends BaseWebSocket<Woo> {
 
     if (json.event === 'auth' && json.success) {
       this.subscribe();
+      return;
     }
 
     if (json.topic === 'executionreport') {
       this.handleExecutionReport(json.data);
+      return;
     }
 
     if (json.topic === 'algoexecutionreportv2') {
@@ -72,35 +74,36 @@ export class WooPrivateWebscoket extends BaseWebSocket<Woo> {
   };
 
   handleExecutionReport = (data: Record<string, any>) => {
-    const orderIdx = this.parent.store.orders.findIndex(
-      (o) => o.id === v(data, 'orderId')
-    );
+    if (data.status === 'REPLACED' || data.status === 'NEW') {
+      const updatedOrder = this.parent.mapLimitOrder(data);
 
-    if (data.status === 'REPLACED') {
-      if (orderIdx > -1) {
-        const updatedOrder = this.parent.mapLimitOrder(data);
-        if (updatedOrder !== null) {
-          this.parent.store.orders[orderIdx] = updatedOrder;
-        }
+      if (updatedOrder) {
+        this.parent.addOrReplaceOrderFromStore(updatedOrder);
       }
+    }
+
+    if (data.status === 'CANCELLED') {
+      this.parent.removeOrderFromStore(`${data.orderId}`);
     }
   };
 
   handleAlgoExecutionReport = (data: Array<Record<string, any>>) => {
     data.forEach((row) => {
-      const orderIdx = this.parent.store.orders.findIndex(
-        (o) => o.id === `${v(row, 'algoOrderId')}`
-      );
+      const status = v(row, 'algoStatus');
 
-      if (orderIdx > -1 && v(row, 'algoStatus') === 'NEW') {
+      if (status === 'NEW') {
         const [updatedOrder] = this.parent.mapAlgoOrder({
           symbol: row.symbol,
           childOrders: [row],
         });
 
         if (updatedOrder) {
-          this.parent.store.orders[orderIdx] = updatedOrder;
+          this.parent.addOrReplaceOrderFromStore(updatedOrder);
         }
+      }
+
+      if (status === 'CANCELLED' || !row.activated) {
+        this.parent.removeOrderFromStore(`${v(row, 'algoOrderId')}`);
       }
     });
   };

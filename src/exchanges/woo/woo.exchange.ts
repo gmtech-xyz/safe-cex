@@ -2,6 +2,7 @@ import type { Axios } from 'axios';
 import rateLimit from 'axios-rate-limit';
 import BigNumber from 'bignumber.js';
 import { sumBy } from 'lodash';
+import { forEachSeries } from 'p-iteration';
 
 import type {
   Candle,
@@ -16,6 +17,7 @@ import type {
 import { OrderType, OrderStatus, PositionSide } from '../../types';
 import { v } from '../../utils/get-key';
 import { loop } from '../../utils/loop';
+import { omitUndefined } from '../../utils/omit-undefined';
 import { createWebSocket } from '../../utils/universal-ws';
 import { BaseExchange } from '../base';
 
@@ -383,11 +385,7 @@ export class Woo extends BaseExchange {
   };
 
   updateOrder = async ({ order, update }: UpdateOrderOpts) => {
-    if (
-      order.type === OrderType.StopLoss ||
-      order.type === OrderType.TakeProfit ||
-      order.type === OrderType.TrailingStopLoss
-    ) {
+    if (this.isAlgoOrder(order.type)) {
       return this.updateAlgoOrder({ order, update });
     }
 
@@ -396,7 +394,7 @@ export class Woo extends BaseExchange {
     if ('amount' in update) payload.quantity = `${update.amount}`;
 
     try {
-      await this.xhr.put(`${ENDPOINTS.ORDER}/${order.id}`, payload);
+      await this.xhr.put(`${ENDPOINTS.UPDATE_ORDER}/${order.id}`, payload);
       return [order.id];
     } catch (err: any) {
       this.emitter.emit('error', err?.response?.data?.message || err?.message);
@@ -491,24 +489,65 @@ export class Woo extends BaseExchange {
 
     if (!market) return [];
 
-    const childOrders = o.childOrders.map((co: Record<string, any>) => {
-      const filled = v(co, 'totalExecutedQuantity');
+    const childOrders = o.childOrders
+      .filter((co: Record<string, any>) => v(co, 'triggerPrice'))
+      .map((co: Record<string, any>) => {
+        const filled = v(co, 'totalExecutedQuantity');
 
-      return {
-        id: `${v(co, 'algoOrderId')}`,
-        parentId: `${v(o, 'algoOrderId') || v(co, 'rootAlgoOrderId')}`,
-        status: OrderStatus.Open,
-        symbol,
-        type: ORDER_TYPE[v(co, 'algoType')],
-        side: ORDER_SIDE[co.side],
-        price: v(co, 'triggerPrice'),
-        amount: co.quantity,
-        reduceOnly: v(co, 'reduceOnly'),
-        filled,
-        remaining: new BigNumber(co.quantity).minus(filled).toNumber(),
-      };
-    });
+        return {
+          id: `${v(co, 'algoOrderId')}`,
+          parentId: `${v(o, 'algoOrderId') || v(co, 'rootAlgoOrderId')}`,
+          status: OrderStatus.Open,
+          symbol,
+          type: ORDER_TYPE[v(co, 'algoType')],
+          side: ORDER_SIDE[co.side],
+          price: v(co, 'triggerPrice'),
+          amount: co.quantity,
+          reduceOnly: v(co, 'reduceOnly'),
+          filled,
+          remaining: new BigNumber(co.quantity).minus(filled).toNumber(),
+        };
+      });
 
     return childOrders;
+  };
+
+  cancelOrders = async (orders: Order[]) => {
+    await forEachSeries(orders, async (order) => {
+      const isAlgo = this.isAlgoOrder(order.type);
+
+      if (isAlgo) {
+        await this.cancelAlgoOrder(order);
+      } else {
+        await this.unlimitedXHR.delete(ENDPOINTS.CANCEL_ORDER, {
+          data: omitUndefined({
+            order_id: parseInt(order.id, 10),
+            symbol: reverseSymbol(order.symbol),
+          }),
+        });
+      }
+    });
+  };
+
+  cancelAlgoOrder = async (order: Order) => {
+    const otherOrder = this.store.orders.find(
+      (o) => o.parentId === order.parentId && o.id !== order.id
+    );
+
+    await this.unlimitedXHR.delete(`${ENDPOINTS.ALGO_ORDER}/${order.parentId}`);
+
+    if (otherOrder) {
+      // TODO: Re-create the other order
+      // using placeOrder, this meant this was a TP_SL pair
+      // created on woo x directly
+    }
+  };
+
+  private isAlgoOrder = (orderType: OrderType) => {
+    return (
+      orderType === OrderType.StopLoss ||
+      orderType === OrderType.TakeProfit ||
+      orderType === OrderType.TrailingStopLoss
+    );
   };
 }
