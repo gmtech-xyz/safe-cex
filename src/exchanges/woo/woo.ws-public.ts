@@ -1,17 +1,11 @@
+import { BaseWebSocket } from '../base.ws';
+
 import type { Woo } from './woo.exchange';
 import { BASE_WS_URL } from './woo.types';
 
-export class WooPublicWebsocket {
-  ws?: WebSocket;
-  parent: Woo;
-
+export class WooPublicWebsocket extends BaseWebSocket<Woo> {
   constructor(parent: Woo) {
-    this.parent = parent;
-
-    if (!this.parent.options.applicationId) {
-      throw new Error('[applicationId] is required for WOO websocket');
-    }
-
+    super(parent);
     this.connectAndSubscribe();
   }
 
@@ -99,19 +93,5 @@ export class WooPublicWebsocket {
         }
       }
     });
-  };
-
-  onClose = () => {
-    this.ws?.removeEventListener?.('open', this.onOpen);
-    this.ws?.removeEventListener?.('message', this.onMessage);
-    this.ws?.removeEventListener?.('close', this.onClose);
-
-    if (!this.parent.isDisposed) {
-      this.connectAndSubscribe();
-    }
-  };
-
-  dispose = () => {
-    this.ws?.close?.();
   };
 }
