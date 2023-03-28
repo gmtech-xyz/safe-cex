@@ -61,8 +61,8 @@ export class WooPublicWebsocket extends BaseWebSocket<Woo> {
 
         if (ticker) {
           ticker.last = row.close;
-          ticker.quoteVolume = row.volume;
-          ticker.volume = row.amount;
+          ticker.quoteVolume = row.amount;
+          ticker.volume = row.volume;
         }
       }
     });

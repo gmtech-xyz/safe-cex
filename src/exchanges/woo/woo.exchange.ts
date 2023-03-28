@@ -216,8 +216,8 @@ export class Woo extends BaseExchange {
           mark: v(row, 'mark_price'),
           percentage,
           fundingRate: v(row, 'last_funding_rate'),
-          volume: v(row, '24h_amount'),
-          quoteVolume: v(row, '24h_volume'),
+          volume: v(row, '24h_volume'),
+          quoteVolume: v(row, '24h_amount'),
           openInterest: v(row, 'open_interest'),
         };
 
@@ -310,7 +310,7 @@ export class Woo extends BaseExchange {
         high: r.high,
         low: r.low,
         close: r.close,
-        volume: r.amount,
+        volume: r.volume,
       };
     });
 
@@ -339,7 +339,7 @@ export class Woo extends BaseExchange {
             high: json.data.high,
             low: json.data.low,
             close: json.data.close,
-            volume: json.data.amount,
+            volume: json.data.volume,
           };
 
           callback(candle);
