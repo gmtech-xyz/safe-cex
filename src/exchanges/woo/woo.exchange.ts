@@ -4,8 +4,10 @@ import BigNumber from 'bignumber.js';
 import { sumBy } from 'lodash';
 
 import type {
+  Candle,
   ExchangeOptions,
   Market,
+  OHLCVOptions,
   Order,
   Position,
   Ticker,
@@ -17,7 +19,7 @@ import { BaseExchange } from '../base';
 
 import { createAPI } from './woo.api';
 import { ENDPOINTS, ORDER_SIDE, ORDER_TYPE } from './woo.types';
-import { normalizeSymbol } from './woo.utils';
+import { normalizeSymbol, reverseSymbol } from './woo.utils';
 import { WooPublicWebsocket } from './woo.ws-public';
 
 export class Woo extends BaseExchange {
@@ -284,6 +286,34 @@ export class Woo extends BaseExchange {
     const limitOrders = await this.fetchLimitOrders();
     const algoOrders = await this.fetchAlgoOrders();
     return [...limitOrders, ...algoOrders];
+  };
+
+  fetchOHLCV = async (opts: OHLCVOptions) => {
+    const {
+      data: { rows },
+    } = await this.xhr.get<{ rows: Array<Record<string, any>> }>(
+      ENDPOINTS.KLINE,
+      {
+        params: {
+          symbol: reverseSymbol(opts.symbol),
+          type: opts.interval,
+          limit: 500,
+        },
+      }
+    );
+
+    const candles: Candle[] = rows.map((r) => {
+      return {
+        timestamp: r.start_timestamp / 1000,
+        open: r.open,
+        high: r.high,
+        low: r.low,
+        close: r.close,
+        volume: r.amount,
+      };
+    });
+
+    return candles.reverse();
   };
 
   private fetchLimitOrders = async () => {

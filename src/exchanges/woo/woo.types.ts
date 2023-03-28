@@ -28,6 +28,7 @@ export const ENDPOINTS = {
   MARKETS: '/v1/public/info',
   TICKERS: '/v1/public/futures',
   ORDERS: '/v1/orders',
+  KLINE: '/v1/kline',
 };
 
 export const ORDER_TYPE: Record<string, OrderType> = {
