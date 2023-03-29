@@ -1,7 +1,9 @@
 import type { Axios } from 'axios';
 import rateLimit from 'axios-rate-limit';
 import BigNumber from 'bignumber.js';
-import { chunk, groupBy, omit, times } from 'lodash';
+import type { ManipulateType } from 'dayjs';
+import dayjs from 'dayjs';
+import { chunk, groupBy, omit, orderBy, times, uniqBy } from 'lodash';
 import { forEachSeries } from 'p-iteration';
 import { v4 } from 'uuid';
 
@@ -40,6 +42,7 @@ import {
   POSITION_SIDE,
   ENDPOINTS,
   TIME_IN_FORCE,
+  KLINES_LIMIT,
 } from './binance.types';
 import { BinancePrivateWebsocket } from './binance.ws-private';
 import { BinancePublicWebsocket } from './binance.ws-public';
@@ -368,13 +371,64 @@ export class Binance extends BaseExchange {
   };
 
   fetchOHLCV = async (opts: OHLCVOptions) => {
-    const { data } = await this.xhr.get<any[][]>(ENDPOINTS.KLINE, {
-      params: {
-        symbol: opts.symbol,
-        interval: opts.interval,
-        limit: 500,
-      },
+    const [, amount, unit] = opts.interval.split(/(\d+)/);
+
+    // Default to 500
+    let requiredCandles = opts.limit ?? 500;
+
+    const startTime =
+      opts.startTime ??
+      dayjs()
+        .subtract(parseFloat(amount) * requiredCandles, unit as ManipulateType)
+        .unix();
+
+    // Calculate the number of candles that are going to be fetched
+    if (opts.endTime) {
+      const diff = dayjs
+        .unix(startTime)
+        .diff(dayjs.unix(opts.endTime), unit as ManipulateType);
+
+      requiredCandles = Math.abs(diff);
+    }
+
+    // Binance API only allows to fetch 1500 candles at a time
+    // so we need to split the request in multiple calls
+    const totalPages = Math.ceil(requiredCandles / KLINES_LIMIT);
+    const promises = [];
+    let currentStartTime = startTime;
+
+    for (let i = 0; i < totalPages; i++) {
+      const currentLimit = Math.min(
+        requiredCandles - i * KLINES_LIMIT,
+        KLINES_LIMIT
+      );
+      const currentEndTime = dayjs
+        .unix(currentStartTime)
+        .add(currentLimit, unit as ManipulateType)
+        .unix();
+
+      promises.push(
+        this.xhr.get<any[][]>(ENDPOINTS.KLINE, {
+          params: {
+            symbol: opts.symbol,
+            interval: opts.interval,
+            startTime: currentStartTime,
+            endTime: currentEndTime,
+            limit: currentLimit,
+          },
+        })
+      );
+      currentStartTime = currentEndTime;
+    }
+
+    const results = await Promise.all(promises);
+    const arr = results.flatMap((response) => {
+      const data = Array.isArray(response.data) ? response.data : [];
+      return data.filter((c: any) => c);
     });
+
+    // sort by timestamp and remove duplicated candles
+    const data = orderBy(uniqBy(arr, 0), 0, ['asc']);
 
     const candles: Candle[] = data.map(
       ([time, open, high, low, close, volume]) => {

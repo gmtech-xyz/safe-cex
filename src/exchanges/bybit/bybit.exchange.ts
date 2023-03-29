@@ -33,6 +33,7 @@ import {
   BASE_WS_URL,
   ENDPOINTS,
   INTERVAL,
+  KLINES_LIMIT,
   ORDER_SIDE,
   ORDER_STATUS,
   ORDER_TYPE,
@@ -317,30 +318,58 @@ export class Bybit extends BaseExchange {
     const interval = INTERVAL[opts.interval];
     const [, amount, unit] = opts.interval.split(/(\d+)/);
 
-    const from = dayjs()
-      .subtract(parseFloat(amount) * 200, unit as ManipulateType)
-      .unix();
+    // Default to 200
+    let requiredCandles = opts.limit ?? KLINES_LIMIT;
 
-    const from2 = dayjs()
-      .subtract(parseFloat(amount) * 200 * 2, unit as ManipulateType)
-      .unix();
+    const startTime =
+      opts.startTime ??
+      dayjs()
+        .subtract(parseFloat(amount) * requiredCandles, unit as ManipulateType)
+        .unix();
 
-    const params = {
-      symbol: opts.symbol,
-      from,
-      interval,
-      limit: 200,
-    };
+    // Calculate the number of candles that are going to be fetched
+    if (opts.endTime) {
+      const diff = dayjs
+        .unix(startTime)
+        .diff(dayjs.unix(opts.endTime), unit as ManipulateType);
 
-    const [{ data: page1 }, { data: page2 }] = await Promise.all([
-      this.xhr.get(ENDPOINTS.KLINE, { params: { ...params, from } }),
-      this.xhr.get(ENDPOINTS.KLINE, { params: { ...params, from: from2 } }),
-    ]);
+      requiredCandles = Math.abs(diff);
+    }
 
-    // ensure we have arrays with data
-    const arr1 = Array.isArray(page1.result) ? page1.result : [];
-    const arr2 = Array.isArray(page2.result) ? page2.result : [];
-    const arr = arr1.concat(arr2).filter((c: any) => c);
+    // Bybit v2 API only allows to fetch 200 candles at a time
+    // so we need to split the request in multiple calls
+    const totalPages = Math.ceil(requiredCandles / KLINES_LIMIT);
+    const promises = [];
+    let currentStartTime = startTime;
+
+    for (let i = 0; i < totalPages; i++) {
+      const currentLimit = Math.min(
+        requiredCandles - i * KLINES_LIMIT,
+        KLINES_LIMIT
+      );
+      const currentEndTime = dayjs
+        .unix(currentStartTime)
+        .add(currentLimit, unit as ManipulateType)
+        .unix();
+
+      promises.push(
+        this.xhr.get(ENDPOINTS.KLINE, {
+          params: {
+            symbol: opts.symbol,
+            from: currentStartTime,
+            interval,
+            limit: currentLimit,
+          },
+        })
+      );
+      currentStartTime = currentEndTime;
+    }
+
+    const results = await Promise.all(promises);
+    const arr = results.flatMap(({ data: page }) => {
+      const data = Array.isArray(page.result) ? page.result : [];
+      return data.filter((c: any) => c);
+    });
 
     // sort by timestamp and remove duplicated candles
     const data = orderBy(uniqBy(arr, 'open_time'), ['open_time'], ['asc']);
