@@ -1,8 +1,8 @@
 import type { Axios } from 'axios';
 import rateLimit from 'axios-rate-limit';
 import BigNumber from 'bignumber.js';
-import { sumBy } from 'lodash';
-import { forEachSeries } from 'p-iteration';
+import { sumBy, times } from 'lodash';
+import { forEachSeries, mapSeries } from 'p-iteration';
 
 import type {
   Candle,
@@ -10,12 +10,15 @@ import type {
   Market,
   OHLCVOptions,
   Order,
+  PlaceOrderOpts,
   Position,
   Ticker,
   UpdateOrderOpts,
 } from '../../types';
-import { OrderType, OrderStatus, PositionSide } from '../../types';
+import { OrderSide, OrderType, OrderStatus, PositionSide } from '../../types';
+import { adjust } from '../../utils/adjust';
 import { v } from '../../utils/get-key';
+import { inverseObj } from '../../utils/inverse-obj';
 import { loop } from '../../utils/loop';
 import { omitUndefined } from '../../utils/omit-undefined';
 import { createWebSocket } from '../../utils/universal-ws';
@@ -541,6 +544,54 @@ export class Woo extends BaseExchange {
       // using placeOrder, this meant this was a TP_SL pair
       // created on woo x directly
     }
+  };
+
+  placeOrder = async (opts: PlaceOrderOpts) => {
+    const market = this.store.markets.find((m) => m.symbol === opts.symbol);
+
+    if (!market) {
+      throw new Error(`Market not found: ${opts.symbol}`);
+    }
+
+    const maxSize = market.limits.amount.max;
+    const pPrice = market.precision.price;
+    const pAmount = market.precision.amount;
+
+    const amount = adjust(opts.amount, pAmount);
+
+    const price = opts.price ? adjust(opts.price, pPrice) : null;
+
+    let type = inverseObj(ORDER_TYPE)[OrderType.Market];
+    if (opts.type === OrderType.Limit) {
+      type = opts.side === OrderSide.Buy ? 'ASK' : 'BID';
+    }
+
+    const req = omitUndefined({
+      symbol: reverseSymbol(opts.symbol),
+      order_type: type,
+      order_price: opts.type === OrderType.Limit ? price : undefined,
+      reduce_only: opts.reduceOnly,
+      side: inverseObj(ORDER_SIDE)[opts.side],
+    });
+
+    const lots = amount > maxSize ? Math.ceil(amount / maxSize) : 1;
+    const rest = amount > maxSize ? adjust(amount % maxSize, pAmount) : 0;
+
+    const lotSize = adjust((amount - rest) / lots, pAmount);
+    const payloads = times(lots, () => {
+      return { ...req, order_amount: lotSize };
+    });
+
+    if (rest) payloads.push({ ...req, order_amount: rest });
+
+    const responses = await mapSeries(payloads, async (p) => {
+      const { data } = await this.unlimitedXHR.post(ENDPOINTS.PLACE_ORDER, p);
+      return data;
+    });
+
+    console.log(responses);
+
+    return [];
   };
 
   private isAlgoOrder = (orderType: OrderType) => {
