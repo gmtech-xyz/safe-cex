@@ -392,7 +392,8 @@ You need to add [vite-plugin-node-stdlib-browser](https://github.com/sodatea/vit
 
 If you found this project interesting or useful, create accounts with my referral links:
 
-- [Bybit](https://partner.bybit.com/b/tuleep) [Up to $30,000 bonus - no KYC required]
+- [Bybit](https://partner.bybit.com/b/tuleep) **Up to $30,000 bonus - no KYC required**
+- [OKX](https://www.okx.com/join/tuleep) **Up to $10,000 bonus**
 - [Binance](https://accounts.binance.com/en/register?ref=KOLLSXK0)
 
 Or buy me a coffee with a crypto donation:
