@@ -8,11 +8,6 @@ import type { Woo } from './woo.exchange';
 import { BASE_WS_URL } from './woo.types';
 
 export class WooPrivateWebscoket extends BaseWebSocket<Woo> {
-  constructor(parent: Woo) {
-    super(parent);
-    this.connectAndSubscribe();
-  }
-
   connectAndSubscribe = () => {
     if (!this.parent.isDisposed) {
       const baseURL =
@@ -74,16 +69,32 @@ export class WooPrivateWebscoket extends BaseWebSocket<Woo> {
   };
 
   handleExecutionReport = (data: Record<string, any>) => {
-    if (data.status === 'REPLACED' || data.status === 'NEW') {
-      const updatedOrder = this.parent.mapLimitOrder(data);
+    const updatedOrder = this.parent.mapLimitOrder(data)!;
 
+    const price = v(data, 'executedPrice');
+    const amount = v(data, 'executedQuantity');
+
+    if (
+      data.status === 'REPLACED' ||
+      data.status === 'NEW' ||
+      data.status === 'PARTIAL_FILLED'
+    ) {
       if (updatedOrder) {
         this.parent.addOrReplaceOrderFromStore(updatedOrder);
       }
     }
 
-    if (data.status === 'CANCELLED') {
+    if (data.status === 'CANCELLED' || data.status === 'FILLED') {
       this.parent.removeOrderFromStore(`${data.orderId}`);
+    }
+
+    if (data.status === 'FILLED' || data.status === 'PARTIALLY_FILLED') {
+      this.parent.emitter.emit('fill', {
+        side: updatedOrder.side,
+        symbol: updatedOrder.symbol,
+        price,
+        amount,
+      });
     }
   };
 

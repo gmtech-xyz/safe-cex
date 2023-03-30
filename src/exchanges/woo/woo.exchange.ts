@@ -87,6 +87,9 @@ export class Woo extends BaseExchange {
     this.store.tickers = tickers;
     this.store.loaded.tickers = true;
 
+    this.publicWebsocket.connectAndSubscribe();
+    this.privateWebsocket.connectAndSubscribe();
+
     await this.tick();
     if (this.isDisposed) return;
 
@@ -590,7 +593,7 @@ export class Woo extends BaseExchange {
         return data;
       });
 
-      return responses.map((r) => r.order_id);
+      return responses.map((r) => `${r.order_id}`);
     } catch (err: any) {
       this.emitter.emit('error', err?.response?.data?.message || err?.message);
       return [];

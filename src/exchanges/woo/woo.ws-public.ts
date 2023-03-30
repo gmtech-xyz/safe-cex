@@ -5,11 +5,6 @@ import { BASE_WS_URL } from './woo.types';
 import { normalizeSymbol } from './woo.utils';
 
 export class WooPublicWebsocket extends BaseWebSocket<Woo> {
-  constructor(parent: Woo) {
-    super(parent);
-    this.connectAndSubscribe();
-  }
-
   connectAndSubscribe = () => {
     if (!this.parent.isDisposed) {
       const baseURL =
