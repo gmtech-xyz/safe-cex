@@ -1,5 +1,7 @@
 # safe-cex
 
+![image](https://user-images.githubusercontent.com/893837/228978954-b0e7a7d6-074e-4c92-850d-b83229faa6b7.png)
+
 > An OpenSource TypeScript library to create rich trading cryptocurrencies interfaces
 
 ## Introduction
