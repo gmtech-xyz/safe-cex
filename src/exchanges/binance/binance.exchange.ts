@@ -100,6 +100,10 @@ export class Binance extends BaseExchange {
     this.store.tickers = tickers;
     this.store.loaded.tickers = true;
 
+    // start websocket streams
+    this.publicWebsocket.connectAndSubscribe();
+    this.privateWebsocket.connectAndSubscribe();
+
     // fetch current position mode (Hedge/One-way)
     this.store.options.isHedged = await this.fetchPositionMode();
 

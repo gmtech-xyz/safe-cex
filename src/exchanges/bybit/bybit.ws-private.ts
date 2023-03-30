@@ -8,11 +8,6 @@ import type { Bybit } from './bybit.exchange';
 import { BASE_WS_URL } from './bybit.types';
 
 export class BybitPrivateWebsocket extends BaseWebSocket<Bybit> {
-  constructor(parent: Bybit) {
-    super(parent);
-    this.connectAndSubscribe();
-  }
-
   connectAndSubscribe = () => {
     this.ws = new WebSocket(
       BASE_WS_URL.private[this.parent.options.testnet ? 'testnet' : 'livenet']

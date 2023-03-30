@@ -11,11 +11,6 @@ import {
 } from './binance.types';
 
 export class BinancePrivateWebsocket extends BaseWebSocket<Binance> {
-  constructor(parent: Binance) {
-    super(parent);
-    this.connectAndSubscribe();
-  }
-
   connectAndSubscribe = async () => {
     const listenKey = await this.fetchListenKey();
 

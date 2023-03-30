@@ -7,11 +7,6 @@ import type { Binance } from './binance.exchange';
 import { BASE_WS_URL } from './binance.types';
 
 export class BinancePublicWebsocket extends BaseWebSocket<Binance> {
-  constructor(parent: Binance) {
-    super(parent);
-    this.connectAndSubscribe();
-  }
-
   connectAndSubscribe = () => {
     this.ws = new WebSocket(
       BASE_WS_URL.public[this.parent.options.testnet ? 'testnet' : 'livenet']

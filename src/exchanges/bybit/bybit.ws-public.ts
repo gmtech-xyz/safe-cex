@@ -1,31 +1,9 @@
-import { subscribe } from 'valtio/vanilla';
-
 import { BaseWebSocket } from '../base.ws';
 
 import type { Bybit } from './bybit.exchange';
 import { BASE_WS_URL } from './bybit.types';
 
 export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
-  constructor(parent: Bybit) {
-    super(parent);
-
-    // we use this little trick to make sure we connect and subscribe
-    // after loaded the markets and tickers first with xhr API
-    const unsubscribe = subscribe(this.parent.store.loaded, () => {
-      if (
-        this.parent.store.loaded.markets &&
-        this.parent.store.loaded.tickers
-      ) {
-        unsubscribe();
-        this.connectAndSubscribe();
-      }
-    });
-
-    if (this.parent.isDisposed) {
-      unsubscribe();
-    }
-  }
-
   connectAndSubscribe = () => {
     if (!this.parent.isDisposed) {
       this.ws = new WebSocket(
