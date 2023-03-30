@@ -1,5 +1,12 @@
 # safe-cex
 
+![Snyk Vulnerabilities for GitHub Repo](https://img.shields.io/snyk/vulnerabilities/github/gmtech-xyz/safe-cex)
+[![npm version](https://badge.fury.io/js/safe-cex.svg)](https://badge.fury.io/js/safe-cex)
+![npm](https://img.shields.io/npm/dt/safe-cex)
+![npm bundle size](https://img.shields.io/bundlephobia/minzip/safe-cex)
+![Libraries.io dependency status for GitHub repo](https://img.shields.io/librariesio/github/gmtech-xyz/safe-cex)
+![Discord](https://img.shields.io/discord/965643018004738189)
+
 ![image](https://user-images.githubusercontent.com/893837/228979174-32b7f08d-6e13-4bdd-9598-e25846911335.png)
 
 > An OpenSource TypeScript library to create rich trading cryptocurrencies interfaces
