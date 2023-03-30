@@ -12,23 +12,27 @@ import {
 
 export class BinancePrivateWebsocket extends BaseWebSocket<Binance> {
   connectAndSubscribe = async () => {
-    const listenKey = await this.fetchListenKey();
+    if (!this.parent.isDisposed) {
+      const listenKey = await this.fetchListenKey();
 
-    const key = this.parent.options.testnet ? 'testnet' : 'livenet';
-    const base = BASE_WS_URL.private[key];
+      const key = this.parent.options.testnet ? 'testnet' : 'livenet';
+      const base = BASE_WS_URL.private[key];
 
-    const url = this.parent.options.testnet
-      ? `${base}/${listenKey}`
-      : `${base}/${listenKey}?listenKey=${listenKey}`;
+      const url = this.parent.options.testnet
+        ? `${base}/${listenKey}`
+        : `${base}/${listenKey}?listenKey=${listenKey}`;
 
-    this.ws = new WebSocket(url);
-    this.ws.addEventListener('message', this.onMessage);
-    this.ws.addEventListener('close', this.onClose);
-    this.ws.addEventListener('open', this.onOpen);
+      this.ws = new WebSocket(url);
+      this.ws.addEventListener('message', this.onMessage);
+      this.ws.addEventListener('close', this.onClose);
+      this.ws.addEventListener('open', this.onOpen);
+    }
   };
 
   onOpen = () => {
-    this.ping();
+    if (!this.parent.isDisposed) {
+      this.ping();
+    }
   };
 
   onMessage = ({ data }: MessageEvent) => {
@@ -41,7 +45,13 @@ export class BinancePrivateWebsocket extends BaseWebSocket<Binance> {
       if (json.id === 42) {
         const diff = performance.now() - this.pingAt;
         this.parent.store.latency = Math.round(diff / 2);
-        setTimeout(() => this.ping(), 10_000);
+
+        if (this.pingTimeoutId) {
+          clearTimeout(this.pingTimeoutId);
+          this.pingTimeoutId = undefined;
+        }
+
+        this.pingTimeoutId = setTimeout(() => this.ping(), 10_000);
       }
     }
   };

@@ -19,30 +19,34 @@ export class WooPublicWebsocket extends BaseWebSocket<Woo> {
   };
 
   onOpen = () => {
-    this.ws?.send?.(JSON.stringify({ event: 'subscribe', topic: 'tickers' }));
-    this.ws?.send?.(JSON.stringify({ event: 'subscribe', topic: 'bbos' }));
-    this.ws?.send?.(
-      JSON.stringify({ event: 'subscribe', topic: 'markprices' })
-    );
+    if (!this.parent.isDisposed) {
+      this.ws?.send?.(JSON.stringify({ event: 'subscribe', topic: 'tickers' }));
+      this.ws?.send?.(JSON.stringify({ event: 'subscribe', topic: 'bbos' }));
+      this.ws?.send?.(
+        JSON.stringify({ event: 'subscribe', topic: 'markprices' })
+      );
+    }
   };
 
   onMessage = ({ data }: MessageEvent) => {
-    const json = JSON.parse(data);
+    if (!this.parent.isDisposed) {
+      const json = JSON.parse(data);
 
-    if (json.event === 'ping') {
-      this.ws?.send?.(JSON.stringify({ event: 'pong' }));
-    }
+      if (json.event === 'ping') {
+        this.ws?.send?.(JSON.stringify({ event: 'pong' }));
+      }
 
-    if (json.topic === 'tickers') {
-      this.handleTickersStreamEvents(json.data);
-    }
+      if (json.topic === 'tickers') {
+        this.handleTickersStreamEvents(json.data);
+      }
 
-    if (json.topic === 'bbos') {
-      this.handleBBOStreamEvents(json.data);
-    }
+      if (json.topic === 'bbos') {
+        this.handleBBOStreamEvents(json.data);
+      }
 
-    if (json.topic === 'markprices') {
-      this.handleMarkPricesStreamEvents(json.data);
+      if (json.topic === 'markprices') {
+        this.handleMarkPricesStreamEvents(json.data);
+      }
     }
   };
 

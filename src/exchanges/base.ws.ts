@@ -7,6 +7,7 @@ export class BaseWebSocket<T extends BaseExchange> {
   parent: T;
 
   pingAt = 0;
+  pingTimeoutId?: NodeJS.Timeout;
 
   constructor(parent: T) {
     this.parent = parent;
@@ -30,6 +31,11 @@ export class BaseWebSocket<T extends BaseExchange> {
         'WebSocket connection disconnected, reconnecting...',
         LogSeverity.Error
       );
+    }
+
+    if (this.pingTimeoutId) {
+      clearTimeout(this.pingTimeoutId);
+      this.pingTimeoutId = undefined;
     }
 
     this.ws?.removeEventListener?.('open', this.onOpen);

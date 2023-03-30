@@ -17,6 +17,20 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
   };
 
   onOpen = () => {
+    if (!this.parent.isDisposed) {
+      this.subscribe();
+      this.ping();
+    }
+  };
+
+  ping = () => {
+    if (!this.parent.isDisposed) {
+      this.pingAt = performance.now();
+      this.ws?.send?.(JSON.stringify({ op: 'ping' }));
+    }
+  };
+
+  subscribe = () => {
     const payload = {
       op: 'subscribe',
       args: this.parent.store.markets.map(
@@ -36,6 +50,18 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
         json?.data?.update?.[0]
       ) {
         this.handleInstrumentInfoStreamEvents(json.data.update[0]);
+      }
+
+      if (json.op === 'pong') {
+        const diff = performance.now() - this.pingAt;
+        this.parent.store.latency = Math.round(diff / 2);
+
+        if (this.pingTimeoutId) {
+          clearTimeout(this.pingTimeoutId);
+          this.pingTimeoutId = undefined;
+        }
+
+        this.pingTimeoutId = setTimeout(() => this.ping(), 10_000);
       }
     }
   };

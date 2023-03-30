@@ -24,51 +24,57 @@ export class WooPrivateWebscoket extends BaseWebSocket<Woo> {
   };
 
   onOpen = () => {
-    const timestamp = virtualClock.getCurrentTime();
-    const signature = createHmac('sha256', this.parent.options.secret)
-      .update(`|${timestamp}`)
-      .digest('hex');
+    if (!this.parent.isDisposed) {
+      const timestamp = virtualClock.getCurrentTime();
+      const signature = createHmac('sha256', this.parent.options.secret)
+        .update(`|${timestamp}`)
+        .digest('hex');
 
-    this.ws?.send?.(
-      JSON.stringify({
-        event: 'auth',
-        params: {
-          apikey: this.parent.options.key,
-          sign: signature,
-          timestamp,
-        },
-      })
-    );
+      this.ws?.send?.(
+        JSON.stringify({
+          event: 'auth',
+          params: {
+            apikey: this.parent.options.key,
+            sign: signature,
+            timestamp,
+          },
+        })
+      );
+    }
   };
 
   subscribe = () => {
-    this.ws?.send(
-      JSON.stringify({ topic: 'executionreport', event: 'subscribe' })
-    );
-    this.ws?.send(
-      JSON.stringify({ topic: 'algoexecutionreportv2', event: 'subscribe' })
-    );
+    if (!this.parent.isDisposed) {
+      this.ws?.send(
+        JSON.stringify({ topic: 'executionreport', event: 'subscribe' })
+      );
+      this.ws?.send(
+        JSON.stringify({ topic: 'algoexecutionreportv2', event: 'subscribe' })
+      );
+    }
   };
 
   onMessage = ({ data }: MessageEvent) => {
-    const json = JSON.parse(data);
+    if (!this.parent.isDisposed) {
+      const json = JSON.parse(data);
 
-    if (json.event === 'ping') {
-      this.ws?.send?.(JSON.stringify({ event: 'pong' }));
-    }
+      if (json.event === 'ping') {
+        this.ws?.send?.(JSON.stringify({ event: 'pong' }));
+      }
 
-    if (json.event === 'auth' && json.success) {
-      this.subscribe();
-      return;
-    }
+      if (json.event === 'auth' && json.success) {
+        this.subscribe();
+        return;
+      }
 
-    if (json.topic === 'executionreport') {
-      this.handleExecutionReport(json.data);
-      return;
-    }
+      if (json.topic === 'executionreport') {
+        this.handleExecutionReport(json.data);
+        return;
+      }
 
-    if (json.topic === 'algoexecutionreportv2') {
-      this.handleAlgoExecutionReport(json.data);
+      if (json.topic === 'algoexecutionreportv2') {
+        this.handleAlgoExecutionReport(json.data);
+      }
     }
   };
 
