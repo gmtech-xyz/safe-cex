@@ -26,6 +26,9 @@ export const ENDPOINTS = {
   ALGO_ORDERS: '/v3/algo/orders',
   UPDATE_ORDER: '/v3/order',
   ALGO_ORDER: '/v3/algo/order',
+  CANCEL_ORDERS: '/v3/orders/pending',
+  CANCEL_ALGO_ORDERS: '/v3/algo/orders/pending',
+  CANCEL_SYMBOL_ORDERS: '/v1/orders',
   // v1
   MARKETS: '/v1/public/info',
   TICKERS: '/v1/public/futures',

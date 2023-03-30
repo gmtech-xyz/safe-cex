@@ -345,6 +345,10 @@ export class Woo extends BaseExchange {
       if (!this.isDisposed) {
         const json = JSON.parse(data);
 
+        if (json.event === 'ping') {
+          this.wsPublic?.send?.(JSON.stringify({ event: 'pong' }));
+        }
+
         if (json.topic === topic) {
           const candle: Candle = {
             timestamp: json.data.startTime / 1000,
@@ -495,7 +499,8 @@ export class Woo extends BaseExchange {
 
     if (!market) return [];
 
-    const childOrders = o.childOrders
+    const arr = o.childOrders ? o.childOrders : [o];
+    const orders = arr
       .filter((co: Record<string, any>) => v(co, 'triggerPrice'))
       .map((co: Record<string, any>) => {
         const filled = v(co, 'totalExecutedQuantity');
@@ -515,7 +520,7 @@ export class Woo extends BaseExchange {
         };
       });
 
-    return childOrders;
+    return orders;
   };
 
   cancelOrders = async (orders: Order[]) => {
@@ -536,67 +541,125 @@ export class Woo extends BaseExchange {
   };
 
   cancelAlgoOrder = async (order: Order) => {
-    const otherOrder = this.store.orders.find(
-      (o) => o.parentId === order.parentId && o.id !== order.id
-    );
-
     await this.unlimitedXHR.delete(`${ENDPOINTS.ALGO_ORDER}/${order.parentId}`);
-
-    if (otherOrder) {
-      // TODO: Re-create the other order
-      // using placeOrder, this meant this was a TP_SL pair
-      // created on woo x directly
-    }
   };
 
   placeOrder = async (opts: PlaceOrderOpts) => {
+    if (this.isAlgoOrder(opts.type)) {
+      return this.placeAlgoOrder(opts);
+    }
+
+    const market = this.store.markets.find((m) => m.symbol === opts.symbol);
+
+    if (!market) {
+      throw new Error(`Market not found: ${opts.symbol}`);
+    }
+
+    const maxSize = market.limits.amount.max;
+    const pPrice = market.precision.price;
+    const pAmount = market.precision.amount;
+
+    const amount = adjust(opts.amount, pAmount);
+
+    const price = opts.price ? adjust(opts.price, pPrice) : null;
+    const type = inverseObj(ORDER_TYPE)[opts.type];
+
+    const req = omitUndefined({
+      symbol: reverseSymbol(opts.symbol),
+      order_type: type,
+      order_price: opts.type === OrderType.Limit ? price : undefined,
+      reduce_only: opts.reduceOnly,
+      side: inverseObj(ORDER_SIDE)[opts.side],
+    });
+
+    const lots = amount > maxSize ? Math.ceil(amount / maxSize) : 1;
+    const rest = amount > maxSize ? adjust(amount % maxSize, pAmount) : 0;
+
+    const lotSize = adjust((amount - rest) / lots, pAmount);
+    const payloads = times(lots, () => {
+      return { ...req, order_quantity: lotSize };
+    });
+
+    if (rest) payloads.push({ ...req, order_quantity: rest });
+
     try {
-      const market = this.store.markets.find((m) => m.symbol === opts.symbol);
-
-      if (!market) {
-        throw new Error(`Market not found: ${opts.symbol}`);
-      }
-
-      const maxSize = market.limits.amount.max;
-      const pPrice = market.precision.price;
-      const pAmount = market.precision.amount;
-
-      const amount = adjust(opts.amount, pAmount);
-
-      const price = opts.price ? adjust(opts.price, pPrice) : null;
-      const type = inverseObj(ORDER_TYPE)[opts.type];
-
-      const req = omitUndefined({
-        symbol: reverseSymbol(opts.symbol),
-        order_type: type,
-        order_price: opts.type === OrderType.Limit ? price : undefined,
-        reduce_only: opts.reduceOnly,
-        side: inverseObj(ORDER_SIDE)[opts.side],
-      });
-
-      const lots = amount > maxSize ? Math.ceil(amount / maxSize) : 1;
-      const rest = amount > maxSize ? adjust(amount % maxSize, pAmount) : 0;
-
-      const lotSize = adjust((amount - rest) / lots, pAmount);
-      const payloads = times(lots, () => {
-        return { ...req, order_quantity: lotSize };
-      });
-
-      if (rest) payloads.push({ ...req, order_quantity: rest });
-
-      const responses = await mapSeries(payloads, async (payload) => {
+      const orderIds = await mapSeries(payloads, async (payload) => {
         const { data } = await this.unlimitedXHR.post(
           ENDPOINTS.PLACE_ORDER,
           payload
         );
 
-        return data;
+        return data.order_id as string;
       });
 
-      return responses.map((r) => `${r.order_id}`);
+      if (opts.stopLoss) {
+        // TODO: Place POSITIONAL_TP_SL algo order
+      }
+
+      return orderIds;
     } catch (err: any) {
       this.emitter.emit('error', err?.response?.data?.message || err?.message);
       return [];
+    }
+  };
+
+  placeAlgoOrder = async (opts: PlaceOrderOpts) => {
+    const market = this.store.markets.find((m) => m.symbol === opts.symbol);
+
+    if (!market) {
+      throw new Error(`Market not found: ${opts.symbol}`);
+    }
+
+    const pPrice = market.precision.price;
+    const pAmount = market.precision.amount;
+
+    const amount = adjust(opts.amount, pAmount);
+    const price = opts.price ? adjust(opts.price, pPrice) : null;
+
+    const req = {
+      symbol: reverseSymbol(opts.symbol),
+      algoType: 'STOP',
+      triggerPrice: price,
+      quantity: amount,
+      reduceOnly: true,
+      type: 'MARKET',
+      side: inverseObj(ORDER_SIDE)[opts.side],
+    };
+
+    try {
+      const {
+        data: {
+          data: { rows },
+        },
+      } = await this.unlimitedXHR.post<{
+        data: { rows: Array<Record<string, any>> };
+      }>(ENDPOINTS.ALGO_ORDER, req);
+
+      return rows.map((r) => r.orderId);
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.message || err?.message);
+      return [];
+    }
+  };
+
+  cancelAllOrders = async () => {
+    try {
+      await this.unlimitedXHR.delete(ENDPOINTS.CANCEL_ALGO_ORDERS);
+      await this.unlimitedXHR.delete(ENDPOINTS.CANCEL_ORDERS);
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.message || err?.message);
+    }
+  };
+
+  cancelSymbolOrders = async (symbol: string) => {
+    try {
+      const wooSymbol = reverseSymbol(symbol);
+      await this.unlimitedXHR.delete(`${ENDPOINTS.ALGO_ORDER}/${wooSymbol}`);
+      await this.unlimitedXHR.delete(ENDPOINTS.CANCEL_SYMBOL_ORDERS, {
+        params: { symbol: wooSymbol },
+      });
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.message || err?.message);
     }
   };
 

@@ -53,6 +53,10 @@ export class WooPrivateWebscoket extends BaseWebSocket<Woo> {
   onMessage = ({ data }: MessageEvent) => {
     const json = JSON.parse(data);
 
+    if (json.event === 'ping') {
+      this.ws?.send?.(JSON.stringify({ event: 'pong' }));
+    }
+
     if (json.event === 'auth' && json.success) {
       this.subscribe();
       return;
@@ -103,10 +107,7 @@ export class WooPrivateWebscoket extends BaseWebSocket<Woo> {
       const status = v(row, 'algoStatus');
 
       if (status === 'NEW') {
-        const [updatedOrder] = this.parent.mapAlgoOrder({
-          symbol: row.symbol,
-          childOrders: [row],
-        });
+        const [updatedOrder] = this.parent.mapAlgoOrder(row);
 
         if (updatedOrder) {
           this.parent.addOrReplaceOrderFromStore(updatedOrder);
