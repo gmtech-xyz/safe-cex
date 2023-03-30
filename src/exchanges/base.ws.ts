@@ -1,3 +1,5 @@
+import { LogSeverity } from '../types';
+
 import type { BaseExchange } from './base';
 
 export class BaseWebSocket<T extends BaseExchange> {
@@ -23,6 +25,13 @@ export class BaseWebSocket<T extends BaseExchange> {
   };
 
   onClose = () => {
+    if (!this.parent.isDisposed) {
+      this.parent.log(
+        'WebSocket connection disconnected, reconnecting...',
+        LogSeverity.Error
+      );
+    }
+
     this.ws?.removeEventListener?.('open', this.onOpen);
     this.ws?.removeEventListener?.('message', this.onMessage);
     this.ws?.removeEventListener?.('close', this.onClose);
