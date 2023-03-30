@@ -5,7 +5,8 @@ import { virtualClock } from '../../utils/virtual-clock';
 import { BaseWebSocket } from '../base.ws';
 
 import type { Woo } from './woo.exchange';
-import { BASE_WS_URL } from './woo.types';
+import { BASE_WS_URL, ORDER_SIDE } from './woo.types';
+import { normalizeSymbol } from './woo.utils';
 
 export class WooPrivateWebscoket extends BaseWebSocket<Woo> {
   connectAndSubscribe = () => {
@@ -120,7 +121,16 @@ export class WooPrivateWebscoket extends BaseWebSocket<Woo> {
         }
       }
 
-      if (status === 'CANCELLED' || !row.activated) {
+      if (status === 'FILLED') {
+        this.parent.emitter.emit('fill', {
+          side: ORDER_SIDE[row.side],
+          symbol: normalizeSymbol(row.symbol),
+          price: row.averageExecutedPrice,
+          amount: row.totalExecutedQuantity,
+        });
+      }
+
+      if (status === 'CANCELLED' || status === 'FILLED') {
         this.parent.removeOrderFromStore(`${v(row, 'algoOrderId')}`);
       }
     });
