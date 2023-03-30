@@ -18,6 +18,11 @@ const signV1 = (config: AxiosRequestConfig, options: ExchangeOptions) => {
     sort: (a, b) => a.localeCompare(b),
   });
 
+  if (asString) {
+    nextConfig.url = `${nextConfig.url}?${asString}`;
+    delete nextConfig.params;
+  }
+
   const timestamp = virtualClock.getCurrentTime();
   const signature = createHmac('sha256', options.secret)
     .update(`${asString}|${timestamp}`)
@@ -28,6 +33,15 @@ const signV1 = (config: AxiosRequestConfig, options: ExchangeOptions) => {
     'x-api-timestamp': timestamp,
     'x-api-signature': signature,
   });
+
+  if (
+    nextConfig.method?.toUpperCase?.() === 'DELETE' ||
+    nextConfig.method?.toUpperCase?.() === 'POST' ||
+    nextConfig.method?.toUpperCase?.() === 'PUT'
+  ) {
+    nextConfig.data = '';
+    headers.setContentType('application/x-www-form-urlencoded');
+  }
 
   return { ...nextConfig, headers };
 };
@@ -68,8 +82,14 @@ export const createAPI = (options: ExchangeOptions) => {
   const xhr = axios.create({
     baseURL: BASE_URL[options.testnet ? 'testnet' : 'livenet'],
     timeout: RECV_WINDOW,
-    paramsSerializer: { serialize: (params) => qs.stringify(params) },
-    headers: { 'x-api-key': options.key },
+    paramsSerializer: {
+      serialize: (params) =>
+        qs.stringify(params, { sort: (a, b) => a.localeCompare(b) }),
+    },
+    headers: {
+      'cache-control': 'no-cache',
+      'x-api-key': options.key,
+    },
   });
 
   // retry requests on network errors instead of throwing
