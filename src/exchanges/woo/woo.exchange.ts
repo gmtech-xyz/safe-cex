@@ -504,9 +504,15 @@ export class Woo extends BaseExchange {
 
     const arr = o.childOrders ? o.childOrders : [o];
     const orders = arr
-      .filter((co: Record<string, any>) => v(co, 'triggerPrice'))
+      .filter(
+        (co: Record<string, any>) =>
+          v(co, 'triggerPrice') || v(co, 'algoType') === 'TRAILING_STOP'
+      )
       .map((co: Record<string, any>) => {
         const filled = v(co, 'totalExecutedQuantity');
+        const price =
+          v(co, 'triggerPrice') ||
+          v(co, 'extremePrice') - v(co, 'callbackValue');
 
         return {
           id: `${v(co, 'algoOrderId')}`,
@@ -515,7 +521,7 @@ export class Woo extends BaseExchange {
           symbol,
           type: ORDER_TYPE[v(co, 'algoType')],
           side: ORDER_SIDE[co.side],
-          price: v(co, 'triggerPrice'),
+          price,
           amount: co.quantity,
           reduceOnly: v(co, 'reduceOnly'),
           filled,
@@ -629,6 +635,10 @@ export class Woo extends BaseExchange {
       return [];
     }
 
+    if (opts.type === OrderType.TrailingStopLoss) {
+      return this.placeTrailingStopLossOrder(opts);
+    }
+
     const params = {
       symbol: opts.symbol,
       side: opts.side === OrderSide.Buy ? OrderSide.Sell : OrderSide.Buy,
@@ -637,7 +647,9 @@ export class Woo extends BaseExchange {
     };
 
     const sibling = this.store.orders.find(
-      (o) => o.symbol === opts.symbol && this.isAlgoOrder(o.type)
+      (o) =>
+        o.symbol === opts.symbol &&
+        (o.type === OrderType.StopLoss || o.type === OrderType.TakeProfit)
     );
 
     if (opts.type === OrderType.StopLoss) {
@@ -655,6 +667,48 @@ export class Woo extends BaseExchange {
     }
 
     return this.placePositionalAlgoOrder(params);
+  };
+
+  placeTrailingStopLossOrder = async (opts: PlaceOrderOpts) => {
+    const market = this.store.markets.find((m) => m.symbol === opts.symbol);
+    const ticker = this.store.tickers.find((t) => t.symbol === opts.symbol);
+
+    const pSide =
+      opts.side === OrderSide.Buy ? PositionSide.Short : PositionSide.Long;
+
+    const position = this.store.positions.find(
+      (p) => p.symbol === opts.symbol && p.side === pSide
+    );
+
+    if (!market) throw new Error(`Market ${opts.symbol} not found`);
+    if (!ticker) throw new Error(`Ticker ${opts.symbol} not found`);
+
+    if (!position) {
+      throw new Error(`Position ${opts.symbol} and side ${pSide} not found`);
+    }
+
+    const priceDistance = adjust(
+      Math.max(ticker.last, opts.price!) - Math.min(ticker.last, opts.price!),
+      market.precision.price
+    );
+
+    const payload = {
+      symbol: reverseSymbol(opts.symbol),
+      type: 'MARKET',
+      algoType: 'TRAILING_STOP',
+      callbackValue: `${priceDistance}`,
+      side: inverseObj(ORDER_SIDE)[opts.side],
+      reduceOnly: true,
+      quantity: `${position.contracts}`,
+    };
+
+    const {
+      data: { data },
+    } = await this.unlimitedXHR.post<{
+      data: { rows: Array<Record<string, any>> };
+    }>(ENDPOINTS.ALGO_ORDER, payload);
+
+    return data.rows.map((r) => r.order_id);
   };
 
   placePositionalAlgoOrder = async (
@@ -689,14 +743,12 @@ export class Woo extends BaseExchange {
 
     try {
       const {
-        data: {
-          data: { rows },
-        },
+        data: { data },
       } = await this.unlimitedXHR.post<{
         data: { rows: Array<Record<string, any>> };
       }>(ENDPOINTS.ALGO_ORDER, req);
 
-      return rows.map((r) => r.orderId);
+      return data.rows.map((r) => r.orderId);
     } catch (err: any) {
       this.emitter.emit('error', err?.response?.data?.message || err?.message);
       return [];

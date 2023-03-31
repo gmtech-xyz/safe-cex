@@ -46,6 +46,7 @@ export const ORDER_TYPE: Record<string, OrderType> = {
   MARKET: OrderType.Market,
   TAKE_PROFIT: OrderType.TakeProfit,
   STOP_LOSS: OrderType.StopLoss,
+  TRAILING_STOP: OrderType.TrailingStopLoss,
 };
 
 export const ORDER_SIDE: Record<string, OrderSide> = {
