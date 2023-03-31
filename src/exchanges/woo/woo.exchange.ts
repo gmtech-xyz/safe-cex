@@ -770,7 +770,6 @@ export class Woo extends BaseExchange {
 
   cancelAllOrders = async () => {
     try {
-      await this.unlimitedXHR.delete(ENDPOINTS.CANCEL_ALGO_ORDERS);
       await this.unlimitedXHR.delete(ENDPOINTS.CANCEL_ORDERS);
     } catch (err: any) {
       this.emitter.emit('error', err?.response?.data?.message || err?.message);
@@ -780,7 +779,6 @@ export class Woo extends BaseExchange {
   cancelSymbolOrders = async (symbol: string) => {
     try {
       const wooSymbol = reverseSymbol(symbol);
-      await this.unlimitedXHR.delete(`${ENDPOINTS.ALGO_ORDER}/${wooSymbol}`);
       await this.unlimitedXHR.delete(ENDPOINTS.CANCEL_SYMBOL_ORDERS, {
         params: { symbol: wooSymbol },
       });
