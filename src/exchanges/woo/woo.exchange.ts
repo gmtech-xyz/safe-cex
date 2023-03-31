@@ -116,7 +116,9 @@ export class Woo extends BaseExchange {
         // woo doesnt provides unrealized pnl in the account endpoint
         // we are computing this from the positions polling
         balance.upnl =
-          Math.round(sumBy(positions, 'unrealizedPnl') * 100) / 100;
+          positions.length > 0
+            ? Math.round(sumBy(positions, 'unrealizedPnl') * 100) / 100
+            : 0;
 
         this.store.balance = balance;
         this.store.positions = positions;
@@ -259,6 +261,7 @@ export class Woo extends BaseExchange {
         const ticker = this.store.tickers.find((t) => t.symbol === symbol);
 
         if (!ticker) return acc;
+        if (!p.holding) return acc;
 
         const entryPrice = v(p, 'averageOpenPrice');
         const holdings = v(p, 'holding');
@@ -719,6 +722,32 @@ export class Woo extends BaseExchange {
     } catch (err: any) {
       this.emitter.emit('error', err?.response?.data?.message || err?.message);
     }
+  };
+
+  setLeverage = (_symbol: string, inputLeverage: number) => {
+    return this.setAllLeverage(inputLeverage);
+  };
+
+  setAllLeverage = async (inputLeverage: number) => {
+    // possible values:
+    // 1, 2, 3, 4, 5, 10, 15, 20
+    const leverage = Math.round(inputLeverage / 5) * 5;
+
+    if (this.accountLeverage !== inputLeverage && !this.isDisposed) {
+      try {
+        await this.unlimitedXHR.post(ENDPOINTS.LEVERAGE, { leverage });
+        this.accountLeverage = leverage;
+      } catch (err: any) {
+        this.emitter.emit(
+          'error',
+          err?.response?.data?.message || err?.message
+        );
+      }
+    }
+  };
+
+  changePositionMode = async (_hedged: boolean) => {
+    await this.emitter.emit('error', 'Position mode is not supported on Woo X');
   };
 
   private isAlgoOrder = (orderType: OrderType) => {

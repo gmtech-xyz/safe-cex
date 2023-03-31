@@ -36,6 +36,7 @@ export const ENDPOINTS = {
   KLINE: '/v1/kline',
   CANCEL_ORDER: '/v1/order',
   PLACE_ORDER: '/v1/order',
+  LEVERAGE: '/v1/client/leverage',
 };
 
 export const ORDER_TYPE: Record<string, OrderType> = {
