@@ -20,6 +20,7 @@ export class WooPublicWebsocket extends BaseWebSocket<Woo> {
 
   onOpen = () => {
     if (!this.parent.isDisposed) {
+      this.ping();
       this.ws?.send?.(JSON.stringify({ event: 'subscribe', topic: 'tickers' }));
       this.ws?.send?.(JSON.stringify({ event: 'subscribe', topic: 'bbos' }));
       this.ws?.send?.(
@@ -36,6 +37,18 @@ export class WooPublicWebsocket extends BaseWebSocket<Woo> {
         this.ws?.send?.(JSON.stringify({ event: 'pong' }));
       }
 
+      if (json.event === 'pong') {
+        const diff = performance.now() - this.pingAt;
+        this.parent.store.latency = Math.round(diff / 2);
+
+        if (this.pingTimeoutId) {
+          clearTimeout(this.pingTimeoutId);
+          this.pingTimeoutId = undefined;
+        }
+
+        this.pingTimeoutId = setTimeout(() => this.ping(), 10_000);
+      }
+
       if (json.topic === 'tickers') {
         this.handleTickersStreamEvents(json.data);
       }
@@ -47,6 +60,13 @@ export class WooPublicWebsocket extends BaseWebSocket<Woo> {
       if (json.topic === 'markprices') {
         this.handleMarkPricesStreamEvents(json.data);
       }
+    }
+  };
+
+  ping = () => {
+    if (!this.parent.isDisposed) {
+      this.pingAt = performance.now();
+      this.ws?.send?.(JSON.stringify({ event: 'ping' }));
     }
   };
 
