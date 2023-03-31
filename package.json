@@ -9,7 +9,9 @@
     "lint-js": "eslint --ext .js,.ts src",
     "lint": "npm run lint-ts && npm run lint-js",
     "build": "rm -rf dist && tsc",
-    "prepublish": "npm run build"
+    "changelog": "npx conventional-changelog-cli -p angular -i CHANGELOG.md -s",
+    "prepublish": "npm run build",
+    "postpublish": "npm run changelog"
   },
   "files": [
     "dist"
