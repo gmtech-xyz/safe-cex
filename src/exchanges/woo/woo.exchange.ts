@@ -507,7 +507,7 @@ export class Woo extends BaseExchange {
 
         return {
           id: `${v(co, 'algoOrderId')}`,
-          parentId: `${v(o, 'algoOrderId') || v(co, 'rootAlgoOrderId')}`,
+          parentId: `${v(o, 'rootAlgoOrderId') || v(co, 'rootAlgoOrderId')}`,
           status: OrderStatus.Open,
           symbol,
           type: ORDER_TYPE[v(co, 'algoType')],
@@ -554,7 +554,7 @@ export class Woo extends BaseExchange {
 
       await this.placePositionalAlgoOrder({
         symbol: sibling.symbol,
-        side: sibling.side,
+        side: sibling.side === OrderSide.Buy ? OrderSide.Sell : OrderSide.Buy,
         [priceKey]: sibling.price,
       });
     }
@@ -621,42 +621,37 @@ export class Woo extends BaseExchange {
   };
 
   placeAlgoOrder = async (opts: PlaceOrderOpts) => {
-    const market = this.store.markets.find((m) => m.symbol === opts.symbol);
-
-    if (!market) {
-      throw new Error(`Market not found: ${opts.symbol}`);
-    }
-
-    const pPrice = market.precision.price;
-    const pAmount = market.precision.amount;
-
-    const amount = adjust(opts.amount, pAmount);
-    const price = opts.price ? adjust(opts.price, pPrice) : null;
-
-    const req = {
-      symbol: reverseSymbol(opts.symbol),
-      algoType: 'STOP',
-      triggerPrice: price,
-      quantity: amount,
-      reduceOnly: true,
-      type: 'MARKET',
-      side: inverseObj(ORDER_SIDE)[opts.side],
-    };
-
-    try {
-      const {
-        data: {
-          data: { rows },
-        },
-      } = await this.unlimitedXHR.post<{
-        data: { rows: Array<Record<string, any>> };
-      }>(ENDPOINTS.ALGO_ORDER, req);
-
-      return rows.map((r) => r.orderId);
-    } catch (err: any) {
-      this.emitter.emit('error', err?.response?.data?.message || err?.message);
+    if (!opts.price) {
+      this.emitter.emit('error', 'Price is required for algo orders');
       return [];
     }
+
+    const params = {
+      symbol: opts.symbol,
+      side: opts.side === OrderSide.Buy ? OrderSide.Sell : OrderSide.Buy,
+      stopLoss: 0,
+      takeProfit: 0,
+    };
+
+    const sibling = this.store.orders.find(
+      (o) => o.symbol === opts.symbol && this.isAlgoOrder(o.type)
+    );
+
+    if (opts.type === OrderType.StopLoss) {
+      params.stopLoss = opts.price;
+    }
+
+    if (opts.type === OrderType.TakeProfit) {
+      params.takeProfit = opts.price;
+    }
+
+    if (sibling) {
+      if (params.stopLoss) params.takeProfit = sibling.price;
+      if (params.takeProfit) params.stopLoss = sibling.price;
+      await this.cancelAlgoOrder(sibling);
+    }
+
+    return this.placePositionalAlgoOrder(params);
   };
 
   placePositionalAlgoOrder = async (
