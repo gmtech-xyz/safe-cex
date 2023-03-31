@@ -8,42 +8,49 @@ import type { Bybit } from './bybit.exchange';
 import { BASE_WS_URL } from './bybit.types';
 
 export class BybitPrivateWebsocket extends BaseWebSocket<Bybit> {
-  constructor(parent: Bybit) {
-    super(parent);
-    this.connectAndSubscribe();
-  }
-
   connectAndSubscribe = () => {
-    this.ws = new WebSocket(
-      BASE_WS_URL.private[this.parent.options.testnet ? 'testnet' : 'livenet']
-    );
+    if (!this.parent.isDisposed) {
+      this.ws = new WebSocket(
+        BASE_WS_URL.private[this.parent.options.testnet ? 'testnet' : 'livenet']
+      );
 
-    this.ws.addEventListener('open', this.onOpen);
-    this.ws.addEventListener('message', this.onMessage);
-    this.ws.addEventListener('close', this.onClose);
+      this.ws.addEventListener('open', this.onOpen);
+      this.ws.addEventListener('message', this.onMessage);
+      this.ws.addEventListener('close', this.onClose);
+    }
   };
 
   onOpen = () => {
-    this.auth();
-    this.subscribe();
-    this.ping();
+    if (!this.parent.isDisposed) {
+      this.auth();
+      this.subscribe();
+      this.ping();
+    }
   };
 
   onMessage = ({ data }: MessageEvent) => {
-    const json = JSON.parse(data);
+    if (!this.parent.isDisposed) {
+      const json = JSON.parse(data);
 
-    if (json.topic === 'user.order.contractAccount') {
-      this.handleOrderTopic(json.data);
-    }
+      if (json.topic === 'user.order.contractAccount') {
+        this.handleOrderTopic(json.data);
+      }
 
-    if (json.topic === 'user.position.contractAccount') {
-      this.handlePositionTopic(json.data);
-    }
+      if (json.topic === 'user.position.contractAccount') {
+        this.handlePositionTopic(json.data);
+      }
 
-    if (json.op === 'pong') {
-      const diff = performance.now() - this.pingAt;
-      this.parent.store.latency = Math.round(diff / 2);
-      setTimeout(() => this.ping(), 10_000);
+      if (json.op === 'pong') {
+        const diff = performance.now() - this.pingAt;
+        this.parent.store.latency = Math.round(diff / 2);
+
+        if (this.pingTimeoutId) {
+          clearTimeout(this.pingTimeoutId);
+          this.pingTimeoutId = undefined;
+        }
+
+        this.pingTimeoutId = setTimeout(() => this.ping(), 10_000);
+      }
     }
   };
 

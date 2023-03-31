@@ -1,6 +1,7 @@
 export type ExchangeOptions = {
   key: string;
   secret: string;
+  applicationId?: string;
   testnet?: boolean;
   corsAnywhere?: string;
 };
@@ -96,6 +97,7 @@ export enum OrderTimeInForce {
 
 export type Order = {
   id: string;
+  parentId?: string;
   status: OrderStatus;
   symbol: string;
   type: OrderType;

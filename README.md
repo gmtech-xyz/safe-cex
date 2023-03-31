@@ -32,8 +32,9 @@ Currently, the library supports Bybit and Binance Futures contracts, with plans 
 
 ## Exchanges supported
 
-- [Bybit](https://partner.bybit.com/b/tuleep) futures USDT contracts (not the unified margin)
+- [Bybit](https://partner.bybit.com/b/safecex) Futures USDT contracts (not the unified margin)
 - [Binance](https://accounts.binance.com/en/register?ref=KOLLSXK0) USD-M futures (USDT & BUSD contracts)
+- [Woo X](https://x.woo.org/en/trade?ref=safecex) Futures USDT & futures unified margin
 
 ---
 
@@ -400,13 +401,13 @@ You need to add [vite-plugin-node-stdlib-browser](https://github.com/sodatea/vit
 
 If you found this project interesting or useful, create accounts with my referral links:
 
-- [Bybit](https://partner.bybit.com/b/tuleep) **Up to $30,000 bonus - no KYC required**
-- [OKX](https://www.okx.com/join/tuleep) **Up to $10,000 bonus**
+- [Bybit](https://partner.bybit.com/b/safecex) **Up to $30,000 deposit bonus - No KYC required**
+- [Woo X](https://x.woo.org/en/trade?ref=safecex) **Deposit $100 and 0 fees for 14 days!**
 - [Binance](https://accounts.binance.com/en/register?ref=KOLLSXK0)
 
 Or buy me a coffee with a crypto donation:
 
-- ETH/BSC/MATIC/AVAX: `0xf8a303250c64CEeabC58DcB2688213FACb3cc4e4`
+- ETH/BSC/MATIC/AVAX: `0xFF2da578C73bC694fd767A1CC77160002C2003E6`
 
 ## Contributions & Pull Requests
 

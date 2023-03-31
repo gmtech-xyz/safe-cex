@@ -1,3 +1,5 @@
+import { LogSeverity } from '../types';
+
 import type { BaseExchange } from './base';
 
 export class BaseWebSocket<T extends BaseExchange> {
@@ -5,6 +7,7 @@ export class BaseWebSocket<T extends BaseExchange> {
   parent: T;
 
   pingAt = 0;
+  pingTimeoutId?: NodeJS.Timeout;
 
   constructor(parent: T) {
     this.parent = parent;
@@ -23,6 +26,18 @@ export class BaseWebSocket<T extends BaseExchange> {
   };
 
   onClose = () => {
+    if (!this.parent.isDisposed) {
+      this.parent.log(
+        'WebSocket connection disconnected, reconnecting...',
+        LogSeverity.Error
+      );
+    }
+
+    if (this.pingTimeoutId) {
+      clearTimeout(this.pingTimeoutId);
+      this.pingTimeoutId = undefined;
+    }
+
     this.ws?.removeEventListener?.('open', this.onOpen);
     this.ws?.removeEventListener?.('message', this.onMessage);
     this.ws?.removeEventListener?.('close', this.onClose);

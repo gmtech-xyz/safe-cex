@@ -1,11 +1,13 @@
 import { Binance } from './exchanges/binance/binance.exchange';
 import { Bybit } from './exchanges/bybit/bybit.exchange';
+import { Woo } from './exchanges/woo/woo.exchange';
 import type { ExchangeOptions } from './types';
 import { virtualClock } from './utils/virtual-clock';
 
 const exchanges = {
   bybit: Bybit,
   binance: Binance,
+  woo: Woo,
 };
 
 export const createExchange = (

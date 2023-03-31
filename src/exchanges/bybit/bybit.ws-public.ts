@@ -1,31 +1,9 @@
-import { subscribe } from 'valtio/vanilla';
-
 import { BaseWebSocket } from '../base.ws';
 
 import type { Bybit } from './bybit.exchange';
 import { BASE_WS_URL } from './bybit.types';
 
 export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
-  constructor(parent: Bybit) {
-    super(parent);
-
-    // we use this little trick to make sure we connect and subscribe
-    // after loaded the markets and tickers first with xhr API
-    const unsubscribe = subscribe(this.parent.store.loaded, () => {
-      if (
-        this.parent.store.loaded.markets &&
-        this.parent.store.loaded.tickers
-      ) {
-        unsubscribe();
-        this.connectAndSubscribe();
-      }
-    });
-
-    if (this.parent.isDisposed) {
-      unsubscribe();
-    }
-  }
-
   connectAndSubscribe = () => {
     if (!this.parent.isDisposed) {
       this.ws = new WebSocket(
@@ -39,6 +17,20 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
   };
 
   onOpen = () => {
+    if (!this.parent.isDisposed) {
+      this.subscribe();
+      this.ping();
+    }
+  };
+
+  ping = () => {
+    if (!this.parent.isDisposed) {
+      this.pingAt = performance.now();
+      this.ws?.send?.(JSON.stringify({ op: 'ping' }));
+    }
+  };
+
+  subscribe = () => {
     const payload = {
       op: 'subscribe',
       args: this.parent.store.markets.map(
@@ -58,6 +50,18 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
         json?.data?.update?.[0]
       ) {
         this.handleInstrumentInfoStreamEvents(json.data.update[0]);
+      }
+
+      if (json.op === 'pong') {
+        const diff = performance.now() - this.pingAt;
+        this.parent.store.latency = Math.round(diff / 2);
+
+        if (this.pingTimeoutId) {
+          clearTimeout(this.pingTimeoutId);
+          this.pingTimeoutId = undefined;
+        }
+
+        this.pingTimeoutId = setTimeout(() => this.ping(), 10_000);
       }
     }
   };
