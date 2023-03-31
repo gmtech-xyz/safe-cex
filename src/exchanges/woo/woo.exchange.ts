@@ -15,7 +15,7 @@ import type {
   Ticker,
   UpdateOrderOpts,
 } from '../../types';
-import { OrderType, OrderStatus, PositionSide } from '../../types';
+import { OrderSide, OrderType, OrderStatus, PositionSide } from '../../types';
 import { adjust } from '../../utils/adjust';
 import { v } from '../../utils/get-key';
 import { inverseObj } from '../../utils/inverse-obj';
@@ -541,7 +541,23 @@ export class Woo extends BaseExchange {
   };
 
   cancelAlgoOrder = async (order: Order) => {
-    await this.unlimitedXHR.delete(`${ENDPOINTS.ALGO_ORDER}/${order.parentId}`);
+    const sibling = this.store.orders.find(
+      (o) => o.parentId === order.parentId && o.id !== order.id
+    );
+
+    const id = order.parentId || order.id;
+    await this.unlimitedXHR.delete(`${ENDPOINTS.ALGO_ORDER}/${id}`);
+
+    if (sibling) {
+      const priceKey =
+        sibling.type === OrderType.StopLoss ? 'stopLoss' : 'takeProfit';
+
+      await this.placePositionalAlgoOrder({
+        symbol: sibling.symbol,
+        side: sibling.side,
+        [priceKey]: sibling.price,
+      });
+    }
   };
 
   placeOrder = async (opts: PlaceOrderOpts) => {
@@ -592,8 +608,9 @@ export class Woo extends BaseExchange {
         return data.order_id as string;
       });
 
-      if (opts.stopLoss) {
-        // TODO: Place POSITIONAL_TP_SL algo order
+      if (opts.stopLoss || opts.takeProfit) {
+        const algoIds = await this.placePositionalAlgoOrder(opts);
+        orderIds.push(...algoIds);
       }
 
       return orderIds;
@@ -625,6 +642,52 @@ export class Woo extends BaseExchange {
       type: 'MARKET',
       side: inverseObj(ORDER_SIDE)[opts.side],
     };
+
+    try {
+      const {
+        data: {
+          data: { rows },
+        },
+      } = await this.unlimitedXHR.post<{
+        data: { rows: Array<Record<string, any>> };
+      }>(ENDPOINTS.ALGO_ORDER, req);
+
+      return rows.map((r) => r.orderId);
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.message || err?.message);
+      return [];
+    }
+  };
+
+  placePositionalAlgoOrder = async (
+    opts: Pick<PlaceOrderOpts, 'side' | 'stopLoss' | 'symbol' | 'takeProfit'>
+  ) => {
+    const req: Record<string, any> = {
+      symbol: reverseSymbol(opts.symbol),
+      reduceOnly: false,
+      algoType: 'POSITIONAL_TP_SL',
+      childOrders: [],
+    };
+
+    if (opts.stopLoss) {
+      req.childOrders.push({
+        algoType: 'STOP_LOSS',
+        type: 'CLOSE_POSITION',
+        side: opts.side === OrderSide.Buy ? 'SELL' : 'BUY',
+        reduceOnly: true,
+        triggerPrice: `${opts.stopLoss}`,
+      });
+    }
+
+    if (opts.takeProfit) {
+      req.childOrders.push({
+        algoType: 'TAKE_PROFIT',
+        type: 'CLOSE_POSITION',
+        side: opts.side === OrderSide.Buy ? 'SELL' : 'BUY',
+        reduceOnly: true,
+        triggerPrice: `${opts.takeProfit}`,
+      });
+    }
 
     try {
       const {
