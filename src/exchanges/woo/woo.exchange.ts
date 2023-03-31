@@ -552,22 +552,33 @@ export class Woo extends BaseExchange {
   };
 
   cancelAlgoOrder = async (order: Order) => {
-    const sibling = this.store.orders.find(
-      (o) => o.parentId === order.parentId && o.id !== order.id
-    );
+    try {
+      const sibling = this.store.orders.find(
+        (o) => o.parentId === order.parentId && o.id !== order.id
+      );
 
-    const id = order.parentId || order.id;
-    await this.unlimitedXHR.delete(`${ENDPOINTS.ALGO_ORDER}/${id}`);
+      const id = order.parentId || order.id;
+      await this.unlimitedXHR.delete(`${ENDPOINTS.ALGO_ORDER}/${id}`);
 
-    if (sibling) {
-      const priceKey =
-        sibling.type === OrderType.StopLoss ? 'stopLoss' : 'takeProfit';
+      if (sibling) {
+        const priceKey =
+          sibling.type === OrderType.StopLoss ? 'stopLoss' : 'takeProfit';
 
-      await this.placePositionalAlgoOrder({
-        symbol: sibling.symbol,
-        side: sibling.side === OrderSide.Buy ? OrderSide.Sell : OrderSide.Buy,
-        [priceKey]: sibling.price,
-      });
+        await this.placePositionalAlgoOrder({
+          symbol: sibling.symbol,
+          side: sibling.side === OrderSide.Buy ? OrderSide.Sell : OrderSide.Buy,
+          [priceKey]: sibling.price,
+        });
+      }
+    } catch (err: any) {
+      if (err?.response?.data?.message?.includes('already canceled')) {
+        this.removeOrderFromStore(order.id);
+      } else {
+        this.emitter.emit(
+          'error',
+          err?.response?.data?.message || err?.message
+        );
+      }
     }
   };
 
