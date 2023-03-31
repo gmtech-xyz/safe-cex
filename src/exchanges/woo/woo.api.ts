@@ -7,7 +7,13 @@ import qs from 'qs';
 import type { ExchangeOptions } from '../../types';
 import { virtualClock } from '../../utils/virtual-clock';
 
-import { BASE_URL, RECV_WINDOW } from './woo.types';
+import {
+  BASE_URL,
+  BROKER_ID,
+  ENDPOINTS,
+  RECV_WINDOW,
+  TESTNET_BROKER_ID,
+} from './woo.types';
 
 const signV1 = (config: AxiosRequestConfig, options: ExchangeOptions) => {
   const nextConfig = { ...config };
@@ -99,6 +105,15 @@ export const createAPI = (options: ExchangeOptions) => {
     // don't sign public endpoints requests
     if (config.url?.includes?.('/public/')) {
       return config;
+    }
+
+    if (
+      config.url === ENDPOINTS.PLACE_ORDER ||
+      (config.url === ENDPOINTS.ALGO_ORDER &&
+        config.method?.toUpperCase?.() === 'POST')
+    ) {
+      // eslint-disable-next-line no-param-reassign
+      config.data.broker_id = options.testnet ? TESTNET_BROKER_ID : BROKER_ID;
     }
 
     // sign v1 endpoints requests

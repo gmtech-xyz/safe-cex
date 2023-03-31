@@ -1,6 +1,8 @@
 import { OrderSide, OrderType } from '../../types';
 
 export const RECV_WINDOW = 5000;
+export const BROKER_ID = '0527c685-d30d-4a1f-9807-99cc29e930ea';
+export const TESTNET_BROKER_ID = 'e708a644-9ce5-46c6-b50c-74b15f62d8ca';
 
 export const BASE_URL = {
   livenet: 'https://api.woo.org',
