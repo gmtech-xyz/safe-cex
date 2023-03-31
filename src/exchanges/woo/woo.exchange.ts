@@ -512,7 +512,9 @@ export class Woo extends BaseExchange {
         const filled = v(co, 'totalExecutedQuantity');
         const price =
           v(co, 'triggerPrice') ||
-          v(co, 'extremePrice') - v(co, 'callbackValue');
+          new BigNumber(v(co, 'extremePrice'))
+            .minus(v(co, 'callbackValue'))
+            .toNumber();
 
         return {
           id: `${v(co, 'algoOrderId')}`,

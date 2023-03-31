@@ -113,7 +113,11 @@ export class WooPrivateWebscoket extends BaseWebSocket<Woo> {
     data.forEach((row) => {
       const status = v(row, 'algoStatus');
 
-      if (status === 'NEW') {
+      if (
+        status === 'NEW' ||
+        status === 'REPLACED' ||
+        status === 'PARTIAL_FILLED'
+      ) {
         const [updatedOrder] = this.parent.mapAlgoOrder(row);
 
         if (updatedOrder) {
