@@ -20,8 +20,6 @@ export const BASE_WS_URL = {
   },
 };
 
-export const KLINE_LIMIT = 1000;
-
 export const ENDPOINTS = {
   // v3
   ACCOUNT: '/v3/accountinfo',

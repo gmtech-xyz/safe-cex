@@ -271,6 +271,7 @@ export class Binance extends BaseExchange {
 
       const tickers: Ticker[] = books.reduce((acc: Ticker[], book) => {
         const market = this.store.markets.find((m) => m.symbol === book.symbol);
+
         const daily = dailys.find((d) => d.symbol === book.symbol)!;
         const price = prices.find((p) => p.symbol === book.symbol)!;
 
