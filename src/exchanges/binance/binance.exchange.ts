@@ -632,7 +632,7 @@ export class Binance extends BaseExchange {
       [priceField]: price ? `${price}` : undefined,
       timeInForce: opts.type === OrderType.Limit ? timeInForce : undefined,
       closePosition: isStopOrTP ? 'true' : undefined,
-      reduceOnly: reduceOnly ? 'true' : undefined,
+      reduceOnly: reduceOnly && !isStopOrTP ? 'true' : undefined,
     });
 
     const lots = amount > maxSize ? Math.ceil(amount / maxSize) : 1;
