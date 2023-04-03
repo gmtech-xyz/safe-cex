@@ -103,6 +103,10 @@ export class Binance extends BaseExchange {
     this.store.tickers = tickers;
     this.store.loaded.tickers = true;
 
+    // start websocket streams
+    this.publicWebsocket.connectAndSubscribe();
+    this.privateWebsocket.connectAndSubscribe();
+
     // fetch current position mode (Hedge/One-way)
     this.store.options.isHedged = await this.fetchPositionMode();
 
@@ -266,9 +270,8 @@ export class Binance extends BaseExchange {
       );
 
       const tickers: Ticker[] = books.reduce((acc: Ticker[], book) => {
-        const market = this.store.markets.find(
-          (m) => m.symbol === book.symbol
-        )!;
+        const market = this.store.markets.find((m) => m.symbol === book.symbol);
+
         const daily = dailys.find((d) => d.symbol === book.symbol)!;
         const price = prices.find((p) => p.symbol === book.symbol)!;
 
@@ -494,6 +497,7 @@ export class Binance extends BaseExchange {
     const dispose = () => {
       if (this.wsPublic) {
         this.wsPublic.off('message', handleMessage);
+        this.wsPublic.close();
         this.wsPublic = undefined;
       }
     };
@@ -682,7 +686,7 @@ export class Binance extends BaseExchange {
       [priceField]: price ? `${price}` : undefined,
       timeInForce: opts.type === OrderType.Limit ? timeInForce : undefined,
       closePosition: isStopOrTP ? 'true' : undefined,
-      reduceOnly: reduceOnly ? 'true' : undefined,
+      reduceOnly: reduceOnly && !isStopOrTP ? 'true' : undefined,
     });
 
     const lots = amount > maxSize ? Math.ceil(amount / maxSize) : 1;

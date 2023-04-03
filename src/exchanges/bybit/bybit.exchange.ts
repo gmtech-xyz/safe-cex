@@ -106,6 +106,10 @@ export class Bybit extends BaseExchange {
     this.store.tickers = tickers;
     this.store.loaded.tickers = true;
 
+    // start websocket streams
+    this.publicWebsocket.connectAndSubscribe();
+    this.privateWebsocket.connectAndSubscribe();
+
     // start ticking live data
     // balance, tickers, positions
     await this.tick();

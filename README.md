@@ -1,5 +1,13 @@
 # safe-cex
 
+![Snyk Vulnerabilities for GitHub Repo](https://img.shields.io/snyk/vulnerabilities/github/gmtech-xyz/safe-cex)
+[![npm version](https://badge.fury.io/js/safe-cex.svg)](https://badge.fury.io/js/safe-cex)
+![npm](https://img.shields.io/npm/dt/safe-cex)
+![npm bundle size](https://img.shields.io/bundlephobia/minzip/safe-cex)
+![Discord](https://img.shields.io/discord/965643018004738189)
+
+![image](https://user-images.githubusercontent.com/893837/228979174-32b7f08d-6e13-4bdd-9598-e25846911335.png)
+
 > An OpenSource TypeScript library to create rich trading cryptocurrencies interfaces
 
 ## Introduction
@@ -24,8 +32,9 @@ Currently, the library supports Bybit and Binance Futures contracts, with plans 
 
 ## Exchanges supported
 
-- [Bybit](https://partner.bybit.com/b/tuleep) futures USDT contracts (not the unified margin)
+- [Bybit](https://partner.bybit.com/b/safecex) Futures USDT contracts (not the unified margin)
 - [Binance](https://accounts.binance.com/en/register?ref=KOLLSXK0) USD-M futures (USDT & BUSD contracts)
+- [Woo X](https://x.woo.org/en/trade?ref=safecex) Futures USDT & futures unified margin
 
 ---
 
@@ -392,12 +401,13 @@ You need to add [vite-plugin-node-stdlib-browser](https://github.com/sodatea/vit
 
 If you found this project interesting or useful, create accounts with my referral links:
 
-- [Bybit](https://partner.bybit.com/b/tuleep) [Up to $30,000 bonus - no KYC required]
+- [Bybit](https://partner.bybit.com/b/safecex) **Up to $30,000 deposit bonus - No KYC required**
+- [Woo X](https://x.woo.org/en/trade?ref=safecex) **Deposit $100 and 0 fees for 14 days!**
 - [Binance](https://accounts.binance.com/en/register?ref=KOLLSXK0)
 
 Or buy me a coffee with a crypto donation:
 
-- ETH/BSC/MATIC/AVAX: `0xf8a303250c64CEeabC58DcB2688213FACb3cc4e4`
+- ETH/BSC/MATIC/AVAX: `0xFF2da578C73bC694fd767A1CC77160002C2003E6`
 
 ## Contributions & Pull Requests
 

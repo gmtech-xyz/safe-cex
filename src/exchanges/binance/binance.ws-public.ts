@@ -1,4 +1,4 @@
-import { groupBy } from 'lodash';
+import { groupBy, throttle } from 'lodash';
 
 import { v } from '../../utils/get-key';
 import { BaseWebSocket } from '../base.ws';
@@ -7,32 +7,50 @@ import type { Binance } from './binance.exchange';
 import { BASE_WS_URL } from './binance.types';
 
 export class BinancePublicWebsocket extends BaseWebSocket<Binance> {
-  constructor(parent: Binance) {
-    super(parent);
-    this.connectAndSubscribe();
-  }
+  calculateLatency = throttle(
+    (data: string) => {
+      try {
+        const timestamp = Number(data.match(/"E":(\d+)/)?.[1]);
+
+        if (timestamp > 0) {
+          const receivedAt = Number(new Date());
+          const diff = receivedAt - timestamp;
+          this.parent.store.latency = diff;
+        }
+      } catch {
+        // do nothing
+      }
+    },
+    1000,
+    { leading: true }
+  );
 
   connectAndSubscribe = () => {
-    this.ws = new WebSocket(
-      BASE_WS_URL.public[this.parent.options.testnet ? 'testnet' : 'livenet']
-    );
+    if (!this.parent.isDisposed) {
+      this.ws = new WebSocket(
+        BASE_WS_URL.public[this.parent.options.testnet ? 'testnet' : 'livenet']
+      );
 
-    this.ws.addEventListener('open', this.onOpen);
-    this.ws.addEventListener('message', this.onMessage);
-    this.ws.addEventListener('close', this.onClose);
+      this.ws.addEventListener('open', this.onOpen);
+      this.ws.addEventListener('message', this.onMessage);
+      this.ws.addEventListener('close', this.onClose);
+    }
   };
 
   onOpen = () => {
-    const payload = {
-      method: 'SUBSCRIBE',
-      params: ['!ticker@arr', '!bookTicker', '!markPrice@arr@1s'],
-    };
+    if (!this.parent.isDisposed) {
+      const payload = {
+        method: 'SUBSCRIBE',
+        params: ['!ticker@arr', '!bookTicker', '!markPrice@arr@1s'],
+      };
 
-    this.ws?.send?.(JSON.stringify(payload));
+      this.ws?.send?.(JSON.stringify(payload));
+    }
   };
 
   onMessage = ({ data }: MessageEvent) => {
     if (!this.parent.isDisposed) {
+      this.calculateLatency(data);
       const json = JSON.parse(data);
       const events = groupBy(Array.isArray(json) ? json : [json], 'e');
       this.handleTickerStreamEvents(events['24hrTicker'] || []);

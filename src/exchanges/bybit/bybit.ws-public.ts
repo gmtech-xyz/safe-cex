@@ -1,4 +1,4 @@
-import { subscribe } from 'valtio/vanilla';
+import { throttle } from 'lodash';
 
 import { BaseWebSocket } from '../base.ws';
 
@@ -6,25 +6,24 @@ import type { Bybit } from './bybit.exchange';
 import { BASE_WS_URL } from './bybit.types';
 
 export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
-  constructor(parent: Bybit) {
-    super(parent);
+  calculateLatency = throttle(
+    (data: string) => {
+      try {
+        const timestamp = Number(data.match(/"timestamp_e6":"(\d+)"/)?.[1]);
 
-    // we use this little trick to make sure we connect and subscribe
-    // after loaded the markets and tickers first with xhr API
-    const unsubscribe = subscribe(this.parent.store.loaded, () => {
-      if (
-        this.parent.store.loaded.markets &&
-        this.parent.store.loaded.tickers
-      ) {
-        unsubscribe();
-        this.connectAndSubscribe();
+        if (timestamp > 0) {
+          const receivedAt = Number(new Date());
+          const sentAt = timestamp / 1000;
+          const diff = receivedAt - sentAt;
+          this.parent.store.latency = diff;
+        }
+      } catch {
+        // do nothing
       }
-    });
-
-    if (this.parent.isDisposed) {
-      unsubscribe();
-    }
-  }
+    },
+    1000,
+    { leading: true }
+  );
 
   connectAndSubscribe = () => {
     if (!this.parent.isDisposed) {
@@ -39,6 +38,20 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
   };
 
   onOpen = () => {
+    if (!this.parent.isDisposed) {
+      this.subscribe();
+      this.ping();
+    }
+  };
+
+  ping = () => {
+    if (!this.parent.isDisposed) {
+      this.pingAt = performance.now();
+      this.ws?.send?.(JSON.stringify({ op: 'ping' }));
+    }
+  };
+
+  subscribe = () => {
     const payload = {
       op: 'subscribe',
       args: this.parent.store.markets.map(
@@ -51,6 +64,10 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
 
   onMessage = ({ data }: MessageEvent) => {
     if (!this.parent.isDisposed) {
+      // call throttled latency calculation
+      // to update latency indicator
+      this.calculateLatency(data);
+
       const json = JSON.parse(data);
 
       if (
@@ -58,6 +75,18 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
         json?.data?.update?.[0]
       ) {
         this.handleInstrumentInfoStreamEvents(json.data.update[0]);
+      }
+
+      if (json.op === 'pong') {
+        const diff = performance.now() - this.pingAt;
+        this.parent.store.latency = Math.round(diff / 2);
+
+        if (this.pingTimeoutId) {
+          clearTimeout(this.pingTimeoutId);
+          this.pingTimeoutId = undefined;
+        }
+
+        this.pingTimeoutId = setTimeout(() => this.ping(), 10_000);
       }
     }
   };
