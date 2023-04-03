@@ -213,6 +213,15 @@ const candles: Candle[] = await exchange.fetchOHLCV({
   startTime: 1680560343,
   endTime: 1680563343
 });
+
+// Only get the following 10 candles after a specific startTime
+const candles: Candle[] = await exchange.fetchOHLCV({
+  // market symbol, can be found in exchange.store.markets[index].symbol
+  symbol: "BTCUSDT",
+  timeframe: "15m",
+  limit: 10,
+  startTime: 1680560343,
+});
 ```
 
 ### `listenOHLCV()`
