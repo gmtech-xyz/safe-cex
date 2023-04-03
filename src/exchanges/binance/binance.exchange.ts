@@ -4,7 +4,7 @@ import BigNumber from 'bignumber.js';
 import type { ManipulateType } from 'dayjs';
 import dayjs from 'dayjs';
 import { chunk, groupBy, omit, orderBy, times, uniqBy } from 'lodash';
-import { forEachSeries } from 'p-iteration';
+import { forEachSeries, mapSeries } from 'p-iteration';
 import { v4 } from 'uuid';
 
 import type {
@@ -102,10 +102,6 @@ export class Binance extends BaseExchange {
 
     this.store.tickers = tickers;
     this.store.loaded.tickers = true;
-
-    // start websocket streams
-    this.publicWebsocket.connectAndSubscribe();
-    this.privateWebsocket.connectAndSubscribe();
 
     // fetch current position mode (Hedge/One-way)
     this.store.options.isHedged = await this.fetchPositionMode();
@@ -270,8 +266,9 @@ export class Binance extends BaseExchange {
       );
 
       const tickers: Ticker[] = books.reduce((acc: Ticker[], book) => {
-        const market = this.store.markets.find((m) => m.symbol === book.symbol);
-
+        const market = this.store.markets.find(
+          (m) => m.symbol === book.symbol
+        )!;
         const daily = dailys.find((d) => d.symbol === book.symbol)!;
         const price = prices.find((p) => p.symbol === book.symbol)!;
 
@@ -397,43 +394,41 @@ export class Binance extends BaseExchange {
     // Binance API only allows to fetch 1500 candles at a time
     // so we need to split the request in multiple calls
     const totalPages = Math.ceil(requiredCandles / KLINES_LIMIT);
-    const promises = [];
-    let currentStartTime = startTime;
 
-    for (let i = 0; i < totalPages; i++) {
-      const currentLimit = Math.min(
-        requiredCandles - i * KLINES_LIMIT,
-        KLINES_LIMIT
-      );
-      const currentEndTime = dayjs
-        .unix(currentStartTime)
-        .add(currentLimit, unit as ManipulateType)
-        .unix();
+    const results = await mapSeries(
+      times(totalPages, (i) => i + 1),
+      async (page) => {
+        const currentLimit = Math.min(
+          requiredCandles - page * KLINES_LIMIT,
+          KLINES_LIMIT
+        );
 
-      promises.push(
-        this.xhr.get<any[][]>(ENDPOINTS.KLINE, {
+        const from = dayjs
+          .unix(startTime)
+          .add(currentLimit * page, unit as ManipulateType)
+          .unix();
+
+        const { data } = await this.xhr.get<any[][]>(ENDPOINTS.KLINE, {
           params: {
             symbol: opts.symbol,
             interval: opts.interval,
-            startTime: currentStartTime,
-            endTime: currentEndTime,
+            startTime: from,
             limit: currentLimit,
           },
-        })
-      );
-      currentStartTime = currentEndTime;
-    }
+        });
 
-    const results = await Promise.all(promises);
-    const arr = results.flatMap((response) => {
-      const data = Array.isArray(response.data) ? response.data : [];
-      return data.filter((c: any) => c);
-    });
+        return data;
+      }
+    );
 
-    // sort by timestamp and remove duplicated candles
-    const data = orderBy(uniqBy(arr, 0), 0, ['asc']);
+    const arr = results.flatMap((data) =>
+      (Array.isArray(data) ? data : []).filter((c: any) => c)
+    );
 
-    const candles: Candle[] = data.map(
+    const withoutDuplicates = uniqBy(arr, 0);
+    const ordered = orderBy(withoutDuplicates, [0], ['asc']);
+
+    const candles: Candle[] = ordered.map(
       ([time, open, high, low, close, volume]) => {
         return {
           timestamp: time / 1000,
@@ -497,7 +492,6 @@ export class Binance extends BaseExchange {
     const dispose = () => {
       if (this.wsPublic) {
         this.wsPublic.off('message', handleMessage);
-        this.wsPublic.close();
         this.wsPublic = undefined;
       }
     };
@@ -686,7 +680,7 @@ export class Binance extends BaseExchange {
       [priceField]: price ? `${price}` : undefined,
       timeInForce: opts.type === OrderType.Limit ? timeInForce : undefined,
       closePosition: isStopOrTP ? 'true' : undefined,
-      reduceOnly: reduceOnly && !isStopOrTP ? 'true' : undefined,
+      reduceOnly: reduceOnly ? 'true' : undefined,
     });
 
     const lots = amount > maxSize ? Math.ceil(amount / maxSize) : 1;

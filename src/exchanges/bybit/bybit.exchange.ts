@@ -343,42 +343,41 @@ export class Bybit extends BaseExchange {
     // Bybit v2 API only allows to fetch 200 candles at a time
     // so we need to split the request in multiple calls
     const totalPages = Math.ceil(requiredCandles / KLINES_LIMIT);
-    const promises = [];
-    let currentStartTime = startTime;
 
-    for (let i = 0; i < totalPages; i++) {
-      const currentLimit = Math.min(
-        requiredCandles - i * KLINES_LIMIT,
-        KLINES_LIMIT
-      );
-      const currentEndTime = dayjs
-        .unix(currentStartTime)
-        .add(currentLimit, unit as ManipulateType)
-        .unix();
+    const results = await mapSeries(
+      times(totalPages, (i) => i + 1),
+      async (page) => {
+        const currentLimit = Math.min(
+          requiredCandles - page * KLINES_LIMIT,
+          KLINES_LIMIT
+        );
 
-      promises.push(
-        this.xhr.get(ENDPOINTS.KLINE, {
+        const from = dayjs
+          .unix(startTime)
+          .add(currentLimit * page, unit as ManipulateType)
+          .unix();
+
+        const { data } = await this.xhr.get(ENDPOINTS.KLINE, {
           params: {
             symbol: opts.symbol,
-            from: currentStartTime,
+            from,
             interval,
             limit: currentLimit,
           },
-        })
-      );
-      currentStartTime = currentEndTime;
-    }
+        });
 
-    const results = await Promise.all(promises);
-    const arr = results.flatMap(({ data: page }) => {
-      const data = Array.isArray(page.result) ? page.result : [];
-      return data.filter((c: any) => c);
-    });
+        return data;
+      }
+    );
 
-    // sort by timestamp and remove duplicated candles
-    const data = orderBy(uniqBy(arr, 'open_time'), ['open_time'], ['asc']);
+    const arr = results.flatMap((data) =>
+      (Array.isArray(data.result) ? data.result : []).filter((c: any) => c)
+    );
 
-    const candles: Candle[] = data.map((c: Record<string, any>) => {
+    const withoutDuplicates = uniqBy(arr, 'open_time');
+    const ordered = orderBy(withoutDuplicates, ['open_time'], ['asc']);
+
+    const candles: Candle[] = ordered.map((c: Record<string, any>) => {
       return {
         timestamp: c.open_time,
         open: c.open,
