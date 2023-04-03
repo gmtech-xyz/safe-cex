@@ -1,3 +1,17 @@
+## [2.1.3](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.2...v2.1.3) (2023-04-03)
+
+
+### Bug Fixes
+
+* **binance:** dont set `reduceOnly` when posting SL/TP ([b82d426](https://github.com/gmtech-xyz/safe-cex/commit/b82d426c2eb0393ceb59c33e7a1089a534eed4ed))
+
+
+### Features
+
+* **exchange:** improve latency calc precision ([09f8fd7](https://github.com/gmtech-xyz/safe-cex/commit/09f8fd74f6844087308ce13a35632658ddda704b))
+
+
+
 ## [2.1.2](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.1...v2.1.2) (2023-03-31)
 
 ### Bug Fixes
