@@ -168,9 +168,6 @@ export type UpdateOrderOpts = {
 export type OHLCVOptions = {
   symbol: string;
   interval: Timeframe;
-  limit?: number;
-  startTime?: number;
-  endTime?: number;
 };
 
 export type OrderFillEvent = Pick<

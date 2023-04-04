@@ -41,8 +41,6 @@ export const ENDPOINTS = {
   LISTEN_KEY: '/fapi/v1/listenKey',
 };
 
-export const KLINES_LIMIT = 1500;
-
 export const ORDER_TYPE: Record<string, OrderType> = {
   LIMIT: OrderType.Limit,
   MARKET: OrderType.Market,

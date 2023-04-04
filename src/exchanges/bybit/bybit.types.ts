@@ -38,8 +38,6 @@ export const ENDPOINTS = {
   CANCEL_SYMBOL_ORDERS: '/private/linear/order/cancel-all',
 };
 
-export const KLINES_LIMIT = 200;
-
 export const INTERVAL: Record<Timeframe, string> = {
   '1m': '1',
   '3m': '3',
