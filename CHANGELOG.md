@@ -1,3 +1,13 @@
+## [2.2.2](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v2.2.2) (2023-04-04)
+
+
+### Reverts
+
+* Revert "feat(fetcOHLCV): allow fetch historical data" ([4ee6d6c](https://github.com/gmtech-xyz/safe-cex/commit/4ee6d6cba05386f182fa22ba571bed6d952c70bf))
+* Revert "fixed page index (#5)" ([1c42d74](https://github.com/gmtech-xyz/safe-cex/commit/1c42d74236d0f1344e704b0ee41decbb07d104f0)), closes [#5](https://github.com/gmtech-xyz/safe-cex/issues/5)
+
+
+
 ## [2.2.1](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v2.2.1) (2023-04-04)
 
 
