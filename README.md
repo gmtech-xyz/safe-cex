@@ -206,27 +206,29 @@ type Candle = {
   volume: number;
 };
 
-// Fetch last 200 candles for symbol/timeframe
-// market symbol, can be found in exchange.store.markets[index].symbol
 const candles: Candle[] = await exchange.fetchOHLCV({
+  // market symbol, can be found in exchange.store.markets[index].symbol
   symbol: "BTCUSDT",
   timeframe: "15m",
 });
 
-// Fetch all candles between `startTime` and `endTime`
+// For Binance & ByBit you can also optionally fetch historical candles or specify limit
 const candles: Candle[] = await exchange.fetchOHLCV({
+  // market symbol, can be found in exchange.store.markets[index].symbol
   symbol: "BTCUSDT",
   timeframe: "15m",
-  startTime: 1680560343000,
-  endTime: 1680563343000,
+  // startTime/endTime must be a unix timestamp in seconds
+  startTime: 1680560343,
+  endTime: 1680563343
 });
 
-// Get 10 candles after `startTime`
+// Only get the following 10 candles after a specific startTime
 const candles: Candle[] = await exchange.fetchOHLCV({
+  // market symbol, can be found in exchange.store.markets[index].symbol
   symbol: "BTCUSDT",
   timeframe: "15m",
   limit: 10,
-  startTime: 1680560343000,
+  startTime: 1680560343,
 });
 ```
 
