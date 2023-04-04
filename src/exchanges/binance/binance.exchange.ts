@@ -405,7 +405,7 @@ export class Binance extends BaseExchange {
     const totalPages = Math.ceil(requiredCandles / KLINES_LIMIT);
 
     const results = await mapSeries(
-      times(totalPages, (i) => i + 1),
+      times(totalPages, (i) => i),
       async (page) => {
         const currentLimit = Math.min(
           requiredCandles - page * KLINES_LIMIT,
