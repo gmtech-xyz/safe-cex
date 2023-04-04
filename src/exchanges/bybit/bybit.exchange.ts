@@ -351,7 +351,7 @@ export class Bybit extends BaseExchange {
     const totalPages = Math.ceil(requiredCandles / KLINES_LIMIT);
 
     const results = await mapSeries(
-      times(totalPages, (i) => i),
+      times(totalPages, (i) => i + 1),
       async (page) => {
         const currentLimit = Math.min(
           requiredCandles - page * KLINES_LIMIT,
