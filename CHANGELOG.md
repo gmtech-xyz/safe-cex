@@ -1,3 +1,13 @@
+## [2.2.1](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v2.2.1) (2023-04-04)
+
+
+### Features
+
+* **fetchOHLCV:** use JS timestamp as param ([d54d4a1](https://github.com/gmtech-xyz/safe-cex/commit/d54d4a1f2409fb9e48ec5c8b59b71b5e812d41ff))
+* **fetcOHLCV:** allow fetch historical data ([847d4db](https://github.com/gmtech-xyz/safe-cex/commit/847d4dba22fc02636dbeec1950faa445a95c32e6))
+
+
+
 # [2.2.0](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v2.2.0) (2023-04-04)
 
 
