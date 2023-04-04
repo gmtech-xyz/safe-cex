@@ -1,7 +1,7 @@
+import { snapshot, subscribe } from '@iam4x/valtio';
 import { uniq } from 'lodash';
 import { forEachSeries, mapSeries } from 'p-iteration';
 import Emitter from 'tiny-emitter';
-import { snapshot, subscribe } from 'valtio/vanilla';
 
 import { createStore, defaultStore } from '../store';
 import type {

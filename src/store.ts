@@ -1,4 +1,4 @@
-import { proxy } from 'valtio/vanilla';
+import { proxy } from '@iam4x/valtio';
 
 import type { Store } from './types';
 
