@@ -42,6 +42,12 @@ Currently, the library supports Bybit and Binance Futures contracts, with plans 
 
 - `npm install --save safe-cex`
 
+## Examples
+
+You can use this template as starter for integrating the best way safe-cex into ReactJS:
+
+- [NextJS/ReactJS + Safe-Cex](https://github.com/gmtech-xyz/nextjs-reactjs-safe-cex)
+
 ## Getting started
 
 To initialize the exchange library, you will need:
@@ -88,6 +94,8 @@ type Store = {
 ```
 
 This store is a "proxy" object using [valtio](https://github.com/pmndrs/valtio) library, this means you can subscribe to its changes and use it into a ReactJS application out of the box without adding other state management libraries.
+
+It uses a fork [@iam4x/valtio](https://www.npmjs.com/package/@iam4x/valtio) in order to enable sharing the proxy state between Safe-Cex and your application (see [issue](https://github.com/pmndrs/valtio/discussions/706)).
 
 ## Events
 
