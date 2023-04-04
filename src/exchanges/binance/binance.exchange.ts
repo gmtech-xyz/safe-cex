@@ -379,17 +379,23 @@ export class Binance extends BaseExchange {
     // Default to 500
     let requiredCandles = opts.limit ?? 500;
 
-    const startTime =
-      opts.startTime ??
-      dayjs()
-        .subtract(parseFloat(amount) * requiredCandles, unit as ManipulateType)
-        .unix();
+    const startTime = opts.startTime
+      ? Math.round(opts.startTime / 1000)
+      : dayjs()
+          .subtract(
+            parseFloat(amount) * requiredCandles,
+            unit as ManipulateType
+          )
+          .unix();
 
     // Calculate the number of candles that are going to be fetched
     if (opts.endTime) {
       const diff = dayjs
         .unix(startTime)
-        .diff(dayjs.unix(opts.endTime), unit as ManipulateType);
+        .diff(
+          dayjs.unix(Math.round(opts.endTime / 1000)),
+          unit as ManipulateType
+        );
 
       requiredCandles = Math.abs(diff);
     }
