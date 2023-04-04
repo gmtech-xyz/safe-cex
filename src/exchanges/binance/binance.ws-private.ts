@@ -43,6 +43,9 @@ export class BinancePrivateWebsocket extends BaseWebSocket<Binance> {
       if (json.e === 'ORDER_TRADE_UPDATE') this.handleOrderEvents([json]);
 
       if (json.id === 42) {
+        const diff = performance.now() - this.pingAt;
+        this.parent.store.latency = Math.round(diff / 2);
+
         if (this.pingTimeoutId) {
           clearTimeout(this.pingTimeoutId);
           this.pingTimeoutId = undefined;
@@ -55,6 +58,7 @@ export class BinancePrivateWebsocket extends BaseWebSocket<Binance> {
 
   ping = () => {
     if (!this.parent.isDisposed) {
+      this.pingAt = performance.now();
       this.ws?.send?.(JSON.stringify({ id: 42, method: 'LIST_SUBSCRIPTIONS' }));
     }
   };

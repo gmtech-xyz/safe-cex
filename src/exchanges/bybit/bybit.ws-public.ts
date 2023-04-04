@@ -1,30 +1,9 @@
-import { throttle } from 'lodash';
-
 import { BaseWebSocket } from '../base.ws';
 
 import type { Bybit } from './bybit.exchange';
 import { BASE_WS_URL } from './bybit.types';
 
 export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
-  calculateLatency = throttle(
-    (data: string) => {
-      try {
-        const timestamp = Number(data.match(/"timestamp_e6":"(\d+)"/)?.[1]);
-
-        if (timestamp > 0) {
-          const receivedAt = Number(new Date());
-          const sentAt = timestamp / 1000;
-          const diff = receivedAt - sentAt;
-          this.parent.store.latency = diff;
-        }
-      } catch {
-        // do nothing
-      }
-    },
-    1000,
-    { leading: true }
-  );
-
   connectAndSubscribe = () => {
     if (!this.parent.isDisposed) {
       this.ws = new WebSocket(
@@ -64,10 +43,6 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
 
   onMessage = ({ data }: MessageEvent) => {
     if (!this.parent.isDisposed) {
-      // call throttled latency calculation
-      // to update latency indicator
-      this.calculateLatency(data);
-
       const json = JSON.parse(data);
 
       if (
@@ -78,9 +53,6 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
       }
 
       if (json.op === 'pong') {
-        const diff = performance.now() - this.pingAt;
-        this.parent.store.latency = Math.round(diff / 2);
-
         if (this.pingTimeoutId) {
           clearTimeout(this.pingTimeoutId);
           this.pingTimeoutId = undefined;
