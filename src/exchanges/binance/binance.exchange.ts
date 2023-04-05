@@ -1,8 +1,8 @@
 import type { Axios } from 'axios';
 import rateLimit from 'axios-rate-limit';
 import BigNumber from 'bignumber.js';
-import { chunk, groupBy, omit, times } from 'lodash';
-import { forEachSeries } from 'p-iteration';
+import { chunk, groupBy, omit, orderBy, times, uniqBy } from 'lodash';
+import { forEachSeries, mapSeries } from 'p-iteration';
 import { v4 } from 'uuid';
 
 import type {
@@ -40,9 +40,11 @@ import {
   POSITION_SIDE,
   ENDPOINTS,
   TIME_IN_FORCE,
+  KLINES_LIMIT,
 } from './binance.types';
 import { BinancePrivateWebsocket } from './binance.ws-private';
 import { BinancePublicWebsocket } from './binance.ws-public';
+import dayjs, { ManipulateType } from 'dayjs';
 
 export class Binance extends BaseExchange {
   xhr: Axios;
@@ -371,15 +373,71 @@ export class Binance extends BaseExchange {
   };
 
   fetchOHLCV = async (opts: OHLCVOptions) => {
-    const { data } = await this.xhr.get<any[][]>(ENDPOINTS.KLINE, {
-      params: {
-        symbol: opts.symbol,
-        interval: opts.interval,
-        limit: 500,
-      },
-    });
+    const [, amount, unit] = opts.interval.split(/(\d+)/);
 
-    const candles: Candle[] = data.map(
+    // Default to 500
+    let requiredCandles = opts.limit ?? 500;
+
+    const startTime = opts.startTime
+      ? Math.round(opts.startTime / 1000)
+      : dayjs()
+          .subtract(
+            parseFloat(amount) * requiredCandles,
+            unit as ManipulateType
+          )
+          .unix();
+
+    // Calculate the number of candles that are going to be fetched
+    if (opts.endTime) {
+      const diff = dayjs
+        .unix(startTime)
+        .diff(
+          dayjs.unix(Math.round(opts.endTime / 1000)),
+          unit as ManipulateType
+        );
+
+      requiredCandles = Math.abs(diff);
+    }
+
+    // Binance API only allows to fetch 1500 candles at a time
+    // so we need to split the request in multiple calls
+    const totalPages = Math.ceil(requiredCandles / KLINES_LIMIT);
+
+    const results = await mapSeries(
+      times(totalPages, (i) => i),
+      async (page) => {
+        const currentLimit = Math.min(
+          requiredCandles - page * KLINES_LIMIT,
+          KLINES_LIMIT
+        );
+        
+        // Binance startTime must be in milliseconds
+        const from = dayjs
+          .unix(startTime)
+          .add(currentLimit * page, unit as ManipulateType)
+          .unix()  * 1000;
+
+        const { data } = await this.xhr.get<any[][]>(ENDPOINTS.KLINE, {
+          params: {
+            symbol: opts.symbol,
+            interval: opts.interval,
+            startTime: from,
+            limit: currentLimit,
+          },
+        });
+
+        return data;
+      }
+    );
+
+    const arr = results.flatMap((data) =>
+      (Array.isArray(data) ? data : []).filter((c: any) => c)
+    );
+
+    const withoutDuplicates = uniqBy(arr, 0);
+    const ordered = orderBy(withoutDuplicates, [0], ['asc']);
+
+    const candles: Candle[] = ordered.map(
       ([time, open, high, low, close, volume]) => {
         return {
           timestamp: time / 1000,

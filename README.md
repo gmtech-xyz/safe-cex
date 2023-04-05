@@ -192,6 +192,9 @@ type Timeframe =
 type OHLCVOptions = {
   symbol: string;
   interval: Timeframe;
+  limit?: number;
+  startTime?: number;
+  endTime?: number;
 };
 
 type Candle = {
@@ -207,6 +210,25 @@ const candles: Candle[] = await exchange.fetchOHLCV({
   // market symbol, can be found in exchange.store.markets[index].symbol
   symbol: "BTCUSDT",
   timeframe: "15m",
+});
+
+// For Binance & ByBit you can also optionally fetch historical candles or specify limit
+const candles: Candle[] = await exchange.fetchOHLCV({
+  // market symbol, can be found in exchange.store.markets[index].symbol
+  symbol: "BTCUSDT",
+  timeframe: "15m",
+  // startTime/endTime must be a unix timestamp in seconds
+  startTime: 1680560343,
+  endTime: 1680563343
+});
+
+// Only get the following 10 candles after a specific startTime
+const candles: Candle[] = await exchange.fetchOHLCV({
+  // market symbol, can be found in exchange.store.markets[index].symbol
+  symbol: "BTCUSDT",
+  timeframe: "15m",
+  limit: 10,
+  startTime: 1680560343,
 });
 ```
 
