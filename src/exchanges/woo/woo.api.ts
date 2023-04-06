@@ -107,13 +107,15 @@ export const createAPI = (options: ExchangeOptions) => {
       return config;
     }
 
-    if (
-      config.url === ENDPOINTS.PLACE_ORDER ||
-      (config.url === ENDPOINTS.ALGO_ORDER &&
-        config.method?.toUpperCase?.() === 'POST')
-    ) {
-      // eslint-disable-next-line no-param-reassign
-      config.data.broker_id = options.testnet ? TESTNET_BROKER_ID : BROKER_ID;
+    if (config.method?.toUpperCase?.() === 'POST') {
+      if (config.url === ENDPOINTS.PLACE_ORDER) {
+        // eslint-disable-next-line no-param-reassign
+        config.data.broker_id = options.testnet ? TESTNET_BROKER_ID : BROKER_ID;
+      }
+      if (config.url === ENDPOINTS.ALGO_ORDER) {
+        // eslint-disable-next-line no-param-reassign
+        config.data.brokerId = options.testnet ? TESTNET_BROKER_ID : BROKER_ID;
+      }
     }
 
     // sign v1 endpoints requests
