@@ -1,9 +1,11 @@
-## [2.2.3](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v2.2.3) (2023-04-04)
+## [2.2.4](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v2.2.4) (2023-04-06)
 
 
 ### Bug Fixes
 
 * **exchanges:** revert latency calc to ping ([b19644c](https://github.com/gmtech-xyz/safe-cex/commit/b19644c8357f8323f8fdded2b31b80c84b12615c))
+* **woo:** balance calculation ([897891c](https://github.com/gmtech-xyz/safe-cex/commit/897891cf7cc35de21de66b2a3828b3c82cbad360))
+* **woo:** use `brokerId` for V3 API Endpoint ([b9e1c23](https://github.com/gmtech-xyz/safe-cex/commit/b9e1c233df8a504fa19ae974936706b5715b88ae))
 
 
 ### Reverts
