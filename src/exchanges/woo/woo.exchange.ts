@@ -144,8 +144,9 @@ export class Woo extends BaseExchange {
       this.accountLeverage = data.leverage;
 
       const free = Math.round(data.freeCollateral * 100) / 100;
-      const total = Math.round(data.totalCollateral * 100) / 100;
-      const used = Math.round((total - free) * 100) / 100;
+      const total = Math.round(data.totalAccountValue * 100) / 100;
+      const used =
+        Math.round((data.totalCollateral - data.freeCollateral) * 100) / 100;
 
       // woo doesnt provides unrealized pnl in the account endpoint
       // we are computing this from the positions polling
