@@ -1,6 +1,8 @@
 import type { Axios } from 'axios';
 import rateLimit from 'axios-rate-limit';
 import BigNumber from 'bignumber.js';
+import type { ManipulateType } from 'dayjs';
+import dayjs from 'dayjs';
 import { chunk, groupBy, omit, orderBy, times, uniqBy } from 'lodash';
 import { forEachSeries, mapSeries } from 'p-iteration';
 import { v4 } from 'uuid';
@@ -44,7 +46,6 @@ import {
 } from './binance.types';
 import { BinancePrivateWebsocket } from './binance.ws-private';
 import { BinancePublicWebsocket } from './binance.ws-public';
-import dayjs, { ManipulateType } from 'dayjs';
 
 export class Binance extends BaseExchange {
   xhr: Axios;
@@ -410,12 +411,13 @@ export class Binance extends BaseExchange {
           requiredCandles - page * KLINES_LIMIT,
           KLINES_LIMIT
         );
-        
+
         // Binance startTime must be in milliseconds
-        const from = dayjs
-          .unix(startTime)
-          .add(currentLimit * page, unit as ManipulateType)
-          .unix()  * 1000;
+        const from =
+          dayjs
+            .unix(startTime)
+            .add(currentLimit * page, unit as ManipulateType)
+            .unix() * 1000;
 
         const { data } = await this.xhr.get<any[][]>(ENDPOINTS.KLINE, {
           params: {

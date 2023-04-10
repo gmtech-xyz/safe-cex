@@ -32,7 +32,6 @@ import { WooPublicWebsocket } from './woo.ws-public';
 
 export class Woo extends BaseExchange {
   xhr: Axios;
-  unlimitedXHR: Axios;
 
   publicWebsocket: WooPublicWebsocket;
   privateWebsocket: WooPrivateWebscoket;
@@ -46,7 +45,6 @@ export class Woo extends BaseExchange {
     super(opts);
 
     this.xhr = rateLimit(createAPI(opts), { maxRPS: 3 });
-    this.unlimitedXHR = createAPI(opts);
 
     this.publicWebsocket = new WooPublicWebsocket(this);
     this.privateWebsocket = new WooPrivateWebscoket(this);
@@ -144,8 +142,9 @@ export class Woo extends BaseExchange {
       this.accountLeverage = data.leverage;
 
       const free = Math.round(data.freeCollateral * 100) / 100;
-      const total = Math.round(data.totalCollateral * 100) / 100;
-      const used = Math.round((total - free) * 100) / 100;
+      const total = Math.round(data.totalAccountValue * 100) / 100;
+      const used =
+        Math.round((data.totalCollateral - data.freeCollateral) * 100) / 100;
 
       // woo doesnt provides unrealized pnl in the account endpoint
       // we are computing this from the positions polling
@@ -541,7 +540,7 @@ export class Woo extends BaseExchange {
       if (isAlgo) {
         await this.cancelAlgoOrder(order);
       } else {
-        await this.unlimitedXHR.delete(ENDPOINTS.CANCEL_ORDER, {
+        await this.xhr.delete(ENDPOINTS.CANCEL_ORDER, {
           data: omitUndefined({
             order_id: parseInt(order.id, 10),
             symbol: reverseSymbol(order.symbol),
@@ -558,7 +557,7 @@ export class Woo extends BaseExchange {
       );
 
       const id = order.parentId || order.id;
-      await this.unlimitedXHR.delete(`${ENDPOINTS.ALGO_ORDER}/${id}`);
+      await this.xhr.delete(`${ENDPOINTS.ALGO_ORDER}/${id}`);
 
       if (sibling) {
         const priceKey =
@@ -622,10 +621,7 @@ export class Woo extends BaseExchange {
 
     try {
       const orderIds = await mapSeries(payloads, async (payload) => {
-        const { data } = await this.unlimitedXHR.post(
-          ENDPOINTS.PLACE_ORDER,
-          payload
-        );
+        const { data } = await this.xhr.post(ENDPOINTS.PLACE_ORDER, payload);
 
         return data.order_id as string;
       });
@@ -717,7 +713,7 @@ export class Woo extends BaseExchange {
 
     const {
       data: { data },
-    } = await this.unlimitedXHR.post<{
+    } = await this.xhr.post<{
       data: { rows: Array<Record<string, any>> };
     }>(ENDPOINTS.ALGO_ORDER, payload);
 
@@ -757,7 +753,7 @@ export class Woo extends BaseExchange {
     try {
       const {
         data: { data },
-      } = await this.unlimitedXHR.post<{
+      } = await this.xhr.post<{
         data: { rows: Array<Record<string, any>> };
       }>(ENDPOINTS.ALGO_ORDER, req);
 
@@ -770,7 +766,7 @@ export class Woo extends BaseExchange {
 
   cancelAllOrders = async () => {
     try {
-      await this.unlimitedXHR.delete(ENDPOINTS.CANCEL_ORDERS);
+      await this.xhr.delete(ENDPOINTS.CANCEL_ORDERS);
     } catch (err: any) {
       this.emitter.emit('error', err?.response?.data?.message || err?.message);
     }
@@ -779,7 +775,7 @@ export class Woo extends BaseExchange {
   cancelSymbolOrders = async (symbol: string) => {
     try {
       const wooSymbol = reverseSymbol(symbol);
-      await this.unlimitedXHR.delete(ENDPOINTS.CANCEL_SYMBOL_ORDERS, {
+      await this.xhr.delete(ENDPOINTS.CANCEL_SYMBOL_ORDERS, {
         params: { symbol: wooSymbol },
       });
     } catch (err: any) {
@@ -798,7 +794,7 @@ export class Woo extends BaseExchange {
 
     if (this.accountLeverage !== inputLeverage && !this.isDisposed) {
       try {
-        await this.unlimitedXHR.post(ENDPOINTS.LEVERAGE, { leverage });
+        await this.xhr.post(ENDPOINTS.LEVERAGE, { leverage });
         this.accountLeverage = leverage;
       } catch (err: any) {
         this.emitter.emit(
