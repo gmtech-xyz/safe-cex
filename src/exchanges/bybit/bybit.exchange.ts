@@ -349,6 +349,7 @@ export class Bybit extends BaseExchange {
     // Bybit v2 API only allows to fetch 200 candles at a time
     // so we need to split the request in multiple calls
     const totalPages = Math.ceil(requiredCandles / KLINES_LIMIT);
+    let currentStartTime = startTime;
 
     const results = await mapSeries(
       times(totalPages, (i) => i),
@@ -366,11 +367,13 @@ export class Bybit extends BaseExchange {
         const { data } = await this.xhr.get(ENDPOINTS.KLINE, {
           params: {
             symbol: opts.symbol,
-            from,
+            from: currentStartTime,
             interval,
             limit: currentLimit,
           },
         });
+
+        currentStartTime = from;
 
         return data;
       }

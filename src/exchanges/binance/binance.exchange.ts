@@ -379,14 +379,11 @@ export class Binance extends BaseExchange {
     // Default to 500
     let requiredCandles = opts.limit ?? 500;
 
-    const startTime = opts.startTime
-      ? Math.round(opts.startTime / 1000)
-      : dayjs()
-          .subtract(
-            parseFloat(amount) * requiredCandles,
-            unit as ManipulateType
-          )
-          .unix();
+    const startTime =
+      opts.startTime ??
+      dayjs()
+        .subtract(parseFloat(amount) * requiredCandles, unit as ManipulateType)
+        .unix() * 1000;
 
     // Calculate the number of candles that are going to be fetched
     if (opts.endTime) {
@@ -403,6 +400,7 @@ export class Binance extends BaseExchange {
     // Binance API only allows to fetch 1500 candles at a time
     // so we need to split the request in multiple calls
     const totalPages = Math.ceil(requiredCandles / KLINES_LIMIT);
+    let currentStartTime = startTime;
 
     const results = await mapSeries(
       times(totalPages, (i) => i),
@@ -423,10 +421,12 @@ export class Binance extends BaseExchange {
           params: {
             symbol: opts.symbol,
             interval: opts.interval,
-            startTime: from,
+            startTime: currentStartTime,
             limit: currentLimit,
           },
         });
+
+        currentStartTime = from;
 
         return data;
       }
