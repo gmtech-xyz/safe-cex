@@ -359,11 +359,6 @@ export class Bybit extends BaseExchange {
           KLINES_LIMIT
         );
 
-        const from = dayjs
-          .unix(currentStartTime)
-          .add(currentLimit * page, unit as ManipulateType)
-          .unix();
-
         const { data } = await this.xhr.get(ENDPOINTS.KLINE, {
           params: {
             symbol: opts.symbol,
@@ -373,7 +368,10 @@ export class Bybit extends BaseExchange {
           },
         });
 
-        currentStartTime = from;
+        currentStartTime = dayjs
+          .unix(currentStartTime)
+          .add(currentLimit, unit as ManipulateType)
+          .unix();
 
         return data;
       }

@@ -413,11 +413,6 @@ export class Binance extends BaseExchange {
           KLINES_LIMIT
         );
 
-        const from = dayjs
-          .unix(currentStartTime)
-          .add(currentLimit * page, unit as ManipulateType)
-          .unix();
-
         const { data } = await this.xhr.get<any[][]>(ENDPOINTS.KLINE, {
           params: {
             symbol: opts.symbol,
@@ -428,7 +423,10 @@ export class Binance extends BaseExchange {
           },
         });
 
-        currentStartTime = from;
+        currentStartTime = dayjs
+          .unix(currentStartTime)
+          .add(currentLimit, unit as ManipulateType)
+          .unix();
 
         return data;
       }
