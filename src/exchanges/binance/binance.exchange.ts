@@ -379,11 +379,14 @@ export class Binance extends BaseExchange {
     // Default to 500
     let requiredCandles = opts.limit ?? 500;
 
-    const startTime =
-      opts.startTime ??
-      dayjs()
-        .subtract(parseFloat(amount) * requiredCandles, unit as ManipulateType)
-        .unix() * 1000;
+    const startTime = opts.startTime
+      ? Math.round(opts.startTime / 1000)
+      : dayjs()
+          .subtract(
+            parseFloat(amount) * requiredCandles,
+            unit as ManipulateType
+          )
+          .unix();
 
     // Calculate the number of candles that are going to be fetched
     if (opts.endTime) {
@@ -410,18 +413,17 @@ export class Binance extends BaseExchange {
           KLINES_LIMIT
         );
 
-        // Binance startTime must be in milliseconds
-        const from =
-          dayjs
-            .unix(startTime)
-            .add(currentLimit * page, unit as ManipulateType)
-            .unix() * 1000;
+        const from = dayjs
+          .unix(currentStartTime)
+          .add(currentLimit * page, unit as ManipulateType)
+          .unix();
 
         const { data } = await this.xhr.get<any[][]>(ENDPOINTS.KLINE, {
           params: {
             symbol: opts.symbol,
             interval: opts.interval,
-            startTime: currentStartTime,
+            // Binance startTime must be in milliseconds
+            startTime: currentStartTime * 1000,
             limit: currentLimit,
           },
         });

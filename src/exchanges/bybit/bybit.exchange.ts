@@ -360,7 +360,7 @@ export class Bybit extends BaseExchange {
         );
 
         const from = dayjs
-          .unix(startTime)
+          .unix(currentStartTime)
           .add(currentLimit * page, unit as ManipulateType)
           .unix();
 
