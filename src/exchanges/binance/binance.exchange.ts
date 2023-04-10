@@ -379,17 +379,23 @@ export class Binance extends BaseExchange {
     // Default to 500
     let requiredCandles = opts.limit ?? 500;
 
-    const startTime =
-      opts.startTime ??
-      dayjs()
-        .subtract(parseFloat(amount) * requiredCandles, unit as ManipulateType)
-        .unix();
+    const startTime = opts.startTime
+      ? Math.round(opts.startTime / 1000)
+      : dayjs()
+          .subtract(
+            parseFloat(amount) * requiredCandles,
+            unit as ManipulateType
+          )
+          .unix();
 
     // Calculate the number of candles that are going to be fetched
     if (opts.endTime) {
       const diff = dayjs
         .unix(startTime)
-        .diff(dayjs.unix(opts.endTime), unit as ManipulateType);
+        .diff(
+          dayjs.unix(Math.round(opts.endTime / 1000)),
+          unit as ManipulateType
+        );
 
       requiredCandles = Math.abs(diff);
     }
@@ -399,17 +405,19 @@ export class Binance extends BaseExchange {
     const totalPages = Math.ceil(requiredCandles / KLINES_LIMIT);
 
     const results = await mapSeries(
-      times(totalPages, (i) => i + 1),
+      times(totalPages, (i) => i),
       async (page) => {
         const currentLimit = Math.min(
           requiredCandles - page * KLINES_LIMIT,
           KLINES_LIMIT
         );
 
-        const from = dayjs
-          .unix(startTime)
-          .add(currentLimit * page, unit as ManipulateType)
-          .unix();
+        // Binance startTime must be in milliseconds
+        const from =
+          dayjs
+            .unix(startTime)
+            .add(currentLimit * page, unit as ManipulateType)
+            .unix() * 1000;
 
         const { data } = await this.xhr.get<any[][]>(ENDPOINTS.KLINE, {
           params: {
@@ -495,6 +503,7 @@ export class Binance extends BaseExchange {
     const dispose = () => {
       if (this.wsPublic) {
         this.wsPublic.off('message', handleMessage);
+        this.wsPublic.close();
         this.wsPublic = undefined;
       }
     };
