@@ -169,7 +169,7 @@ export class BinancePublicWebsocket extends BaseWebSocket<Binance> {
 
       // drop events where u < lastUpdateId
       innerState.updates = innerState.updates.filter(
-        (update: any) => update.u > data.lastUpdateId
+        (update: Record<string, any>) => update.u > data.lastUpdateId
       );
 
       // apply all updates
@@ -206,7 +206,7 @@ export class BinancePublicWebsocket extends BaseWebSocket<Binance> {
 
           // more updates, but snapshot is not loaded yet
           if (!innerState.isSnapshotLoaded) {
-            innerState.updates = [...innerState.updates, data];
+            innerState.updates.push(data);
             return;
           }
 
