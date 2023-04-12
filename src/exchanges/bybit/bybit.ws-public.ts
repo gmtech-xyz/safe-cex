@@ -1,9 +1,20 @@
+import type { Candle, OHLCVOptions } from '../../types';
 import { BaseWebSocket } from '../base.ws';
 
 import type { Bybit } from './bybit.exchange';
-import { BASE_WS_URL } from './bybit.types';
+import { BASE_WS_URL, INTERVAL } from './bybit.types';
+
+type Data = Record<string, any>;
+type MessageHandlers = {
+  [topic: string]: (json: Data) => void;
+};
 
 export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
+  messageHandlers: MessageHandlers = {
+    instrument_info: (d: Data) => this.handleInstrumentInfoEvents(d),
+    pong: () => this.handlePongEvent(),
+  };
+
   connectAndSubscribe = () => {
     if (!this.parent.isDisposed) {
       this.ws = new WebSocket(
@@ -43,28 +54,31 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
 
   onMessage = ({ data }: MessageEvent) => {
     if (!this.parent.isDisposed) {
-      const json = JSON.parse(data);
+      const handlers = Object.entries(this.messageHandlers);
 
-      if (
-        json?.topic?.startsWith?.('instrument_info.100ms') &&
-        json?.data?.update?.[0]
-      ) {
-        this.handleInstrumentInfoStreamEvents(json.data.update[0]);
-      }
-
-      if (json.op === 'pong') {
-        if (this.pingTimeoutId) {
-          clearTimeout(this.pingTimeoutId);
-          this.pingTimeoutId = undefined;
+      for (const [topic, handler] of handlers) {
+        if (data.includes(`topic":"${topic}`)) {
+          handler(JSON.parse(data));
+          break;
         }
-
-        this.pingTimeoutId = setTimeout(() => this.ping(), 10_000);
       }
     }
   };
 
-  handleInstrumentInfoStreamEvents = (d: Record<string, any>) => {
-    const ticker = this.parent.store.tickers.find((t) => t.symbol === d.symbol);
+  handlePongEvent = () => {
+    if (this.pingTimeoutId) {
+      clearTimeout(this.pingTimeoutId);
+      this.pingTimeoutId = undefined;
+    }
+
+    this.pingTimeoutId = setTimeout(() => this.ping(), 10_000);
+  };
+
+  handleInstrumentInfoEvents = (json: Record<string, any>) => {
+    const d = json?.data?.update?.[0];
+    const ticker = this.parent.store.tickers.find(
+      (t) => t.symbol === d?.symbol
+    );
 
     if (ticker) {
       if (d.bid1_price) ticker.bid = parseFloat(d.bid1_price);
@@ -93,5 +107,43 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
         ticker.quoteVolume = ticker.volume * ticker.last;
       }
     }
+  };
+
+  listenOHLCV = (opts: OHLCVOptions, callback: (candle: Candle) => void) => {
+    const topic = `candle.${INTERVAL[opts.interval]}.${opts.symbol}`;
+
+    const waitForConnectedAndSubscribe = () => {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        if (!this.parent.isDisposed) {
+          this.messageHandlers[topic] = ({ data: [candle] }: Data) => {
+            callback({
+              timestamp: candle.start,
+              open: candle.open,
+              high: candle.high,
+              low: candle.low,
+              close: candle.close,
+              volume: parseFloat(candle.volume),
+            });
+          };
+
+          const payload = { op: 'subscribe', args: [topic] };
+          this.ws?.send?.(JSON.stringify(payload));
+          this.parent.log(`Switched to [${opts.symbol}:${opts.interval}]`);
+        }
+      } else {
+        setTimeout(() => waitForConnectedAndSubscribe(), 100);
+      }
+    };
+
+    waitForConnectedAndSubscribe();
+
+    return () => {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        const payload = { op: 'unsubscribe', args: [topic] };
+        this.ws?.send?.(JSON.stringify(payload));
+      }
+
+      delete this.messageHandlers[topic];
+    };
   };
 }

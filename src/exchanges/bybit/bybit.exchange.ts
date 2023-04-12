@@ -25,12 +25,10 @@ import { v } from '../../utils/get-key';
 import { inverseObj } from '../../utils/inverse-obj';
 import { loop } from '../../utils/loop';
 import { omitUndefined } from '../../utils/omit-undefined';
-import { createWebSocket } from '../../utils/universal-ws';
 import { BaseExchange } from '../base';
 
 import { createAPI } from './bybit.api';
 import {
-  BASE_WS_URL,
   ENDPOINTS,
   INTERVAL,
   ORDER_SIDE,
@@ -364,80 +362,7 @@ export class Bybit extends BaseExchange {
   };
 
   listenOHLCV = (opts: OHLCVOptions, callback: (candle: Candle) => void) => {
-    // subscribe to the kline topic
-    const topic = `candle.${INTERVAL[opts.interval]}.${opts.symbol}`;
-    const subscribe = () => {
-      if (!this.isDisposed) {
-        const payload = { op: 'subscribe', args: [topic] };
-        this.wsPublic?.send?.(JSON.stringify(payload));
-        this.log(`Switched to [${opts.symbol}:${opts.interval}]`);
-      }
-    };
-
-    // ping the server to keep the connection alive
-    const ping = () => {
-      if (!this.isDisposed) {
-        const pong = () => {
-          if (!this.isDisposed) {
-            setTimeout(() => ping(), 10_000);
-          }
-        };
-
-        this.wsPublic?.ping?.(pong);
-      }
-    };
-
-    const handleMessage = ({ data }: MessageEvent) => {
-      const json = JSON.parse(data);
-
-      if (!this.isDisposed && json.topic === topic) {
-        const [bybitCandle] = json.data;
-        const candle: Candle = {
-          timestamp: bybitCandle.start,
-          open: bybitCandle.open,
-          high: bybitCandle.high,
-          low: bybitCandle.low,
-          close: bybitCandle.close,
-          volume: parseFloat(bybitCandle.volume),
-        };
-
-        callback(candle);
-      }
-    };
-
-    const connect = () => {
-      if (!this.isDisposed) {
-        if (this.wsPublic) {
-          this.wsPublic.off('close', this.onWSPublicClose);
-          this.wsPublic.close();
-        }
-
-        this.wsPublic = createWebSocket(
-          BASE_WS_URL.public[this.options.testnet ? 'testnet' : 'livenet']
-        );
-
-        this.wsPublic.on('open', () => {
-          ping();
-          subscribe();
-        });
-
-        this.wsPublic.on('message', handleMessage);
-      }
-    };
-
-    // dispose function to be called
-    // when we don't need this kline anymore
-    const dispose = () => {
-      if (this.wsPublic) {
-        this.wsPublic.off('message', handleMessage);
-        this.wsPublic.close();
-        this.wsPublic = undefined;
-      }
-    };
-
-    connect();
-
-    return dispose;
+    return this.publicWebsocket.listenOHLCV(opts, callback);
   };
 
   placeOrder = async (opts: PlaceOrderOpts) => {
