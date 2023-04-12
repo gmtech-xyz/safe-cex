@@ -1,6 +1,5 @@
 import type { Axios } from 'axios';
 import rateLimit from 'axios-rate-limit';
-import BigNumber from 'bignumber.js';
 import { sumBy, times } from 'lodash';
 import { forEachSeries, mapSeries } from 'p-iteration';
 
@@ -17,11 +16,11 @@ import type {
   UpdateOrderOpts,
 } from '../../types';
 import { OrderSide, OrderType, OrderStatus, PositionSide } from '../../types';
-import { adjust } from '../../utils/adjust';
 import { v } from '../../utils/get-key';
 import { inverseObj } from '../../utils/inverse-obj';
 import { loop } from '../../utils/loop';
 import { omitUndefined } from '../../utils/omit-undefined';
+import { adjust, subtract } from '../../utils/safe-math';
 import { BaseExchange } from '../base';
 
 import { createAPI } from './woo.api';
@@ -414,7 +413,7 @@ export class Woo extends BaseExchange {
       amount: o.quantity,
       reduceOnly: v(o, 'reduce_only'),
       filled: o.executed,
-      remaining: new BigNumber(o.quantity).minus(o.executed).toNumber(),
+      remaining: subtract(o.quantity, o.executed),
     };
 
     return order;
@@ -458,9 +457,7 @@ export class Woo extends BaseExchange {
         const filled = v(co, 'totalExecutedQuantity');
         const price =
           v(co, 'triggerPrice') ||
-          new BigNumber(v(co, 'extremePrice'))
-            .minus(v(co, 'callbackValue'))
-            .toNumber();
+          subtract(v(co, 'extremePrice'), v(co, 'callbackValue'));
 
         return {
           id: `${v(co, 'algoOrderId')}`,
@@ -473,7 +470,7 @@ export class Woo extends BaseExchange {
           amount: co.quantity,
           reduceOnly: v(co, 'reduceOnly'),
           filled,
-          remaining: new BigNumber(co.quantity).minus(filled).toNumber(),
+          remaining: subtract(co.quantity, filled),
         };
       });
 

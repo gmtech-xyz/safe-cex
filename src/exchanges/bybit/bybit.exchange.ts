@@ -1,7 +1,6 @@
 /* eslint-disable complexity */
 import type { Axios } from 'axios';
 import rateLimit from 'axios-rate-limit';
-import BigNumber from 'bignumber.js';
 import type { ManipulateType } from 'dayjs';
 import dayjs from 'dayjs';
 import { omit, orderBy, times, uniqBy } from 'lodash';
@@ -21,11 +20,11 @@ import type {
   OrderBook,
 } from '../../types';
 import { OrderTimeInForce, OrderType, OrderSide } from '../../types';
-import { adjust } from '../../utils/adjust';
 import { v } from '../../utils/get-key';
 import { inverseObj } from '../../utils/inverse-obj';
 import { loop } from '../../utils/loop';
 import { omitUndefined } from '../../utils/omit-undefined';
+import { adjust, subtract } from '../../utils/safe-math';
 import { BaseExchange } from '../base';
 
 import { createAPI } from './bybit.api';
@@ -710,9 +709,7 @@ export class Bybit extends BaseExchange {
         amount: parseFloat(o.qty ?? 0),
         filled: parseFloat(v(o, 'cumExecQty') ?? 0),
         reduceOnly: v(o, 'reduceOnly') || false,
-        remaining: new BigNumber(o.qty ?? 0)
-          .minus(v(o, 'cumExecQty') ?? 0)
-          .toNumber(),
+        remaining: subtract(o.qty ?? 0, v(o, 'cumExecQty') ?? 0),
       },
     ];
 

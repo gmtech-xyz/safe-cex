@@ -1,6 +1,5 @@
 import type { Axios } from 'axios';
 import rateLimit from 'axios-rate-limit';
-import BigNumber from 'bignumber.js';
 import { chunk, groupBy, omit, times } from 'lodash';
 import { forEachSeries } from 'p-iteration';
 import { v4 } from 'uuid';
@@ -25,11 +24,11 @@ import {
   OrderStatus,
   OrderType,
 } from '../../types';
-import { adjust } from '../../utils/adjust';
 import { v } from '../../utils/get-key';
 import { inverseObj } from '../../utils/inverse-obj';
 import { loop } from '../../utils/loop';
 import { omitUndefined } from '../../utils/omit-undefined';
+import { adjust, subtract } from '../../utils/safe-math';
 import { BaseExchange } from '../base';
 
 import { createAPI } from './binance.api';
@@ -358,9 +357,7 @@ export class Binance extends BaseExchange {
         amount: parseFloat(v(o, 'origQty')),
         reduceOnly: v(o, 'reduceOnly') || false,
         filled: parseFloat(v(o, 'executedQty')),
-        remaining: new BigNumber(v(o, 'origQty'))
-          .minus(v(o, 'executedQty'))
-          .toNumber(),
+        remaining: subtract(v(o, 'origQty'), v(o, 'executedQty')),
       };
 
       return order;
