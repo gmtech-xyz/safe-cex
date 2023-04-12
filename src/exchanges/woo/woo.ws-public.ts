@@ -1,10 +1,24 @@
+import type { OHLCVOptions, Candle } from '../../types';
 import { BaseWebSocket } from '../base.ws';
 
 import type { Woo } from './woo.exchange';
 import { BASE_WS_URL } from './woo.types';
-import { normalizeSymbol } from './woo.utils';
+import { normalizeSymbol, reverseSymbol } from './woo.utils';
+
+type Data = Record<string, any>;
+type MessageHandlers = {
+  [topic: string]: (json: Data) => void;
+};
 
 export class WooPublicWebsocket extends BaseWebSocket<Woo> {
+  messageHandlers: MessageHandlers = {
+    ping: () => this.handlePingEvent(),
+    pong: () => this.handlePongEvent(),
+    tickers: ({ data }: Data) => this.handleTickersStreamEvents(data),
+    bbos: ({ data }: Data) => this.handleBBOStreamEvents(data),
+    markprices: ({ data }: Data) => this.handleMarkPricesStreamEvents(data),
+  };
+
   connectAndSubscribe = () => {
     if (!this.parent.isDisposed) {
       const baseURL =
@@ -31,34 +45,16 @@ export class WooPublicWebsocket extends BaseWebSocket<Woo> {
 
   onMessage = ({ data }: MessageEvent) => {
     if (!this.parent.isDisposed) {
-      const json = JSON.parse(data);
+      const handlers = Object.entries(this.messageHandlers);
 
-      if (json.event === 'ping') {
-        this.ws?.send?.(JSON.stringify({ event: 'pong' }));
-      }
-
-      if (json.event === 'pong') {
-        const diff = performance.now() - this.pingAt;
-        this.parent.store.latency = Math.round(diff / 2);
-
-        if (this.pingTimeoutId) {
-          clearTimeout(this.pingTimeoutId);
-          this.pingTimeoutId = undefined;
+      for (const [topic, handler] of handlers) {
+        if (
+          data.includes(`event":"${topic}`) ||
+          data.includes(`topic":"${topic}`)
+        ) {
+          handler(JSON.parse(data));
+          break;
         }
-
-        this.pingTimeoutId = setTimeout(() => this.ping(), 10_000);
-      }
-
-      if (json.topic === 'tickers') {
-        this.handleTickersStreamEvents(json.data);
-      }
-
-      if (json.topic === 'bbos') {
-        this.handleBBOStreamEvents(json.data);
-      }
-
-      if (json.topic === 'markprices') {
-        this.handleMarkPricesStreamEvents(json.data);
       }
     }
   };
@@ -68,6 +64,22 @@ export class WooPublicWebsocket extends BaseWebSocket<Woo> {
       this.pingAt = performance.now();
       this.ws?.send?.(JSON.stringify({ event: 'ping' }));
     }
+  };
+
+  handlePongEvent = () => {
+    const diff = performance.now() - this.pingAt;
+    this.parent.store.latency = Math.round(diff / 2);
+
+    if (this.pingTimeoutId) {
+      clearTimeout(this.pingTimeoutId);
+      this.pingTimeoutId = undefined;
+    }
+
+    this.pingTimeoutId = setTimeout(() => this.ping(), 10_000);
+  };
+
+  handlePingEvent = () => {
+    this.ws?.send?.(JSON.stringify({ event: 'pong' }));
   };
 
   handleTickersStreamEvents = (data: Array<Record<string, any>>) => {
@@ -116,5 +128,42 @@ export class WooPublicWebsocket extends BaseWebSocket<Woo> {
         }
       }
     });
+  };
+
+  listenOHLCV = (opts: OHLCVOptions, callback: (candle: Candle) => void) => {
+    const topic = `${reverseSymbol(opts.symbol)}@kline_${opts.interval}`;
+
+    const waitForConnectedAndSubscribe = () => {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        if (!this.parent.isDisposed) {
+          this.messageHandlers[topic] = (json: Data) => {
+            callback({
+              timestamp: json.data.startTime / 1000,
+              open: json.data.open,
+              high: json.data.high,
+              low: json.data.low,
+              close: json.data.close,
+              volume: json.data.volume,
+            });
+          };
+
+          const payload = { event: 'subscribe', topic };
+          this.ws?.send?.(JSON.stringify(payload));
+        }
+      } else {
+        setTimeout(() => waitForConnectedAndSubscribe(), 100);
+      }
+    };
+
+    waitForConnectedAndSubscribe();
+
+    return () => {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        const payload = { event: 'unsubscribe', topic };
+        this.ws?.send?.(JSON.stringify(payload));
+      }
+
+      delete this.messageHandlers[topic];
+    };
   };
 }
