@@ -1,4 +1,4 @@
-import { proxy, snapshot, subscribe } from '@iam4x/valtio/dist/vanilla';
+import { snapshot, subscribe } from '@iam4x/valtio/dist/vanilla';
 import { uniq } from 'lodash';
 import { forEachSeries, mapSeries } from 'p-iteration';
 import Emitter from 'tiny-emitter';
@@ -38,11 +38,8 @@ export interface Exchange {
   cancelSymbolOrders: (symbol: string) => Promise<void>;
   cancelAllOrders: () => Promise<void>;
   fetchOHLCV: (opts: OHLCVOptions) => Promise<Candle[]>;
-  listenOHLCV: (o: OHLCVOptions, c: (c: Candle) => any) => () => void;
-  listenOrderBook: (s: string) => {
-    orderBook: ReturnType<typeof proxy<OrderBook>>;
-    dispose: () => void;
-  };
+  listenOHLCV: (o: OHLCVOptions, c: (c: Candle) => void) => () => void;
+  listenOrderBook: (s: string, c: (o: OrderBook) => void) => () => void;
 }
 
 export class BaseExchange implements Exchange {
@@ -137,15 +134,15 @@ export class BaseExchange implements Exchange {
     return await Promise.resolve([] as Candle[]);
   };
 
-  listenOHLCV = (_opts: OHLCVOptions, _callback: (candle: Candle) => any) => {
+  listenOHLCV = (_opts: OHLCVOptions, _callback: (candle: Candle) => void) => {
     return () => {};
   };
 
-  listenOrderBook = (_symbol: string) => {
-    return {
-      orderBook: proxy<OrderBook>({ bids: [], asks: [] }),
-      dispose: () => {},
-    };
+  listenOrderBook = (
+    _symbol: string,
+    _callback: (orderBook: OrderBook) => void
+  ) => {
+    return () => {};
   };
 
   nuke = async () => {

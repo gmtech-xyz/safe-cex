@@ -1,4 +1,3 @@
-import { proxy } from '@iam4x/valtio/dist/vanilla';
 import BigNumber from 'bignumber.js';
 import { flatten } from 'lodash';
 
@@ -160,13 +159,16 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
     };
   };
 
-  listenOrderBook = (symbol: string) => {
+  listenOrderBook = (
+    symbol: string,
+    callback: (orderBook: OrderBook) => void
+  ) => {
     const topic = `orderBook_200.100ms.${symbol}`;
 
-    const orderBook: OrderBook = proxy({
+    const orderBook: OrderBook = {
       bids: [],
       asks: [],
-    });
+    };
 
     const waitForConnectedAndSubscribe = () => {
       if (this.isConnected) {
@@ -238,6 +240,8 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
                       .plus(orderBook.bids[idx - 1].total)
                       .toNumber();
             });
+
+            callback(orderBook);
           };
 
           const payload = { op: 'subscribe', args: [topic] };
@@ -253,7 +257,7 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
 
     waitForConnectedAndSubscribe();
 
-    const dispose = () => {
+    return () => {
       if (this.isConnected) {
         const payload = { op: 'unsubscribe', args: [topic] };
         this.ws?.send?.(JSON.stringify(payload));
@@ -264,11 +268,6 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
 
       orderBook.asks = [];
       orderBook.bids = [];
-    };
-
-    return {
-      orderBook,
-      dispose,
     };
   };
 }

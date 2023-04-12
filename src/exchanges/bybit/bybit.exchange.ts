@@ -18,6 +18,7 @@ import type {
   PlaceOrderOpts,
   OHLCVOptions,
   UpdateOrderOpts,
+  OrderBook,
 } from '../../types';
 import { OrderTimeInForce, OrderType, OrderSide } from '../../types';
 import { adjust } from '../../utils/adjust';
@@ -365,8 +366,11 @@ export class Bybit extends BaseExchange {
     return this.publicWebsocket.listenOHLCV(opts, callback);
   };
 
-  listenOrderBook = (symbol: string) => {
-    return this.publicWebsocket.listenOrderBook(symbol);
+  listenOrderBook = (
+    symbol: string,
+    callback: (orderBook: OrderBook) => void
+  ) => {
+    return this.publicWebsocket.listenOrderBook(symbol, callback);
   };
 
   placeOrder = async (opts: PlaceOrderOpts) => {
