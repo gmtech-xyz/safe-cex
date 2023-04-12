@@ -1,5 +1,6 @@
 import { proxy } from '@iam4x/valtio/dist/vanilla';
 import BigNumber from 'bignumber.js';
+import { flatten } from 'lodash';
 
 import type { Candle, OHLCVOptions, OrderBook } from '../../types';
 import { BaseWebSocket } from '../base.ws';
@@ -12,7 +13,12 @@ type MessageHandlers = {
   [topic: string]: (json: Data) => void;
 };
 
+type SubscribedTopics = {
+  [id: string]: string[] | string;
+};
+
 export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
+  topics: SubscribedTopics = {};
   messageHandlers: MessageHandlers = {
     instrument_info: (d: Data) => this.handleInstrumentInfoEvents(d),
     pong: () => this.handlePongEvent(),
@@ -20,6 +26,11 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
 
   connectAndSubscribe = () => {
     if (!this.isDisposed) {
+      // add instrument_info topics to subscribe on
+      this.topics.instrumentInfos = this.parent.store.markets.map(
+        (m) => `instrument_info.100ms.${m.symbol}`
+      );
+
       this.ws = new WebSocket(
         BASE_WS_URL.public[this.parent.options.testnet ? 'testnet' : 'livenet']
       );
@@ -45,13 +56,8 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
   };
 
   subscribe = () => {
-    const payload = {
-      op: 'subscribe',
-      args: this.parent.store.markets.map(
-        (m) => `instrument_info.100ms.${m.symbol}`
-      ),
-    };
-
+    const topics = flatten(Object.values(this.topics));
+    const payload = { op: 'subscribe', args: topics };
     this.ws?.send?.(JSON.stringify(payload));
   };
 
@@ -132,6 +138,9 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
           const payload = { op: 'subscribe', args: [topic] };
           this.ws?.send?.(JSON.stringify(payload));
           this.parent.log(`Switched to [${opts.symbol}:${opts.interval}]`);
+
+          // store subscribed topic to re-subscribe on reconnect
+          this.topics.ohlcv = topic;
         }
       } else {
         setTimeout(() => waitForConnectedAndSubscribe(), 100);
@@ -147,6 +156,7 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
       }
 
       delete this.messageHandlers[topic];
+      delete this.topics.ohlcv;
     };
   };
 
@@ -232,6 +242,9 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
 
           const payload = { op: 'subscribe', args: [topic] };
           this.ws?.send?.(JSON.stringify(payload));
+
+          // store subscribed topic to re-subscribe on reconnect
+          this.topics.orderBook = topic;
         }
       } else {
         setTimeout(() => waitForConnectedAndSubscribe(), 100);
@@ -247,6 +260,8 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
       }
 
       delete this.messageHandlers[topic];
+      delete this.topics.orderBook;
+
       orderBook.asks = [];
       orderBook.bids = [];
     };
