@@ -14,7 +14,6 @@ import type {
   UpdateOrderOpts,
 } from '../types';
 import { LogSeverity, OrderSide, OrderType } from '../types';
-import type { createWebSocket } from '../utils/universal-ws';
 
 export interface Exchange {
   store: Store;
@@ -51,8 +50,6 @@ export class BaseExchange implements Exchange {
 
   isDisposed: boolean = false;
   isNuking: boolean = false;
-
-  wsPublic?: ReturnType<typeof createWebSocket>;
 
   on: Emitter.TinyEmitter['on'];
   once: Emitter.TinyEmitter['once'];
@@ -200,11 +197,5 @@ export class BaseExchange implements Exchange {
     this.store.tickers = [];
     this.store.balance = { ...defaultStore.balance };
     this.store.loaded = { ...defaultStore.loaded };
-
-    if (this.wsPublic) {
-      this.wsPublic.off('close', this.onWSPublicClose);
-      this.wsPublic.close();
-      this.wsPublic = undefined;
-    }
   }
 }
