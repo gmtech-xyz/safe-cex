@@ -230,6 +230,34 @@ const dispose = exchange.listenOHLCV(
 dispose();
 ```
 
+### `listenOrderBook()`
+
+- Subscribe to exchange symbol orderbook
+- Takes a `callback()` function to be called when order book has been updated
+- Returns a `dispose()` function to un-subscribe weboscket topic
+
+```ts
+type OrderBookOrders = {
+  price: number;
+  amount: number;
+  total: number;
+};
+
+type OrderBook = {
+  bids: OrderBookOrders[];
+  asks: OrderBookOrders[];
+};
+
+const callback = (orderBook: OrderBook) => {
+  console.log(JSON.stringify(orderBook, null, 4));
+};
+
+const dispose = exchange.listenOrderBook("BTCUSDT", callback);
+
+// when finished
+dispose();
+```
+
 ### `placeOrder()`
 
 - Method to create an order on exchange
