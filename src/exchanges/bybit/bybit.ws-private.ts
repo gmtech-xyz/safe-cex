@@ -9,7 +9,7 @@ import { BASE_WS_URL } from './bybit.types';
 
 export class BybitPrivateWebsocket extends BaseWebSocket<Bybit> {
   connectAndSubscribe = () => {
-    if (!this.parent.isDisposed) {
+    if (!this.isDisposed) {
       this.ws = new WebSocket(
         BASE_WS_URL.private[this.parent.options.testnet ? 'testnet' : 'livenet']
       );
@@ -21,7 +21,7 @@ export class BybitPrivateWebsocket extends BaseWebSocket<Bybit> {
   };
 
   onOpen = () => {
-    if (!this.parent.isDisposed) {
+    if (!this.isDisposed) {
       this.auth();
       this.subscribe();
       this.ping();
@@ -29,7 +29,7 @@ export class BybitPrivateWebsocket extends BaseWebSocket<Bybit> {
   };
 
   onMessage = ({ data }: MessageEvent) => {
-    if (!this.parent.isDisposed) {
+    if (!this.isDisposed) {
       const json = JSON.parse(data);
 
       if (json.topic === 'user.order.contractAccount') {
@@ -55,7 +55,7 @@ export class BybitPrivateWebsocket extends BaseWebSocket<Bybit> {
   };
 
   ping = () => {
-    if (!this.parent.isDisposed) {
+    if (!this.isDisposed) {
       this.pingAt = performance.now();
       this.ws?.send?.(JSON.stringify({ op: 'ping' }));
     }

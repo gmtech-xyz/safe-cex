@@ -18,7 +18,7 @@ export class BinancePublicWebsocket extends BaseWebSocket<Binance> {
   };
 
   connectAndSubscribe = () => {
-    if (!this.parent.isDisposed) {
+    if (!this.isDisposed) {
       this.ws = new WebSocket(
         BASE_WS_URL.public[this.parent.options.testnet ? 'testnet' : 'livenet']
       );
@@ -30,7 +30,7 @@ export class BinancePublicWebsocket extends BaseWebSocket<Binance> {
   };
 
   onOpen = () => {
-    if (!this.parent.isDisposed) {
+    if (!this.isDisposed) {
       const payload = {
         method: 'SUBSCRIBE',
         params: ['!ticker@arr', '!bookTicker', '!markPrice@arr@1s'],
@@ -41,7 +41,7 @@ export class BinancePublicWebsocket extends BaseWebSocket<Binance> {
   };
 
   onMessage = ({ data }: MessageEvent) => {
-    if (!this.parent.isDisposed) {
+    if (!this.isDisposed) {
       const handlers = Object.entries(this.messageHandlers);
 
       for (const [topic, handler] of handlers) {
@@ -100,7 +100,7 @@ export class BinancePublicWebsocket extends BaseWebSocket<Binance> {
     const topic = `${opts.symbol.toLowerCase()}@kline_${opts.interval}`;
 
     const waitForConnectedAndSubscribe = () => {
-      if (this.ws?.readyState === WebSocket.OPEN) {
+      if (this.isConnected) {
         this.messageHandlers.kline = ([json]: Data) => {
           callback({
             timestamp: json.k.t / 1000,
@@ -123,7 +123,7 @@ export class BinancePublicWebsocket extends BaseWebSocket<Binance> {
     waitForConnectedAndSubscribe();
 
     return () => {
-      if (this.ws?.readyState === WebSocket.OPEN) {
+      if (this.isConnected) {
         const payload = { method: 'UNSUBSCRIBE', params: [topic], id: 1 };
         this.ws?.send?.(JSON.stringify(payload));
       }

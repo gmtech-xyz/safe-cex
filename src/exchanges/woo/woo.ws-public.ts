@@ -20,7 +20,7 @@ export class WooPublicWebsocket extends BaseWebSocket<Woo> {
   };
 
   connectAndSubscribe = () => {
-    if (!this.parent.isDisposed) {
+    if (!this.isDisposed) {
       const baseURL =
         BASE_WS_URL.public[this.parent.options.testnet ? 'testnet' : 'livenet'];
 
@@ -33,7 +33,7 @@ export class WooPublicWebsocket extends BaseWebSocket<Woo> {
   };
 
   onOpen = () => {
-    if (!this.parent.isDisposed) {
+    if (!this.isDisposed) {
       this.ping();
       this.ws?.send?.(JSON.stringify({ event: 'subscribe', topic: 'tickers' }));
       this.ws?.send?.(JSON.stringify({ event: 'subscribe', topic: 'bbos' }));
@@ -44,7 +44,7 @@ export class WooPublicWebsocket extends BaseWebSocket<Woo> {
   };
 
   onMessage = ({ data }: MessageEvent) => {
-    if (!this.parent.isDisposed) {
+    if (!this.isDisposed) {
       const handlers = Object.entries(this.messageHandlers);
 
       for (const [topic, handler] of handlers) {
@@ -60,7 +60,7 @@ export class WooPublicWebsocket extends BaseWebSocket<Woo> {
   };
 
   ping = () => {
-    if (!this.parent.isDisposed) {
+    if (!this.isDisposed) {
       this.pingAt = performance.now();
       this.ws?.send?.(JSON.stringify({ event: 'ping' }));
     }
@@ -134,8 +134,8 @@ export class WooPublicWebsocket extends BaseWebSocket<Woo> {
     const topic = `${reverseSymbol(opts.symbol)}@kline_${opts.interval}`;
 
     const waitForConnectedAndSubscribe = () => {
-      if (this.ws?.readyState === WebSocket.OPEN) {
-        if (!this.parent.isDisposed) {
+      if (this.isConnected) {
+        if (!this.isDisposed) {
           this.messageHandlers[topic] = (json: Data) => {
             callback({
               timestamp: json.data.startTime / 1000,
@@ -158,7 +158,7 @@ export class WooPublicWebsocket extends BaseWebSocket<Woo> {
     waitForConnectedAndSubscribe();
 
     return () => {
-      if (this.ws?.readyState === WebSocket.OPEN) {
+      if (this.isConnected) {
         const payload = { event: 'unsubscribe', topic };
         this.ws?.send?.(JSON.stringify(payload));
       }

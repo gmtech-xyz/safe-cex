@@ -10,7 +10,7 @@ import { normalizeSymbol } from './woo.utils';
 
 export class WooPrivateWebscoket extends BaseWebSocket<Woo> {
   connectAndSubscribe = () => {
-    if (!this.parent.isDisposed) {
+    if (!this.isDisposed) {
       const baseURL =
         BASE_WS_URL.private[
           this.parent.options.testnet ? 'testnet' : 'livenet'
@@ -25,7 +25,7 @@ export class WooPrivateWebscoket extends BaseWebSocket<Woo> {
   };
 
   onOpen = () => {
-    if (!this.parent.isDisposed) {
+    if (!this.isDisposed) {
       const timestamp = virtualClock.getCurrentTime();
       const signature = createHmac('sha256', this.parent.options.secret)
         .update(`|${timestamp}`)
@@ -45,7 +45,7 @@ export class WooPrivateWebscoket extends BaseWebSocket<Woo> {
   };
 
   subscribe = () => {
-    if (!this.parent.isDisposed) {
+    if (!this.isDisposed) {
       this.ws?.send(
         JSON.stringify({ topic: 'executionreport', event: 'subscribe' })
       );
@@ -56,7 +56,7 @@ export class WooPrivateWebscoket extends BaseWebSocket<Woo> {
   };
 
   onMessage = ({ data }: MessageEvent) => {
-    if (!this.parent.isDisposed) {
+    if (!this.isDisposed) {
       const json = JSON.parse(data);
 
       if (json.event === 'ping') {

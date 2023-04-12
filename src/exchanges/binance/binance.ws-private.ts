@@ -12,7 +12,7 @@ import {
 
 export class BinancePrivateWebsocket extends BaseWebSocket<Binance> {
   connectAndSubscribe = async () => {
-    if (!this.parent.isDisposed) {
+    if (!this.isDisposed) {
       const listenKey = await this.fetchListenKey();
 
       const key = this.parent.options.testnet ? 'testnet' : 'livenet';
@@ -30,13 +30,13 @@ export class BinancePrivateWebsocket extends BaseWebSocket<Binance> {
   };
 
   onOpen = () => {
-    if (!this.parent.isDisposed) {
+    if (!this.isDisposed) {
       this.ping();
     }
   };
 
   onMessage = ({ data }: MessageEvent) => {
-    if (!this.parent.isDisposed) {
+    if (!this.isDisposed) {
       const json = JSON.parse(data);
 
       if (json.e === 'ACCOUNT_UPDATE') this.handleAccountEvents([json]);
@@ -57,7 +57,7 @@ export class BinancePrivateWebsocket extends BaseWebSocket<Binance> {
   };
 
   ping = () => {
-    if (!this.parent.isDisposed) {
+    if (!this.isDisposed) {
       this.pingAt = performance.now();
       this.ws?.send?.(JSON.stringify({ id: 42, method: 'LIST_SUBSCRIPTIONS' }));
     }
@@ -126,7 +126,7 @@ export class BinancePrivateWebsocket extends BaseWebSocket<Binance> {
   };
 
   private updateListenKey = async () => {
-    if (!this.parent.isDisposed) {
+    if (!this.isDisposed) {
       await this.parent.xhr.put(ENDPOINTS.LISTEN_KEY);
       setTimeout(() => this.updateListenKey(), 30 * 60 * 1000);
     }
