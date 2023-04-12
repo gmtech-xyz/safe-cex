@@ -158,12 +158,12 @@ export class WooPublicWebsocket extends BaseWebSocket<Woo> {
     waitForConnectedAndSubscribe();
 
     return () => {
+      delete this.messageHandlers[topic];
+
       if (this.isConnected) {
         const payload = { event: 'unsubscribe', topic };
         this.ws?.send?.(JSON.stringify(payload));
       }
-
-      delete this.messageHandlers[topic];
     };
   };
 }

@@ -124,12 +124,12 @@ export class BinancePublicWebsocket extends BaseWebSocket<Binance> {
     waitForConnectedAndSubscribe();
 
     return () => {
+      delete this.messageHandlers.kline;
+
       if (this.isConnected) {
         const payload = { method: 'UNSUBSCRIBE', params: [topic], id: 1 };
         this.ws?.send?.(JSON.stringify(payload));
       }
-
-      delete this.messageHandlers.kline;
     };
   };
 

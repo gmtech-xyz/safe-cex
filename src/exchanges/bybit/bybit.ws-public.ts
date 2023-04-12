@@ -149,13 +149,13 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
     waitForConnectedAndSubscribe();
 
     return () => {
+      delete this.messageHandlers[topic];
+      delete this.topics.ohlcv;
+
       if (this.isConnected) {
         const payload = { op: 'unsubscribe', args: [topic] };
         this.ws?.send?.(JSON.stringify(payload));
       }
-
-      delete this.messageHandlers[topic];
-      delete this.topics.ohlcv;
     };
   };
 
