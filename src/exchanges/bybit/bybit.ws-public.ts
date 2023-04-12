@@ -1,7 +1,7 @@
-import BigNumber from 'bignumber.js';
 import { flatten } from 'lodash';
 
 import type { Candle, OHLCVOptions, OrderBook } from '../../types';
+import { calcOrderBookTotal, sortOrderBook } from '../../utils/orderbook';
 import { BaseWebSocket } from '../base.ws';
 
 import type { Bybit } from './bybit.exchange';
@@ -220,26 +220,8 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
               });
             }
 
-            orderBook.asks.sort((a, b) => a.price - b.price);
-            orderBook.bids.sort((a, b) => b.price - a.price);
-
-            orderBook.asks.forEach((ask, idx) => {
-              orderBook.asks[idx].total =
-                idx === 0
-                  ? ask.amount
-                  : new BigNumber(ask.amount)
-                      .plus(orderBook.asks[idx - 1].total)
-                      .toNumber();
-            });
-
-            orderBook.bids.forEach((ask, idx) => {
-              orderBook.bids[idx].total =
-                idx === 0
-                  ? ask.amount
-                  : new BigNumber(ask.amount)
-                      .plus(orderBook.bids[idx - 1].total)
-                      .toNumber();
-            });
+            sortOrderBook(orderBook);
+            calcOrderBookTotal(orderBook);
 
             callback(orderBook);
           };
@@ -258,16 +240,15 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
     waitForConnectedAndSubscribe();
 
     return () => {
+      delete this.messageHandlers[topic];
+      delete this.topics.orderBook;
+      orderBook.asks = [];
+      orderBook.bids = [];
+
       if (this.isConnected) {
         const payload = { op: 'unsubscribe', args: [topic] };
         this.ws?.send?.(JSON.stringify(payload));
       }
-
-      delete this.messageHandlers[topic];
-      delete this.topics.orderBook;
-
-      orderBook.asks = [];
-      orderBook.bids = [];
     };
   };
 }
