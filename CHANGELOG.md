@@ -1,4 +1,4 @@
-## [2.2.5](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v2.2.5) (2023-04-06)
+# [2.3.0](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v2.3.0) (2023-04-12)
 
 
 ### Bug Fixes
@@ -7,6 +7,15 @@
 * **woo:** apply rate limitter on every calls ([70095bd](https://github.com/gmtech-xyz/safe-cex/commit/70095bd2900a7f2e91b509acca39d7bd2d2e6f5f))
 * **woo:** balance calculation ([897891c](https://github.com/gmtech-xyz/safe-cex/commit/897891cf7cc35de21de66b2a3828b3c82cbad360))
 * **woo:** use `brokerId` for V3 API Endpoint ([b9e1c23](https://github.com/gmtech-xyz/safe-cex/commit/b9e1c233df8a504fa19ae974936706b5715b88ae))
+* **ws:** delete handler asap ([514c699](https://github.com/gmtech-xyz/safe-cex/commit/514c699a512c722f05bdb8b4fa2e7f093c457631))
+
+
+### Features
+
+* **binance:** add `listenOrderBook` ([1779ae9](https://github.com/gmtech-xyz/safe-cex/commit/1779ae917e46cf5a72194cca4ff8cbbae3867943))
+* **bybit-ws-public:** re-subscribe topics on disconnect ([e56a138](https://github.com/gmtech-xyz/safe-cex/commit/e56a1389bd4d5ffe749cdb6555962cdbd769bb12))
+* **bybit:** add `listenOrderBook` ([db314bf](https://github.com/gmtech-xyz/safe-cex/commit/db314bf0bc0ca2c735acc874cee48295dfe6bc65))
+* **woo:** add listenOrderBook ([4c1c216](https://github.com/gmtech-xyz/safe-cex/commit/4c1c2160bfc217be0f304d3494e50cfe50a1a4e0))
 
 
 ### Reverts
