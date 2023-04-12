@@ -39,6 +39,7 @@ export const ENDPOINTS = {
   BATCH_ORDERS: '/fapi/v1/batchOrders',
   KLINE: '/fapi/v1/klines',
   LISTEN_KEY: '/fapi/v1/listenKey',
+  ORDERBOOK: '/fapi/v1/depth',
 };
 
 export const ORDER_TYPE: Record<string, OrderType> = {
