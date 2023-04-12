@@ -29,12 +29,10 @@ import { v } from '../../utils/get-key';
 import { inverseObj } from '../../utils/inverse-obj';
 import { loop } from '../../utils/loop';
 import { omitUndefined } from '../../utils/omit-undefined';
-import { createWebSocket } from '../../utils/universal-ws';
 import { BaseExchange } from '../base';
 
 import { createAPI } from './binance.api';
 import {
-  BASE_WS_URL,
   ORDER_TYPE,
   ORDER_SIDE,
   POSITION_SIDE,
@@ -396,61 +394,7 @@ export class Binance extends BaseExchange {
   };
 
   listenOHLCV = (opts: OHLCVOptions, callback: (candle: Candle) => void) => {
-    const subscribe = () => {
-      if (!this.isDisposed) {
-        const topic = `${opts.symbol.toLowerCase()}@kline_${opts.interval}`;
-        const payload = { method: 'SUBSCRIBE', params: [topic], id: 1 };
-        this.wsPublic?.send?.(JSON.stringify(payload));
-        this.log(`Switched to [${opts.symbol}:${opts.interval}]`);
-      }
-    };
-
-    const handleMessage = ({ data }: MessageEvent) => {
-      if (!this.isDisposed) {
-        const json = JSON.parse(data);
-
-        if (json.s === opts.symbol && json.e === 'kline') {
-          const candle: Candle = {
-            timestamp: json.k.t / 1000,
-            open: parseFloat(json.k.o),
-            high: parseFloat(json.k.h),
-            low: parseFloat(json.k.l),
-            close: parseFloat(json.k.c),
-            volume: parseFloat(json.k.v),
-          };
-
-          callback(candle);
-        }
-      }
-    };
-
-    const connect = () => {
-      if (!this.isDisposed) {
-        if (this.wsPublic) {
-          this.wsPublic.close();
-          this.wsPublic = undefined;
-        }
-
-        this.wsPublic = createWebSocket(
-          BASE_WS_URL.public[this.options.testnet ? 'testnet' : 'livenet']
-        );
-
-        this.wsPublic.on('open', () => subscribe());
-        this.wsPublic.on('message', handleMessage);
-      }
-    };
-
-    const dispose = () => {
-      if (this.wsPublic) {
-        this.wsPublic.off('message', handleMessage);
-        this.wsPublic.close();
-        this.wsPublic = undefined;
-      }
-    };
-
-    connect();
-
-    return dispose;
+    return this.publicWebsocket.listenOHLCV(opts, callback);
   };
 
   fetchPositionMode = async () => {

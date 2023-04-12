@@ -1,12 +1,22 @@
-import { groupBy } from 'lodash';
-
+import type { OHLCVOptions, Candle } from '../../types';
 import { v } from '../../utils/get-key';
 import { BaseWebSocket } from '../base.ws';
 
 import type { Binance } from './binance.exchange';
 import { BASE_WS_URL } from './binance.types';
 
+type Data = Array<Record<string, any>>;
+type MessageHandlers = {
+  [topic: string]: (json: Data) => void;
+};
+
 export class BinancePublicWebsocket extends BaseWebSocket<Binance> {
+  messageHandlers: MessageHandlers = {
+    '24hrTicker': (d: Data) => this.handleTickerStreamEvents(d),
+    bookTicker: (d: Data) => this.handleBookTickersStreamEvents(d),
+    markPriceUpdate: (d: Data) => this.handleMarkPriceStreamEvents(d),
+  };
+
   connectAndSubscribe = () => {
     if (!this.parent.isDisposed) {
       this.ws = new WebSocket(
@@ -32,11 +42,15 @@ export class BinancePublicWebsocket extends BaseWebSocket<Binance> {
 
   onMessage = ({ data }: MessageEvent) => {
     if (!this.parent.isDisposed) {
-      const json = JSON.parse(data);
-      const events = groupBy(Array.isArray(json) ? json : [json], 'e');
-      this.handleTickerStreamEvents(events['24hrTicker'] || []);
-      this.handleBookTickersStreamEvents(events.bookTicker || []);
-      this.handleMarkPriceStreamEvents(events.markPriceUpdate || []);
+      const handlers = Object.entries(this.messageHandlers);
+
+      for (const [topic, handler] of handlers) {
+        if (data.includes(`e":"${topic}`)) {
+          const json = JSON.parse(data);
+          handler(Array.isArray(json) ? json : [json]);
+          break;
+        }
+      }
     }
   };
 
@@ -80,5 +94,41 @@ export class BinancePublicWebsocket extends BaseWebSocket<Binance> {
         ticker.fundingRate = parseFloat(v(event, 'r'));
       }
     });
+  };
+
+  listenOHLCV = (opts: OHLCVOptions, callback: (candle: Candle) => void) => {
+    const topic = `${opts.symbol.toLowerCase()}@kline_${opts.interval}`;
+
+    const waitForConnectedAndSubscribe = () => {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        this.messageHandlers.kline = ([json]: Data) => {
+          callback({
+            timestamp: json.k.t / 1000,
+            open: parseFloat(json.k.o),
+            high: parseFloat(json.k.h),
+            low: parseFloat(json.k.l),
+            close: parseFloat(json.k.c),
+            volume: parseFloat(json.k.v),
+          });
+        };
+
+        const payload = { method: 'SUBSCRIBE', params: [topic], id: 1 };
+        this.ws?.send?.(JSON.stringify(payload));
+        this.parent.log(`Switched to [${opts.symbol}:${opts.interval}]`);
+      } else {
+        setTimeout(() => waitForConnectedAndSubscribe(), 100);
+      }
+    };
+
+    waitForConnectedAndSubscribe();
+
+    return () => {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        const payload = { method: 'UNSUBSCRIBE', params: [topic], id: 1 };
+        this.ws?.send?.(JSON.stringify(payload));
+      }
+
+      delete this.messageHandlers.kline;
+    };
   };
 }
