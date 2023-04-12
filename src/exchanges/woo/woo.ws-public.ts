@@ -1,8 +1,9 @@
-import type { OHLCVOptions, Candle } from '../../types';
+import type { OHLCVOptions, Candle, OrderBook } from '../../types';
+import { calcOrderBookTotal, sortOrderBook } from '../../utils/orderbook';
 import { BaseWebSocket } from '../base.ws';
 
 import type { Woo } from './woo.exchange';
-import { BASE_WS_URL } from './woo.types';
+import { BASE_WS_URL, ENDPOINTS } from './woo.types';
 import { normalizeSymbol, reverseSymbol } from './woo.utils';
 
 type Data = Record<string, any>;
@@ -165,5 +166,139 @@ export class WooPublicWebsocket extends BaseWebSocket<Woo> {
         this.ws?.send?.(JSON.stringify(payload));
       }
     };
+  };
+
+  listenOrderBook = (
+    symbol: string,
+    callback: (orderBook: OrderBook) => void
+  ) => {
+    const topic = `${reverseSymbol(symbol)}@orderbookupdate`;
+
+    const orderBook: OrderBook = {
+      bids: [],
+      asks: [],
+    };
+
+    const innerState = {
+      updates: [] as any[],
+      isSnapshotLoaded: false,
+    };
+
+    const fetchSnapshot = async () => {
+      const { data } = await this.parent.xhr.get(
+        `${ENDPOINTS.ORDERBOOK}/${reverseSymbol(symbol)}`
+      );
+
+      orderBook.bids = data.bids.map((row: Record<string, any>) => ({
+        price: row.price,
+        amount: row.quantity,
+        total: 0,
+      }));
+
+      orderBook.asks = data.asks.map((row: Record<string, any>) => ({
+        price: row.price,
+        amount: row.quantity,
+        total: 0,
+      }));
+
+      // drop events where timestamp is older than the snapshot
+      innerState.updates = innerState.updates.filter(
+        (update: Record<string, any>) => update.ts > data.timestamp
+      );
+
+      // apply all updates
+      innerState.updates.forEach((update: Record<string, any>) => {
+        this.processOrderBookUpdate(orderBook, update);
+      });
+
+      sortOrderBook(orderBook);
+      calcOrderBookTotal(orderBook);
+
+      innerState.isSnapshotLoaded = true;
+      innerState.updates = [];
+
+      callback(orderBook);
+    };
+
+    const waitForConnectedAndSubscribe = () => {
+      if (this.isConnected) {
+        // 1. subscribe to the topic
+        // 2. wait for the first message and send request to snapshot
+        // 3. store all incoming updates in an array
+        // 4. when the snapshot is received, apply all updates and send the order book to the callback
+        // 5. then on each update, apply it to the order book and send it to the callback
+        if (!this.isDisposed) {
+          this.messageHandlers[topic] = (json: Data) => {
+            if (
+              !innerState.isSnapshotLoaded &&
+              innerState.updates.length === 0
+            ) {
+              fetchSnapshot();
+              innerState.updates = [json];
+              return;
+            }
+
+            if (!innerState.isSnapshotLoaded) {
+              innerState.updates.push(json);
+              return;
+            }
+
+            // do updates
+            this.processOrderBookUpdate(orderBook, json);
+            sortOrderBook(orderBook);
+            calcOrderBookTotal(orderBook);
+
+            callback(orderBook);
+          };
+
+          const payload = { event: 'subscribe', topic };
+          this.ws?.send?.(JSON.stringify(payload));
+        }
+      } else {
+        setTimeout(() => waitForConnectedAndSubscribe(), 100);
+      }
+    };
+
+    waitForConnectedAndSubscribe();
+
+    return () => {
+      delete this.messageHandlers[topic];
+      orderBook.asks = [];
+      orderBook.bids = [];
+
+      if (this.isConnected) {
+        const payload = { event: 'unsubscribe', topic };
+        this.ws?.send?.(JSON.stringify(payload));
+      }
+    };
+  };
+
+  private processOrderBookUpdate = (
+    orderBook: OrderBook,
+    update: Record<string, any>
+  ) => {
+    const sides = { bids: update.data.bids, asks: update.data.asks };
+
+    Object.entries(sides).forEach(([side, data]) => {
+      // we need this for ts compile
+      if (side !== 'bids' && side !== 'asks') return;
+
+      data.forEach(([price, amount]: [number, number]) => {
+        const index = orderBook[side].findIndex((b) => b.price === price);
+
+        if (index === -1 && amount > 0) {
+          orderBook[side].push({ price, amount, total: 0 });
+          return;
+        }
+
+        if (amount === 0) {
+          orderBook[side].splice(index, 1);
+          return;
+        }
+
+        // eslint-disable-next-line no-param-reassign
+        orderBook[side][index].amount = amount;
+      });
+    });
   };
 }

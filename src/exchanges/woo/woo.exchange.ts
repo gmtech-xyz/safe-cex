@@ -10,6 +10,7 @@ import type {
   Market,
   OHLCVOptions,
   Order,
+  OrderBook,
   PlaceOrderOpts,
   Position,
   Ticker,
@@ -333,6 +334,13 @@ export class Woo extends BaseExchange {
 
   listenOHLCV = (opts: OHLCVOptions, callback: (candle: Candle) => void) => {
     return this.publicWebsocket.listenOHLCV(opts, callback);
+  };
+
+  listenOrderBook = (
+    symbol: string,
+    callback: (orderBook: OrderBook) => void
+  ) => {
+    return this.publicWebsocket.listenOrderBook(symbol, callback);
   };
 
   updateOrder = async ({ order, update }: UpdateOrderOpts) => {

@@ -39,6 +39,7 @@ export const ENDPOINTS = {
   CANCEL_ORDER: '/v1/order',
   PLACE_ORDER: '/v1/order',
   LEVERAGE: '/v1/client/leverage',
+  ORDERBOOK: '/v1/public/orderbook',
 };
 
 export const ORDER_TYPE: Record<string, OrderType> = {
