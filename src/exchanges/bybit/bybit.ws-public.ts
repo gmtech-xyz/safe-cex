@@ -1,4 +1,7 @@
-import type { Candle, OHLCVOptions } from '../../types';
+import { proxy } from '@iam4x/valtio/dist/vanilla';
+import BigNumber from 'bignumber.js';
+
+import type { Candle, OHLCVOptions, OrderBook } from '../../types';
 import { BaseWebSocket } from '../base.ws';
 
 import type { Bybit } from './bybit.exchange';
@@ -16,7 +19,7 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
   };
 
   connectAndSubscribe = () => {
-    if (!this.parent.isDisposed) {
+    if (!this.isDisposed) {
       this.ws = new WebSocket(
         BASE_WS_URL.public[this.parent.options.testnet ? 'testnet' : 'livenet']
       );
@@ -28,14 +31,14 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
   };
 
   onOpen = () => {
-    if (!this.parent.isDisposed) {
+    if (!this.isDisposed) {
       this.subscribe();
       this.ping();
     }
   };
 
   ping = () => {
-    if (!this.parent.isDisposed) {
+    if (!this.isDisposed) {
       this.pingAt = performance.now();
       this.ws?.send?.(JSON.stringify({ op: 'ping' }));
     }
@@ -53,7 +56,7 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
   };
 
   onMessage = ({ data }: MessageEvent) => {
-    if (!this.parent.isDisposed) {
+    if (!this.isDisposed) {
       const handlers = Object.entries(this.messageHandlers);
 
       for (const [topic, handler] of handlers) {
@@ -113,8 +116,8 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
     const topic = `candle.${INTERVAL[opts.interval]}.${opts.symbol}`;
 
     const waitForConnectedAndSubscribe = () => {
-      if (this.ws?.readyState === WebSocket.OPEN) {
-        if (!this.parent.isDisposed) {
+      if (this.isConnected) {
+        if (!this.isDisposed) {
           this.messageHandlers[topic] = ({ data: [candle] }: Data) => {
             callback({
               timestamp: candle.start,
@@ -138,12 +141,119 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
     waitForConnectedAndSubscribe();
 
     return () => {
-      if (this.ws?.readyState === WebSocket.OPEN) {
+      if (this.isConnected) {
         const payload = { op: 'unsubscribe', args: [topic] };
         this.ws?.send?.(JSON.stringify(payload));
       }
 
       delete this.messageHandlers[topic];
+    };
+  };
+
+  listenOrderBook = (symbol: string) => {
+    const topic = `orderBook_200.100ms.${symbol}`;
+
+    const orderBook: OrderBook = proxy({
+      bids: [],
+      asks: [],
+    });
+
+    const waitForConnectedAndSubscribe = () => {
+      if (this.isConnected) {
+        if (!this.isDisposed) {
+          this.messageHandlers[topic] = (data: Data) => {
+            if (data.type === 'snapshot') {
+              orderBook.bids = [];
+              orderBook.asks = [];
+              data.data.order_book.forEach((order: Data) => {
+                const key = order.side === 'Buy' ? 'bids' : 'asks';
+                orderBook[key].push({
+                  price: parseFloat(order.price),
+                  amount: order.size,
+                  total: 0,
+                });
+              });
+            }
+
+            if (data.type === 'delta') {
+              const toDelete = data.data.delete || [];
+              const toUpdate = data.data.update || [];
+              const toInsert = data.data.insert || [];
+
+              toDelete.forEach((order: Data) => {
+                const key = order.side === 'Buy' ? 'bids' : 'asks';
+                const index = orderBook[key].findIndex(
+                  (o) => o.price === parseFloat(order.price)
+                );
+
+                if (index > -1) orderBook[key].splice(index, 1);
+              });
+
+              toUpdate.forEach((order: Data) => {
+                const key = order.side === 'Buy' ? 'bids' : 'asks';
+                const index = orderBook[key].findIndex(
+                  (o) => o.price === parseFloat(order.price)
+                );
+
+                if (index > -1) orderBook[key][index].amount = order.size;
+              });
+
+              toInsert.forEach((order: Data) => {
+                const key = order.side === 'Buy' ? 'bids' : 'asks';
+                orderBook[key].push({
+                  price: parseFloat(order.price),
+                  amount: order.size,
+                  total: 0,
+                });
+              });
+            }
+
+            orderBook.asks.sort((a, b) => a.price - b.price);
+            orderBook.bids.sort((a, b) => b.price - a.price);
+
+            orderBook.asks.forEach((ask, idx) => {
+              orderBook.asks[idx].total =
+                idx === 0
+                  ? ask.amount
+                  : new BigNumber(ask.amount)
+                      .plus(orderBook.asks[idx - 1].total)
+                      .toNumber();
+            });
+
+            orderBook.bids.forEach((ask, idx) => {
+              orderBook.bids[idx].total =
+                idx === 0
+                  ? ask.amount
+                  : new BigNumber(ask.amount)
+                      .plus(orderBook.bids[idx - 1].total)
+                      .toNumber();
+            });
+          };
+
+          const payload = { op: 'subscribe', args: [topic] };
+          this.ws?.send?.(JSON.stringify(payload));
+        }
+      } else {
+        setTimeout(() => waitForConnectedAndSubscribe(), 100);
+      }
+    };
+
+    waitForConnectedAndSubscribe();
+
+    const dispose = () => {
+      if (this.isConnected) {
+        const payload = { op: 'unsubscribe', args: [topic] };
+        this.ws?.send?.(JSON.stringify(payload));
+      }
+
+      delete this.messageHandlers[topic];
+      orderBook.asks = [];
+      orderBook.bids = [];
+    };
+
+    return {
+      orderBook,
+      dispose,
     };
   };
 }

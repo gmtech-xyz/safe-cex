@@ -180,3 +180,14 @@ export enum LogSeverity {
   Warning = 'warning',
   Error = 'error',
 }
+
+export type OrderBookOrders = {
+  price: number;
+  amount: number;
+  total: number;
+};
+
+export type OrderBook = {
+  bids: OrderBookOrders[];
+  asks: OrderBookOrders[];
+};

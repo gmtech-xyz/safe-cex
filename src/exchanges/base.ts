@@ -1,4 +1,4 @@
-import { snapshot, subscribe } from '@iam4x/valtio';
+import { proxy, snapshot, subscribe } from '@iam4x/valtio/dist/vanilla';
 import { uniq } from 'lodash';
 import { forEachSeries, mapSeries } from 'p-iteration';
 import Emitter from 'tiny-emitter';
@@ -9,6 +9,7 @@ import type {
   ExchangeOptions,
   OHLCVOptions,
   Order,
+  OrderBook,
   PlaceOrderOpts,
   Store,
   UpdateOrderOpts,
@@ -37,10 +38,11 @@ export interface Exchange {
   cancelSymbolOrders: (symbol: string) => Promise<void>;
   cancelAllOrders: () => Promise<void>;
   fetchOHLCV: (opts: OHLCVOptions) => Promise<Candle[]>;
-  listenOHLCV: (
-    opts: OHLCVOptions,
-    callback: (candle: Candle) => any
-  ) => () => void;
+  listenOHLCV: (o: OHLCVOptions, c: (c: Candle) => any) => () => void;
+  listenOrderBook: (s: string) => {
+    orderBook: ReturnType<typeof proxy<OrderBook>>;
+    dispose: () => void;
+  };
 }
 
 export class BaseExchange implements Exchange {
@@ -137,6 +139,13 @@ export class BaseExchange implements Exchange {
 
   listenOHLCV = (_opts: OHLCVOptions, _callback: (candle: Candle) => any) => {
     return () => {};
+  };
+
+  listenOrderBook = (_symbol: string) => {
+    return {
+      orderBook: proxy<OrderBook>({ bids: [], asks: [] }),
+      dispose: () => {},
+    };
   };
 
   nuke = async () => {

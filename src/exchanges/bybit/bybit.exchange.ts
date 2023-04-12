@@ -365,6 +365,10 @@ export class Bybit extends BaseExchange {
     return this.publicWebsocket.listenOHLCV(opts, callback);
   };
 
+  listenOrderBook = (symbol: string) => {
+    return this.publicWebsocket.listenOrderBook(symbol);
+  };
+
   placeOrder = async (opts: PlaceOrderOpts) => {
     if (
       opts.type === OrderType.StopLoss ||

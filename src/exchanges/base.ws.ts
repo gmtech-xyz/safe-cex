@@ -9,6 +9,14 @@ export class BaseWebSocket<T extends BaseExchange> {
   pingAt = 0;
   pingTimeoutId?: NodeJS.Timeout;
 
+  get isConnected() {
+    return this.ws?.readyState === WebSocket.OPEN;
+  }
+
+  get isDisposed() {
+    return this.parent.isDisposed;
+  }
+
   constructor(parent: T) {
     this.parent = parent;
   }
