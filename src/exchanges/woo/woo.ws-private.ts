@@ -80,7 +80,7 @@ export class WooPrivateWebscoket extends BaseWebSocket<Woo> {
   };
 
   handleExecutionReport = (data: Record<string, any>) => {
-    const updatedOrder = this.parent.mapLimitOrder(data)!;
+    const updatedOrder = this.parent.mapLimitOrder(data);
 
     const price = v(data, 'executedPrice');
     const amount = v(data, 'executedQuantity');
@@ -99,13 +99,15 @@ export class WooPrivateWebscoket extends BaseWebSocket<Woo> {
       this.parent.removeOrderFromStore(`${data.orderId}`);
     }
 
-    if (data.status === 'FILLED' || data.status === 'PARTIALLY_FILLED') {
-      this.parent.emitter.emit('fill', {
-        side: updatedOrder.side,
-        symbol: updatedOrder.symbol,
-        price,
-        amount,
-      });
+    if (updatedOrder) {
+      if (data.status === 'FILLED' || data.status === 'PARTIALLY_FILLED') {
+        this.parent.emitter.emit('fill', {
+          side: updatedOrder.side,
+          symbol: updatedOrder.symbol,
+          price,
+          amount,
+        });
+      }
     }
   };
 
