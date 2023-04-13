@@ -1,11 +1,13 @@
-export const adjust = (value: number, step: number | string) => {
-  const multiplier = 1 / Number(step);
-  return Math.round(value * multiplier) / multiplier;
-};
-
 export const afterDecimal = (num: number | string) => {
   if (Number.isInteger(num)) return 0;
   return num?.toString()?.split?.('.')?.[1]?.length || 1;
+};
+
+export const adjust = (value: number, step: number | string) => {
+  const multiplier = 1 / Number(step);
+  const adjusted = Math.round(value * multiplier) / multiplier;
+  const decimals = afterDecimal(step);
+  return Math.round(adjusted * 10 ** decimals) / 10 ** decimals;
 };
 
 export const add = (a: number, b: number) => {
