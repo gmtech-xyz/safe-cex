@@ -582,7 +582,11 @@ export class Bybit extends BaseExchange {
         }
       }
 
-      await this.xhr.post(ENDPOINTS.SET_TRADING_STOP, payload);
+      const { data } = await this.xhr.post(ENDPOINTS.SET_TRADING_STOP, payload);
+
+      if (data.retMsg !== 'OK') {
+        this.emitter.emit('error', data.retMsg);
+      }
     }
 
     const storeOrder = this.store.orders.find(
