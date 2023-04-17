@@ -1,9 +1,10 @@
-## [3.0.6](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v3.0.6) (2023-04-17)
+## [3.0.7](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v3.0.7) (2023-04-17)
 
 
 ### Bug Fixes
 
 * **afterDecimals:** support exponential ([3331f8e](https://github.com/gmtech-xyz/safe-cex/commit/3331f8e4e0b4f0fa0c093989c5925af4cb150c65))
+* **bybit:** positionIdx for one-way positional SL/TP ([7c5efad](https://github.com/gmtech-xyz/safe-cex/commit/7c5efad72183a4c10c684d0f3c9c9e9506c893b4))
 * **exchanges:** revert latency calc to ping ([b19644c](https://github.com/gmtech-xyz/safe-cex/commit/b19644c8357f8323f8fdded2b31b80c84b12615c))
 * **orderbook:** clear timeout, check if disposed after snapshot ([27dc929](https://github.com/gmtech-xyz/safe-cex/commit/27dc92914ead0496174604a3e8e34ff55b4fdc34))
 * **safe-math:** need to round with `adjust()` ([d5fc628](https://github.com/gmtech-xyz/safe-cex/commit/d5fc6284babed44231fe8febe0ef48cca2bbd4e5))
