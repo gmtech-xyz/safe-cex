@@ -1,8 +1,9 @@
-## [3.0.3](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v3.0.3) (2023-04-17)
+## [3.0.4](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v3.0.4) (2023-04-17)
 
 
 ### Bug Fixes
 
+* **afterDecimals:** support exponential ([3331f8e](https://github.com/gmtech-xyz/safe-cex/commit/3331f8e4e0b4f0fa0c093989c5925af4cb150c65))
 * **exchanges:** revert latency calc to ping ([b19644c](https://github.com/gmtech-xyz/safe-cex/commit/b19644c8357f8323f8fdded2b31b80c84b12615c))
 * **safe-math:** need to round with `adjust()` ([d5fc628](https://github.com/gmtech-xyz/safe-cex/commit/d5fc6284babed44231fe8febe0ef48cca2bbd4e5))
 * **woo:** apply rate limitter on every calls ([70095bd](https://github.com/gmtech-xyz/safe-cex/commit/70095bd2900a7f2e91b509acca39d7bd2d2e6f5f))
