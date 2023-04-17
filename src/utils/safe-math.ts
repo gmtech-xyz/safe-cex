@@ -1,6 +1,4 @@
-import { memoize } from 'lodash';
-
-export const afterDecimal = memoize((num: number | string) => {
+export const afterDecimal = (num: number | string) => {
   if (Number.isInteger(num)) return 0;
 
   const str = num?.toString?.();
@@ -11,7 +9,7 @@ export const afterDecimal = memoize((num: number | string) => {
   }
 
   return str?.split?.('.')?.[1]?.length || 2;
-});
+};
 
 export const adjust = (value: number, step: number | string) => {
   const multiplier = 1 / Number(step);
