@@ -4,6 +4,7 @@ import { chunk, groupBy, omit, times } from 'lodash';
 import { forEachSeries } from 'p-iteration';
 import { v4 } from 'uuid';
 
+import type { Store } from '../../store/store.interface';
 import type {
   Balance,
   Candle,
@@ -49,8 +50,8 @@ export class Binance extends BaseExchange {
   publicWebsocket: BinancePublicWebsocket;
   privateWebsocket: BinancePrivateWebsocket;
 
-  constructor(opts: ExchangeOptions) {
-    super(opts);
+  constructor(opts: ExchangeOptions, store: Store) {
+    super(opts, store);
 
     this.xhr = rateLimit(createAPI(opts), { maxRPS: 3 });
     this.unlimitedXHR = createAPI(opts);

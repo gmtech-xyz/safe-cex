@@ -5,6 +5,7 @@ import dayjs from 'dayjs';
 import { omit, orderBy, times, uniqBy } from 'lodash';
 import { forEachSeries, mapSeries } from 'p-iteration';
 
+import type { Store } from '../../store/store.interface';
 import type {
   Balance,
   Candle,
@@ -55,8 +56,8 @@ export class Bybit extends BaseExchange {
   // we could have used a memoized function instead but the Map is built only once
   private hedgedPositionsMap: Record<string, boolean> = {};
 
-  constructor(opts: ExchangeOptions) {
-    super(opts);
+  constructor(opts: ExchangeOptions, store: Store) {
+    super(opts, store);
 
     this.xhr = rateLimit(createAPI(opts), { maxRPS: 3 });
     this.unlimitedXHR = createAPI(opts);

@@ -3,6 +3,7 @@ import rateLimit from 'axios-rate-limit';
 import { sumBy, times } from 'lodash';
 import { forEachSeries, mapSeries } from 'p-iteration';
 
+import type { Store } from '../../store/store.interface';
 import type {
   Balance,
   Candle,
@@ -42,8 +43,8 @@ export class Woo extends BaseExchange {
   // we call the ACCOUNT endpoint, and copy this value into positions
   private accountLeverage = 1;
 
-  constructor(opts: ExchangeOptions) {
-    super(opts);
+  constructor(opts: ExchangeOptions, store: Store) {
+    super(opts, store);
 
     this.xhr = rateLimit(createAPI(opts), { maxRPS: 3 });
 

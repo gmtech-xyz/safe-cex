@@ -2,7 +2,6 @@ import { uniq } from 'lodash';
 import { forEachSeries, mapSeries } from 'p-iteration';
 import Emitter from 'tiny-emitter';
 
-import { DefaultStore } from '../store/store.base';
 import type { Store } from '../store/store.interface';
 import type {
   Candle,
@@ -53,9 +52,9 @@ export class BaseExchange implements Exchange {
   once: Emitter.TinyEmitter['once'];
   off: Emitter.TinyEmitter['off'];
 
-  constructor(opts: ExchangeOptions) {
+  constructor(opts: ExchangeOptions, store: Store) {
     this.options = opts;
-    this.store = new DefaultStore();
+    this.store = store;
 
     this.on = this.emitter.on.bind(this.emitter);
     this.once = this.emitter.once.bind(this.emitter);
