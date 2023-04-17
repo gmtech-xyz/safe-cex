@@ -137,13 +137,10 @@ export class BinancePublicWebsocket extends BaseWebSocket<Binance> {
     symbol: string,
     callback: (orderBook: OrderBook) => void
   ) => {
+    let timeoutId: NodeJS.Timeout | null = null;
+
     const topic = `${symbol.toLowerCase()}@depth`;
-
-    const orderBook: OrderBook = {
-      bids: [],
-      asks: [],
-    };
-
+    const orderBook: OrderBook = { bids: [], asks: [] };
     const innerState = {
       updates: [] as any[],
       isSnapshotLoaded: false,
@@ -154,36 +151,38 @@ export class BinancePublicWebsocket extends BaseWebSocket<Binance> {
         params: { symbol, limit: 1000 },
       });
 
-      // save snapshot into orderBook object
-      orderBook.bids = data.bids.map(([price, amount]: string[]) => ({
-        price: parseFloat(price),
-        amount: parseFloat(amount),
-        total: 0,
-      }));
+      if (!this.isDisposed) {
+        // save snapshot into orderBook object
+        orderBook.bids = data.bids.map(([price, amount]: string[]) => ({
+          price: parseFloat(price),
+          amount: parseFloat(amount),
+          total: 0,
+        }));
 
-      orderBook.asks = data.asks.map(([price, amount]: string[]) => ({
-        price: parseFloat(price),
-        amount: parseFloat(amount),
-        total: 0,
-      }));
+        orderBook.asks = data.asks.map(([price, amount]: string[]) => ({
+          price: parseFloat(price),
+          amount: parseFloat(amount),
+          total: 0,
+        }));
 
-      // drop events where u < lastUpdateId
-      innerState.updates = innerState.updates.filter(
-        (update: Record<string, any>) => update.u > data.lastUpdateId
-      );
+        // drop events where u < lastUpdateId
+        innerState.updates = innerState.updates.filter(
+          (update: Record<string, any>) => update.u > data.lastUpdateId
+        );
 
-      // apply all updates
-      innerState.updates.forEach((update: Record<string, any>) => {
-        this.processOrderBookUpdate(orderBook, update);
-      });
+        // apply all updates
+        innerState.updates.forEach((update: Record<string, any>) => {
+          this.processOrderBookUpdate(orderBook, update);
+        });
 
-      sortOrderBook(orderBook);
-      calcOrderBookTotal(orderBook);
+        sortOrderBook(orderBook);
+        calcOrderBookTotal(orderBook);
 
-      innerState.isSnapshotLoaded = true;
-      innerState.updates = [];
+        innerState.isSnapshotLoaded = true;
+        innerState.updates = [];
 
-      callback(orderBook);
+        callback(orderBook);
+      }
     };
 
     const waitForConnectedAndSubscribe = () => {
@@ -221,7 +220,7 @@ export class BinancePublicWebsocket extends BaseWebSocket<Binance> {
         const payload = { method: 'SUBSCRIBE', params: [topic], id: 1 };
         this.ws?.send?.(JSON.stringify(payload));
       } else {
-        setTimeout(() => waitForConnectedAndSubscribe(), 100);
+        timeoutId = setTimeout(() => waitForConnectedAndSubscribe(), 100);
       }
     };
 
@@ -231,6 +230,13 @@ export class BinancePublicWebsocket extends BaseWebSocket<Binance> {
       delete this.messageHandlers.depthUpdate;
       orderBook.asks = [];
       orderBook.bids = [];
+      innerState.updates = [];
+      innerState.isSnapshotLoaded = false;
+
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
 
       if (this.isConnected) {
         const payload = { method: 'UNSUBSCRIBE', params: [topic], id: 1 };
