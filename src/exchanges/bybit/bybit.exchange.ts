@@ -1,4 +1,3 @@
-/* eslint-disable complexity */
 import type { Axios } from 'axios';
 import rateLimit from 'axios-rate-limit';
 import type { ManipulateType } from 'dayjs';
@@ -19,7 +18,12 @@ import type {
   UpdateOrderOpts,
   OrderBook,
 } from '../../types';
-import { OrderTimeInForce, OrderType, OrderSide } from '../../types';
+import {
+  OrderTimeInForce,
+  OrderType,
+  OrderSide,
+  PositionSide,
+} from '../../types';
 import { v } from '../../utils/get-key';
 import { inverseObj } from '../../utils/inverse-obj';
 import { loop } from '../../utils/loop';
@@ -88,8 +92,10 @@ export class Bybit extends BaseExchange {
     const markets = await this.fetchMarkets();
     if (this.isDisposed) return;
 
-    this.store.markets = markets;
-    this.store.loaded.markets = true;
+    this.store.update({
+      markets,
+      loaded: { ...this.store.loaded, markets: true },
+    });
 
     // load initial tickers data
     // then we use websocket for live data
@@ -100,8 +106,10 @@ export class Bybit extends BaseExchange {
       `Loaded ${Math.min(tickers.length, markets.length)} Bybit markets`
     );
 
-    this.store.tickers = tickers;
-    this.store.loaded.tickers = true;
+    this.store.update({
+      tickers,
+      loaded: { ...this.store.loaded, tickers: true },
+    });
 
     // start websocket streams
     this.publicWebsocket.connectAndSubscribe();
@@ -120,8 +128,10 @@ export class Bybit extends BaseExchange {
 
     this.log(`Loaded Bybit orders`);
 
-    this.store.orders = orders;
-    this.store.loaded.orders = true;
+    this.store.update({
+      orders,
+      loaded: { ...this.store.loaded, orders: true },
+    });
   };
 
   tick = async () => {
@@ -133,11 +143,15 @@ export class Bybit extends BaseExchange {
         const positions = await this.fetchPositions();
         if (this.isDisposed) return;
 
-        this.store.balance = balance;
-        this.store.positions = positions;
-
-        this.store.loaded.balance = true;
-        this.store.loaded.positions = true;
+        this.store.update({
+          balance,
+          positions,
+          loaded: {
+            ...this.store.loaded,
+            balance: true,
+            positions: true,
+          },
+        });
       } catch (err: any) {
         this.emitter.emit('error', err?.message);
       }
@@ -226,8 +240,9 @@ export class Bybit extends BaseExchange {
           {}
         );
 
-      this.store.options.isHedged = Object.values(this.hedgedPositionsMap).some(
-        (value) => value === true
+      this.store.setSetting(
+        'isHedged',
+        Object.values(this.hedgedPositionsMap).some((value) => value === true)
       );
     }
 
@@ -594,8 +609,7 @@ export class Bybit extends BaseExchange {
     );
 
     if (storeOrder) {
-      if ('price' in update) storeOrder.price = update.price;
-      if ('amount' in update) storeOrder.amount = update.amount;
+      this.store.updateOrder(storeOrder, storeOrder);
     }
 
     return updatedOrderIds;
@@ -609,7 +623,7 @@ export class Bybit extends BaseExchange {
       });
 
       if (data.retMsg === 'OK' || data.retMsg.includes('order not exists or')) {
-        this.removeOrderFromStore(order.id);
+        this.store.removeOrder(order);
       } else {
         this.emitter.emit('error', data.retMsg);
       }
@@ -626,10 +640,12 @@ export class Bybit extends BaseExchange {
       this.emitter.emit('error', v(data, 'retMsg'));
     } else {
       const list = Array.isArray(data.result) ? data.result : [];
-      this.store.orders = this.store.orders.filter(
-        // we use `startsWith` because we generate SL and TP orders with
-        // their original ID `[order_id]__stop_loss` and `[order_id]__take_profit`
-        (order) => !list.some((id: string) => order.id.startsWith(id))
+      // we use `startsWith` because we generate SL and TP orders with
+      // their original ID `[order_id]__stop_loss` and `[order_id]__take_profit`
+      this.store.removeOrders(
+        this.store.orders.filter(
+          (order) => !list.some((id: string) => order.id.startsWith(id))
+        )
       );
     }
   };
@@ -653,9 +669,10 @@ export class Bybit extends BaseExchange {
         sellLeverage: `${leverage}`,
       });
 
-      this.store.positions = this.store.positions.map((p) =>
-        p.symbol === symbol ? { ...p, leverage } : p
-      );
+      this.store.updatePositions([
+        [{ symbol, side: PositionSide.Long }, { leverage }],
+        [{ symbol, side: PositionSide.Short }, { leverage }],
+      ]);
     }
   };
 
@@ -674,7 +691,7 @@ export class Bybit extends BaseExchange {
     });
 
     if (data.retMsg === 'All symbols switched successfully.') {
-      this.store.options.isHedged = hedged;
+      this.store.setSetting('isHedged', hedged);
       if (!hedged) this.hedgedPositionsMap = {};
     } else {
       this.emitter.emit('error', data.retMsg);

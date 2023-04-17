@@ -4,6 +4,7 @@ import { sumBy, times } from 'lodash';
 import { forEachSeries, mapSeries } from 'p-iteration';
 
 import type {
+  Balance,
   Candle,
   ExchangeOptions,
   Market,
@@ -14,6 +15,7 @@ import type {
   Position,
   Ticker,
   UpdateOrderOpts,
+  Writable,
 } from '../../types';
 import { OrderSide, OrderType, OrderStatus, PositionSide } from '../../types';
 import { v } from '../../utils/get-key';
@@ -71,8 +73,10 @@ export class Woo extends BaseExchange {
     const markets = await this.fetchMarkets();
     if (this.isDisposed) return;
 
-    this.store.markets = markets;
-    this.store.loaded.markets = true;
+    this.store.update({
+      markets,
+      loaded: { ...this.store.loaded, markets: true },
+    });
 
     const tickers = await this.fetchTickers();
     if (this.isDisposed) return;
@@ -81,8 +85,10 @@ export class Woo extends BaseExchange {
       `Loaded ${Math.min(tickers.length, markets.length)} Woo X markerts`
     );
 
-    this.store.tickers = tickers;
-    this.store.loaded.tickers = true;
+    this.store.update({
+      tickers,
+      loaded: { ...this.store.loaded, tickers: true },
+    });
 
     this.publicWebsocket.connectAndSubscribe();
     this.privateWebsocket.connectAndSubscribe();
@@ -97,8 +103,10 @@ export class Woo extends BaseExchange {
 
     this.log(`Loaded Woo X orders`);
 
-    this.store.orders = orders;
-    this.store.loaded.orders = true;
+    this.store.update({
+      orders,
+      loaded: { ...this.store.loaded, orders: true },
+    });
   };
 
   tick = async () => {
@@ -112,19 +120,23 @@ export class Woo extends BaseExchange {
 
         // woo doesnt provides unrealized pnl in the account endpoint
         // we are computing this from the positions polling
-        balance.upnl =
+        (balance as Writable<Balance>).upnl =
           positions.length > 0
             ? Math.round(sumBy(positions, 'unrealizedPnl') * 100) / 100
             : 0;
 
         // total balance from API already takes in account uPNL
-        balance.total = balance.total - balance.upnl;
+        (balance as Writable<Balance>).total = balance.total - balance.upnl;
 
-        this.store.balance = balance;
-        this.store.positions = positions;
-
-        this.store.loaded.balance = true;
-        this.store.loaded.positions = true;
+        this.store.update({
+          balance,
+          positions,
+          loaded: {
+            ...this.store.loaded,
+            balance: true,
+            positions: true,
+          },
+        });
       } catch (err: any) {
         this.emitter.emit('error', err?.message);
       }
@@ -518,7 +530,7 @@ export class Woo extends BaseExchange {
       }
     } catch (err: any) {
       if (err?.response?.data?.message?.includes('already canceled')) {
-        this.removeOrderFromStore(order.id);
+        this.store.removeOrder({ id: order.id });
       } else {
         this.emitter.emit(
           'error',

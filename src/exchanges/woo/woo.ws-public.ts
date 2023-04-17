@@ -69,7 +69,7 @@ export class WooPublicWebsocket extends BaseWebSocket<Woo> {
 
   handlePongEvent = () => {
     const diff = performance.now() - this.pingAt;
-    this.parent.store.latency = Math.round(diff / 2);
+    this.store.update({ latency: Math.round(diff / 2) });
 
     if (this.pingTimeoutId) {
       clearTimeout(this.pingTimeoutId);
@@ -92,9 +92,11 @@ export class WooPublicWebsocket extends BaseWebSocket<Woo> {
         );
 
         if (ticker) {
-          ticker.last = row.close;
-          ticker.quoteVolume = row.amount;
-          ticker.volume = row.volume;
+          this.store.updateTicker(ticker, {
+            last: row.close,
+            quoteVolume: row.amount,
+            volume: row.volume,
+          });
         }
       }
     });
@@ -109,8 +111,10 @@ export class WooPublicWebsocket extends BaseWebSocket<Woo> {
         );
 
         if (ticker) {
-          ticker.bid = row.bid;
-          ticker.ask = row.ask;
+          this.store.updateTicker(ticker, {
+            bid: row.bid,
+            ask: row.ask,
+          });
         }
       }
     });
@@ -125,7 +129,9 @@ export class WooPublicWebsocket extends BaseWebSocket<Woo> {
         );
 
         if (ticker) {
-          ticker.mark = row.price;
+          this.store.updateTicker(ticker, {
+            mark: row.price,
+          });
         }
       }
     });

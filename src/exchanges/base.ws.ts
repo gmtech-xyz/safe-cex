@@ -17,6 +17,14 @@ export class BaseWebSocket<T extends BaseExchange> {
     return this.parent.isDisposed;
   }
 
+  get store() {
+    return this.parent.store;
+  }
+
+  get emitter() {
+    return this.parent.emitter;
+  }
+
   constructor(parent: T) {
     this.parent = parent;
   }

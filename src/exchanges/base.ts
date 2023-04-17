@@ -1,9 +1,9 @@
-import { snapshot, subscribe } from '@iam4x/valtio/dist/vanilla';
 import { uniq } from 'lodash';
 import { forEachSeries, mapSeries } from 'p-iteration';
 import Emitter from 'tiny-emitter';
 
-import { createStore, defaultStore } from '../store';
+import { DefaultStore } from '../store/store.base';
+import type { Store } from '../store/store.interface';
 import type {
   Candle,
   ExchangeOptions,
@@ -11,7 +11,6 @@ import type {
   Order,
   OrderBook,
   PlaceOrderOpts,
-  Store,
   UpdateOrderOpts,
 } from '../types';
 import { LogSeverity, OrderSide, OrderType } from '../types';
@@ -56,14 +55,14 @@ export class BaseExchange implements Exchange {
 
   constructor(opts: ExchangeOptions) {
     this.options = opts;
-    this.store = createStore();
+    this.store = new DefaultStore();
 
     this.on = this.emitter.on.bind(this.emitter);
     this.once = this.emitter.once.bind(this.emitter);
     this.off = this.emitter.off.bind(this.emitter);
 
-    subscribe(this.store, () => {
-      this.emitter.emit('update', snapshot(this.store));
+    this.store.subscribe((data) => {
+      this.emitter.emit('update', data);
     });
   }
 
@@ -167,28 +166,6 @@ export class BaseExchange implements Exchange {
     }
   };
 
-  removeOrderFromStore = (orderId: string) => {
-    const idx = this.store.orders.findIndex((order) => order.id === orderId);
-
-    if (idx >= 0) {
-      this.store.orders.splice(idx, 1);
-    }
-  };
-
-  removeOrdersFromStore = (orderIds: string[]) => {
-    orderIds.forEach((orderId) => this.removeOrderFromStore(orderId));
-  };
-
-  addOrReplaceOrderFromStore = (order: Order) => {
-    const idx = this.store.orders.findIndex((o) => o.id === order.id);
-
-    if (idx >= 0) {
-      this.store.orders.splice(idx, 1, order);
-    } else {
-      this.store.orders.push(order);
-    }
-  };
-
   dispose() {
     this.isDisposed = true;
 
@@ -196,12 +173,6 @@ export class BaseExchange implements Exchange {
     this.off('fill');
     this.off('error');
 
-    this.store.latency = 0;
-    this.store.markets = [];
-    this.store.positions = [];
-    this.store.orders = [];
-    this.store.tickers = [];
-    this.store.balance = { ...defaultStore.balance };
-    this.store.loaded = { ...defaultStore.loaded };
+    this.store.reset();
   }
 }

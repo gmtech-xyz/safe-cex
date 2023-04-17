@@ -91,12 +91,12 @@ export class WooPrivateWebscoket extends BaseWebSocket<Woo> {
       data.status === 'PARTIAL_FILLED'
     ) {
       if (updatedOrder) {
-        this.parent.addOrReplaceOrderFromStore(updatedOrder);
+        this.store.addOrUpdateOrder(updatedOrder);
       }
     }
 
     if (data.status === 'CANCELLED' || data.status === 'FILLED') {
-      this.parent.removeOrderFromStore(`${data.orderId}`);
+      this.store.removeOrder({ id: `${data.orderId}` });
     }
 
     if (updatedOrder) {
@@ -123,7 +123,7 @@ export class WooPrivateWebscoket extends BaseWebSocket<Woo> {
         const [updatedOrder] = this.parent.mapAlgoOrder(row);
 
         if (updatedOrder) {
-          this.parent.addOrReplaceOrderFromStore(updatedOrder);
+          this.store.addOrUpdateOrder(updatedOrder);
         }
       }
 
@@ -137,7 +137,7 @@ export class WooPrivateWebscoket extends BaseWebSocket<Woo> {
       }
 
       if (status === 'CANCELLED' || status === 'FILLED') {
-        this.parent.removeOrderFromStore(`${v(row, 'algoOrderId')}`);
+        this.store.removeOrder({ id: `${v(row, 'algoOrderId')}` });
       }
     });
   };

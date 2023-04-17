@@ -62,10 +62,12 @@ export class BinancePublicWebsocket extends BaseWebSocket<Binance> {
       );
 
       if (ticker) {
-        ticker.last = parseFloat(v(event, 'c'));
-        ticker.percentage = parseFloat(v(event, 'P'));
-        ticker.volume = parseFloat(v(event, 'v'));
-        ticker.quoteVolume = parseFloat(v(event, 'q'));
+        this.store.updateTicker(ticker, {
+          last: parseFloat(v(event, 'c')),
+          percentage: parseFloat(v(event, 'P')),
+          volume: parseFloat(v(event, 'v')),
+          quoteVolume: parseFloat(v(event, 'q')),
+        });
       }
     });
   };
@@ -77,8 +79,10 @@ export class BinancePublicWebsocket extends BaseWebSocket<Binance> {
       );
 
       if (ticker) {
-        ticker.bid = parseFloat(v(event, 'b'));
-        ticker.ask = parseFloat(v(event, 'a'));
+        this.store.updateTicker(ticker, {
+          bid: parseFloat(v(event, 'b')),
+          ask: parseFloat(v(event, 'a')),
+        });
       }
     });
   };
@@ -90,9 +94,11 @@ export class BinancePublicWebsocket extends BaseWebSocket<Binance> {
       );
 
       if (ticker) {
-        ticker.mark = parseFloat(v(event, 'p'));
-        ticker.index = parseFloat(v(event, 'i'));
-        ticker.fundingRate = parseFloat(v(event, 'r'));
+        this.store.updateTicker(ticker, {
+          mark: parseFloat(v(event, 'p')),
+          index: parseFloat(v(event, 'i')),
+          fundingRate: parseFloat(v(event, 'r')),
+        });
       }
     });
   };

@@ -1,72 +1,53 @@
 export type ExchangeOptions = {
-  key: string;
-  secret: string;
-  applicationId?: string;
-  testnet?: boolean;
-  corsAnywhere?: string;
-};
-
-export type Store = {
-  latency: number;
-  balance: Balance;
-  markets: Market[];
-  tickers: Ticker[];
-  orders: Order[];
-  positions: Position[];
-  loaded: {
-    balance: boolean;
-    orders: boolean;
-    markets: boolean;
-    tickers: boolean;
-    positions: boolean;
-  };
-  options: {
-    isHedged: boolean;
-  };
+  readonly key: string;
+  readonly secret: string;
+  readonly applicationId?: string;
+  readonly testnet?: boolean;
+  readonly corsAnywhere?: string;
 };
 
 export type Balance = {
-  used: number;
-  free: number;
-  total: number;
-  upnl: number;
+  readonly used: number;
+  readonly free: number;
+  readonly total: number;
+  readonly upnl: number;
 };
 
 export type Market = {
-  id: string;
-  symbol: string;
-  base: string;
-  quote: string;
-  active: boolean;
-  precision: {
-    amount: number;
-    price: number;
+  readonly id: string;
+  readonly symbol: string;
+  readonly base: string;
+  readonly quote: string;
+  readonly active: boolean;
+  readonly precision: {
+    readonly amount: number;
+    readonly price: number;
   };
-  limits: {
-    amount: {
-      min: number;
-      max: number;
+  readonly limits: {
+    readonly amount: {
+      readonly min: number;
+      readonly max: number;
     };
-    leverage: {
-      min: number;
-      max: number;
+    readonly leverage: {
+      readonly min: number;
+      readonly max: number;
     };
   };
 };
 
 export type Ticker = {
-  id: string;
-  symbol: string;
-  bid: number;
-  ask: number;
-  last: number;
-  mark: number;
-  index: number;
-  percentage: number;
-  openInterest: number;
-  fundingRate: number;
-  volume: number;
-  quoteVolume: number;
+  readonly id: string;
+  readonly symbol: string;
+  readonly bid: number;
+  readonly ask: number;
+  readonly last: number;
+  readonly mark: number;
+  readonly index: number;
+  readonly percentage: number;
+  readonly openInterest: number;
+  readonly fundingRate: number;
+  readonly volume: number;
+  readonly quoteVolume: number;
 };
 
 export enum OrderStatus {
@@ -96,17 +77,17 @@ export enum OrderTimeInForce {
 }
 
 export type Order = {
-  id: string;
-  parentId?: string;
-  status: OrderStatus;
-  symbol: string;
-  type: OrderType;
-  side: OrderSide;
-  price: number;
-  amount: number;
-  filled: number;
-  remaining: number;
-  reduceOnly: boolean;
+  readonly id: string;
+  readonly parentId?: string;
+  readonly status: OrderStatus;
+  readonly symbol: string;
+  readonly type: OrderType;
+  readonly side: OrderSide;
+  readonly price: number;
+  readonly amount: number;
+  readonly filled: number;
+  readonly remaining: number;
+  readonly reduceOnly: boolean;
 };
 
 export enum PositionSide {
@@ -115,14 +96,14 @@ export enum PositionSide {
 }
 
 export type Position = {
-  symbol: string;
-  side: PositionSide;
-  entryPrice: number;
-  notional: number;
-  leverage: number;
-  unrealizedPnl: number;
-  contracts: number;
-  liquidationPrice: number;
+  readonly symbol: string;
+  readonly side: PositionSide;
+  readonly entryPrice: number;
+  readonly notional: number;
+  readonly leverage: number;
+  readonly unrealizedPnl: number;
+  readonly contracts: number;
+  readonly liquidationPrice: number;
 };
 
 export type Timeframe =
@@ -140,34 +121,34 @@ export type Timeframe =
   | '30m';
 
 export type Candle = {
-  timestamp: number;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
+  readonly timestamp: number;
+  readonly open: number;
+  readonly high: number;
+  readonly low: number;
+  readonly close: number;
+  readonly volume: number;
 };
 
 export type PlaceOrderOpts = {
-  symbol: string;
-  type: OrderType;
-  side: OrderSide;
-  amount: number;
-  price?: number;
-  stopLoss?: number;
-  takeProfit?: number;
-  reduceOnly?: boolean;
-  timeInForce?: OrderTimeInForce;
+  readonly symbol: string;
+  readonly type: OrderType;
+  readonly side: OrderSide;
+  readonly amount: number;
+  readonly price?: number;
+  readonly stopLoss?: number;
+  readonly takeProfit?: number;
+  readonly reduceOnly?: boolean;
+  readonly timeInForce?: OrderTimeInForce;
 };
 
 export type UpdateOrderOpts = {
-  order: Order;
-  update: { amount: number } | { price: number };
+  readonly order: Order;
+  readonly update: { readonly amount: number } | { readonly price: number };
 };
 
 export type OHLCVOptions = {
-  symbol: string;
-  interval: Timeframe;
+  readonly symbol: string;
+  readonly interval: Timeframe;
 };
 
 export type OrderFillEvent = Pick<
@@ -190,4 +171,54 @@ export type OrderBookOrders = {
 export type OrderBook = {
   bids: OrderBookOrders[];
   asks: OrderBookOrders[];
+};
+
+export type StoreDataLoaded = {
+  readonly balance: boolean;
+  readonly orders: boolean;
+  readonly markets: boolean;
+  readonly tickers: boolean;
+  readonly positions: boolean;
+};
+
+export type StoreOptions = {
+  readonly isHedged: boolean;
+};
+
+export type StoreData = {
+  readonly latency: number;
+  readonly balance: Balance;
+  readonly markets: Market[];
+  readonly tickers: Ticker[];
+  readonly orders: Order[];
+  readonly positions: Position[];
+  readonly loaded: StoreDataLoaded;
+  readonly options: StoreOptions;
+};
+
+export type Writable<T> =
+  // check for things that are objects but don't need changing
+  T extends Date | RegExp | ((...args: any[]) => any)
+    ? T
+    : T extends ReadonlyMap<infer K, infer V> // maps
+    ? Map<Writable<K>, Writable<V>> // make key and values writable
+    : T extends ReadonlySet<infer U> // sets
+    ? Set<Writable<U>> // make elements writable
+    : T extends readonly unknown[] // is an array or tuple?
+    ? `${bigint}` extends `${any & keyof T}` // is tuple
+      ? { -readonly [K in keyof T]: Writable<T[K]> }
+      : Array<Writable<T[number]>> // is regular array
+    : T extends Record<string, unknown> // is regular object
+    ? { -readonly [K in keyof T]: Writable<T[K]> }
+    : T; // is primitive or literal value
+
+export type WritableStoreData = {
+  latency: number;
+  balance: Writable<Balance>;
+  markets: Array<Writable<Market>>;
+  tickers: Array<Writable<Ticker>>;
+  orders: Array<Writable<Order>>;
+  positions: Array<Writable<Position>>;
+  loaded: Writable<StoreDataLoaded>;
+  options: Writable<StoreOptions>;
 };

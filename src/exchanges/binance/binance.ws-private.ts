@@ -44,7 +44,7 @@ export class BinancePrivateWebsocket extends BaseWebSocket<Binance> {
 
       if (json.id === 42) {
         const diff = performance.now() - this.pingAt;
-        this.parent.store.latency = Math.round(diff / 2);
+        this.store.update({ latency: Math.round(diff / 2) });
 
         if (this.pingTimeoutId) {
           clearTimeout(this.pingTimeoutId);
@@ -75,7 +75,7 @@ export class BinancePrivateWebsocket extends BaseWebSocket<Binance> {
       }
 
       if (data.X === 'NEW') {
-        this.parent.addOrReplaceOrderFromStore({
+        this.store.addOrUpdateOrder({
           id: data.c,
           status: OrderStatus.Open,
           symbol: data.s,
@@ -90,7 +90,7 @@ export class BinancePrivateWebsocket extends BaseWebSocket<Binance> {
       }
 
       if (data.X === 'CANCELED' || data.X === 'FILLED') {
-        this.parent.removeOrderFromStore(data.c);
+        this.store.removeOrder(data.c);
       }
     });
   };
@@ -110,10 +110,12 @@ export class BinancePrivateWebsocket extends BaseWebSocket<Binance> {
           const contracts = parseFloat(p.pa);
           const upnl = parseFloat(p.up);
 
-          position.entryPrice = entryPrice;
-          position.contracts = contracts;
-          position.notional = contracts * entryPrice + upnl;
-          position.unrealizedPnl = upnl;
+          this.store.updatePosition(position, {
+            entryPrice,
+            contracts,
+            notional: contracts * entryPrice + upnl,
+            unrealizedPnl: upnl,
+          });
         }
       })
     );

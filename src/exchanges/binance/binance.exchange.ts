@@ -83,8 +83,10 @@ export class Binance extends BaseExchange {
     const markets = await this.fetchMarkets();
     if (this.isDisposed) return;
 
-    this.store.markets = markets;
-    this.store.loaded.markets = true;
+    this.store.update({
+      markets,
+      loaded: { ...this.store.loaded, markets: true },
+    });
 
     // load initial tickers data
     // then we use websocket for live data
@@ -95,15 +97,17 @@ export class Binance extends BaseExchange {
       `Loaded ${Math.min(tickers.length, markets.length)} Binance markets`
     );
 
-    this.store.tickers = tickers;
-    this.store.loaded.tickers = true;
+    this.store.update({
+      tickers,
+      loaded: { ...this.store.loaded, tickers: true },
+    });
 
     // start websocket streams
     this.publicWebsocket.connectAndSubscribe();
     this.privateWebsocket.connectAndSubscribe();
 
     // fetch current position mode (Hedge/One-way)
-    this.store.options.isHedged = await this.fetchPositionMode();
+    this.store.setSetting('isHedged', await this.fetchPositionMode());
 
     // start ticking live data
     // balance, tickers, positions
@@ -118,8 +122,10 @@ export class Binance extends BaseExchange {
 
     this.log(`Loaded Binance orders`);
 
-    this.store.orders = orders;
-    this.store.loaded.orders = true;
+    this.store.update({
+      orders,
+      loaded: { ...this.store.loaded, orders: true },
+    });
   };
 
   tick = async () => {
@@ -131,11 +137,15 @@ export class Binance extends BaseExchange {
         const positions = await this.fetchPositions();
         if (this.isDisposed) return;
 
-        this.store.balance = balance;
-        this.store.positions = positions;
-
-        this.store.loaded.balance = true;
-        this.store.loaded.positions = true;
+        this.store.update({
+          balance,
+          positions,
+          loaded: {
+            ...this.store.loaded,
+            balance: true,
+            positions: true,
+          },
+        });
       } catch (err: any) {
         this.emitter.emit('error', err?.message);
       }
@@ -420,7 +430,7 @@ export class Binance extends BaseExchange {
       await this.xhr.post(ENDPOINTS.HEDGE_MODE, {
         dualSidePosition: hedged ? 'true' : 'false',
       });
-      this.store.options.isHedged = hedged;
+      this.store.setSetting('isHedged', hedged);
     } catch (err: any) {
       this.emitter.emit('error', err?.response?.data?.msg || err?.message);
     }
@@ -445,9 +455,10 @@ export class Binance extends BaseExchange {
           leverage,
         });
 
-        this.store.positions = this.store.positions.map((p) =>
-          p.symbol === symbol ? { ...p, leverage } : p
-        );
+        this.store.updatePositions([
+          [{ symbol, side: PositionSide.Long }, { leverage }],
+          [{ symbol, side: PositionSide.Short }, { leverage }],
+        ]);
       } catch (err: any) {
         this.emitter.emit('error', err?.response?.data?.msg || err?.message);
       }
@@ -484,8 +495,8 @@ export class Binance extends BaseExchange {
           });
         }
 
-        this.store.orders = this.store.orders.filter(
-          (o) => !request.origClientOrderIdList.includes(o.id)
+        this.store.removeOrders(
+          request.origClientOrderIdList.map((id) => ({ id }))
         );
       });
     } catch (err: any) {
@@ -499,7 +510,9 @@ export class Binance extends BaseExchange {
         params: { symbol },
       });
 
-      this.store.orders = this.store.orders.filter((o) => o.symbol !== symbol);
+      this.store.removeOrders(
+        this.store.orders.filter((o) => o.symbol !== symbol)
+      );
     } catch (err: any) {
       this.emitter.emit('error', err?.response?.data?.msg || err?.message);
     }

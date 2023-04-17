@@ -37,7 +37,6 @@
     "typescript": "^4.9.5"
   },
   "dependencies": {
-    "@iam4x/valtio": "^1.10.5",
     "axios": "^1.3.3",
     "axios-rate-limit": "^1.3.0",
     "axios-retry": "^3.4.0",

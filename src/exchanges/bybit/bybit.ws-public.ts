@@ -1,6 +1,12 @@
 import { flatten } from 'lodash';
 
-import type { Candle, OHLCVOptions, OrderBook } from '../../types';
+import type {
+  Candle,
+  OHLCVOptions,
+  OrderBook,
+  Ticker,
+  Writable,
+} from '../../types';
 import { calcOrderBookTotal, sortOrderBook } from '../../utils/orderbook';
 import { BaseWebSocket } from '../base.ws';
 
@@ -89,31 +95,36 @@ export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
     );
 
     if (ticker) {
-      if (d.bid1_price) ticker.bid = parseFloat(d.bid1_price);
-      if (d.ask1_price) ticker.ask = parseFloat(d.ask1_price);
-      if (d.last_price) ticker.last = parseFloat(d.last_price);
-      if (d.mark_price) ticker.mark = parseFloat(d.mark_price);
-      if (d.index_price) ticker.index = parseFloat(d.index_price);
+      const update: Partial<Writable<Ticker>> = {};
+
+      if (d.bid1_price) update.bid = parseFloat(d.bid1_price);
+      if (d.ask1_price) update.ask = parseFloat(d.ask1_price);
+      if (d.last_price) update.last = parseFloat(d.last_price);
+      if (d.mark_price) update.mark = parseFloat(d.mark_price);
+      if (d.index_price) update.index = parseFloat(d.index_price);
 
       if (d.price_24h_pcnt_e6) {
-        ticker.percentage = parseFloat(d.price_24h_pcnt_e6) / 10e3;
+        update.percentage = parseFloat(d.price_24h_pcnt_e6) / 10e3;
       }
 
       if (d.open_interest_e8) {
-        ticker.openInterest = parseFloat(d.open_interest_e8) / 10e7;
+        update.openInterest = parseFloat(d.open_interest_e8) / 10e7;
       }
 
       if (d.funding_rate_e6) {
-        ticker.fundingRate = parseFloat(d.funding_rate_e6) / 10e5;
+        update.fundingRate = parseFloat(d.funding_rate_e6) / 10e5;
       }
 
       if (d.volume_24h_e8) {
-        ticker.volume = parseFloat(d.volume_24h_e8) / 10e7;
+        update.volume = parseFloat(d.volume_24h_e8) / 10e7;
       }
 
       if (d.last_price || d.volume_24h_e8) {
-        ticker.quoteVolume = ticker.volume * ticker.last;
+        update.quoteVolume =
+          (update.volume || ticker.volume) * (update.last || ticker.last);
       }
+
+      this.parent.store.updateTicker(ticker, update);
     }
   };
 

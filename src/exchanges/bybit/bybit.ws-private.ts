@@ -42,7 +42,7 @@ export class BybitPrivateWebsocket extends BaseWebSocket<Bybit> {
 
       if (json.op === 'pong') {
         const diff = performance.now() - this.pingAt;
-        this.parent.store.latency = Math.round(diff / 2);
+        this.store.update({ latency: Math.round(diff / 2) });
 
         if (this.pingTimeoutId) {
           clearTimeout(this.pingTimeoutId);
@@ -78,7 +78,7 @@ export class BybitPrivateWebsocket extends BaseWebSocket<Bybit> {
         order.orderStatus === 'Filled' ||
         order.orderStatus === 'PartiallyFilled'
       ) {
-        this.parent.emitter.emit('fill', {
+        this.emitter.emit('fill', {
           side: orders[0].side,
           symbol: orders[0].symbol,
           price,
@@ -93,10 +93,10 @@ export class BybitPrivateWebsocket extends BaseWebSocket<Bybit> {
       ) {
         // We remove the order and its stop loss and take profit
         // if they exists, because they will be replaced with correct IDs
-        this.parent.removeOrdersFromStore([
-          orders[0].id,
-          `${orders[0].id}__stop_loss`,
-          `${orders[0].id}__take_profit`,
+        this.store.removeOrders([
+          { id: orders[0].id },
+          { id: `${orders[0].id}__stop_loss` },
+          { id: `${orders[0].id}__take_profit` },
         ]);
       }
 
@@ -105,7 +105,7 @@ export class BybitPrivateWebsocket extends BaseWebSocket<Bybit> {
         order.orderStatus === 'Untriggered' ||
         order.orderStatus === 'PartiallyFilled'
       ) {
-        orders.forEach((o) => this.parent.addOrReplaceOrderFromStore(o));
+        this.store.addOrUpdateOrders(orders);
       }
     });
   };
@@ -113,13 +113,13 @@ export class BybitPrivateWebsocket extends BaseWebSocket<Bybit> {
   handlePositionTopic = (data: Array<Record<string, any>>) => {
     const positions: Position[] = data.map(this.parent.mapPosition);
 
-    this.parent.store.positions.forEach((p, idx) => {
+    this.store.positions.forEach((p, idx) => {
       const updated = positions.find(
         (p2) => p2.symbol === p.symbol && p2.side === p.side
       );
 
       if (updated) {
-        this.parent.store.positions[idx] = updated;
+        this.store.positions[idx] = updated;
       }
     });
   };
