@@ -1,4 +1,4 @@
-## [3.0.5](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v3.0.5) (2023-04-17)
+## [3.0.6](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v3.0.6) (2023-04-17)
 
 
 ### Bug Fixes
@@ -21,6 +21,7 @@
 * **binance:** add `listenOrderBook` ([1779ae9](https://github.com/gmtech-xyz/safe-cex/commit/1779ae917e46cf5a72194cca4ff8cbbae3867943))
 * **bybit-ws-public:** re-subscribe topics on disconnect ([e56a138](https://github.com/gmtech-xyz/safe-cex/commit/e56a1389bd4d5ffe749cdb6555962cdbd769bb12))
 * **bybit:** add `listenOrderBook` ([db314bf](https://github.com/gmtech-xyz/safe-cex/commit/db314bf0bc0ca2c735acc874cee48295dfe6bc65))
+* **bybit:** emit error if any on update positional TP/SL ([5d5aba2](https://github.com/gmtech-xyz/safe-cex/commit/5d5aba2f9e7697186a628a60ddefd89a90bedbaa))
 * **woo:** add listenOrderBook ([4c1c216](https://github.com/gmtech-xyz/safe-cex/commit/4c1c2160bfc217be0f304d3494e50cfe50a1a4e0))
 
 
