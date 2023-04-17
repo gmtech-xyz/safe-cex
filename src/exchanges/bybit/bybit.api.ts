@@ -8,6 +8,14 @@ import { virtualClock } from '../../utils/virtual-clock';
 
 import { BASE_URL, BROKER_ID, ENDPOINTS, RECV_WINDOW } from './bybit.types';
 
+const isErrorSignature = (error: any) => {
+  const isNetwork = isNetworkError(error);
+  const isErrSign =
+    error?.response?.data?.ret_msg?.includes('error sign!') ||
+    error?.response?.data?.retMsg?.includes('error sign!');
+  return isNetwork || isErrSign;
+};
+
 export const createAPI = (options: ExchangeOptions) => {
   const xhr = axios.create({
     baseURL: BASE_URL[options.testnet ? 'testnet' : 'livenet'],
@@ -23,7 +31,11 @@ export const createAPI = (options: ExchangeOptions) => {
   });
 
   // retry requests on network errors instead of throwing
-  retry(xhr, { retries: 3, retryCondition: isNetworkError });
+  // and some signature errors
+  retry(xhr, {
+    retries: 3,
+    retryCondition: isErrorSignature,
+  });
 
   xhr.interceptors.request.use((config) => {
     const nextConfig = { ...config };
