@@ -15,8 +15,8 @@ class VirtualClock {
     if (!this.started) {
       this.started = true;
 
-      await this.fetchServerTime();
-      setInterval(() => this.fetchServerTime(), 60_000);
+      await this.syncClientServerTime();
+      setInterval(() => this.syncClientServerTime(), 60_000);
     }
   };
 
@@ -30,40 +30,54 @@ class VirtualClock {
     return dayjs.utc().valueOf();
   };
 
-  private fetchServerTime = async () => {
+  private syncClientServerTime = async () => {
     if (typeof window === 'undefined') {
       // assume we are running onto a server
       // this should have a better time sync
-      this.server = dayjs.utc();
-      this.client = dayjs.utc();
+      this.server = null;
+      this.client = null;
 
       return;
     }
 
+    this.server = await this.fetchServerTime();
+    this.client = dayjs.utc();
+
+    // if the difference is less than 5 seconds
+    // assume the time is correct
+    if (Math.abs(this.server.diff(this.client, 'milliseconds')) < 5_000) {
+      this.server = null;
+      this.client = null;
+    }
+  };
+
+  private fetchServerTime = async () => {
     try {
+      const start = performance.now();
       const { data } = await axios.get(
         'https://worldtimeapi.org/api/timezone/etc/utc',
         { timeout: 5000 }
       );
-
-      this.server = dayjs.utc(data.utc_datetime);
-      this.client = dayjs.utc();
+      return dayjs
+        .utc(data.utc_datetime)
+        .add((performance.now() - start) / 2, 'milliseconds');
     } catch {
-      // fallback to tuleep.trade server time
-      // we don't really want to use this API as its not meant for this
-      try {
-        const {
-          data: { time },
-        } = await axios.get('https://tuleep.trade/api/time');
-
-        this.server = dayjs.utc(time);
-        this.client = dayjs.utc();
-      } catch {
-        // fallback to local time if all else fails
-        this.server = dayjs.utc();
-        this.client = dayjs.utc();
-      }
+      // ignore
     }
+
+    try {
+      const start = performance.now();
+      const {
+        data: { time },
+      } = await axios.get('https://tuleep.trade/api/time', { timeout: 5000 });
+      return dayjs
+        .utc(time)
+        .add((performance.now() - start) / 2, 'milliseconds');
+    } catch {
+      // ignore
+    }
+
+    return dayjs.utc();
   };
 }
 
