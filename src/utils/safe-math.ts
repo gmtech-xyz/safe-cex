@@ -1,7 +1,17 @@
-export const afterDecimal = (num: number | string) => {
+import { memoize } from 'lodash';
+
+export const afterDecimal = memoize((num: number | string) => {
   if (Number.isInteger(num)) return 0;
-  return num?.toString()?.split?.('.')?.[1]?.length || 1;
-};
+
+  const str = num?.toString?.();
+
+  if (str?.includes?.('e')) {
+    const [, exponent] = str.split('e');
+    return Math.abs(Number(exponent));
+  }
+
+  return str?.split?.('.')?.[1]?.length || 2;
+});
 
 export const adjust = (value: number, step: number | string) => {
   const multiplier = 1 / Number(step);
