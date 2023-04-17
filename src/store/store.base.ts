@@ -71,7 +71,7 @@ export class DefaultStore implements Store {
   };
 
   reset = () => {
-    this.state = defaultStore;
+    this.state = JSON.parse(JSON.stringify(defaultStore));
     this.notify();
   };
 
