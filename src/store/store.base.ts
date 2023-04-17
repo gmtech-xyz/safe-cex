@@ -182,7 +182,7 @@ export class DefaultStore implements Store {
   updateTicker = (ticker: Pick<Ticker, 'id'>, changes: Partial<Ticker>) => {
     const idx = this.state.tickers.findIndex((t) => t.id === ticker.id);
 
-    if (idx === -1) {
+    if (idx > -1) {
       this.updateInArray('tickers', idx, changes);
       this.notify();
     }
