@@ -1,4 +1,4 @@
-## [3.0.2](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v3.0.2) (2023-04-13)
+## [3.0.3](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v3.0.3) (2023-04-17)
 
 
 ### Bug Fixes
@@ -8,6 +8,7 @@
 * **woo:** apply rate limitter on every calls ([70095bd](https://github.com/gmtech-xyz/safe-cex/commit/70095bd2900a7f2e91b509acca39d7bd2d2e6f5f))
 * **woo:** balance calculation ([897891c](https://github.com/gmtech-xyz/safe-cex/commit/897891cf7cc35de21de66b2a3828b3c82cbad360))
 * **woo:** dont crash when couldnt find market of filled order ([fa0c3c3](https://github.com/gmtech-xyz/safe-cex/commit/fa0c3c3001012076f89759ed2a8b421fa99bd628))
+* **woo:** incorrect total balance calc ([1a86b33](https://github.com/gmtech-xyz/safe-cex/commit/1a86b33c0240acc3cc49fe3a958c7cb3458a7ce5))
 * **woo:** use `brokerId` for V3 API Endpoint ([b9e1c23](https://github.com/gmtech-xyz/safe-cex/commit/b9e1c233df8a504fa19ae974936706b5715b88ae))
 * **ws:** delete handler asap ([514c699](https://github.com/gmtech-xyz/safe-cex/commit/514c699a512c722f05bdb8b4fa2e7f093c457631))
 
