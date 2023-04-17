@@ -571,7 +571,7 @@ export class Bybit extends BaseExchange {
     ) {
       const payload: Record<string, any> = {
         symbol: order.symbol,
-        positionIdx: order.side === OrderSide.Buy ? 2 : 1,
+        positionIdx: this.getOrderPositionIdx(order),
       };
 
       if ('price' in update) {
@@ -750,7 +750,9 @@ export class Bybit extends BaseExchange {
     return orders;
   }
 
-  private getOrderPositionIdx = (opts: PlaceOrderOpts) => {
+  private getOrderPositionIdx = (
+    opts: Pick<PlaceOrderOpts, 'reduceOnly' | 'side' | 'symbol'>
+  ) => {
     // we can't use `this.store.options.isHedged` because
     // it can be enabled on some symbols but not on others
     const isHedged = this.hedgedPositionsMap[opts.symbol] || false;
@@ -762,7 +764,9 @@ export class Bybit extends BaseExchange {
     return positionIdx;
   };
 
-  private getStopOrderPositionIdx = (opts: PlaceOrderOpts) => {
+  private getStopOrderPositionIdx = (
+    opts: Pick<PlaceOrderOpts, 'reduceOnly' | 'side' | 'symbol'>
+  ) => {
     const positionIdx = this.getOrderPositionIdx(opts);
     return { 0: 0, 1: 2, 2: 1 }[positionIdx];
   };
