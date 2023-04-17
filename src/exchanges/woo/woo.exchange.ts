@@ -104,10 +104,10 @@ export class Woo extends BaseExchange {
   tick = async () => {
     if (!this.isDisposed) {
       try {
-        const balance = await this.fetchBalance();
+        const positions = await this.fetchPositions();
         if (this.isDisposed) return;
 
-        const positions = await this.fetchPositions();
+        const balance = await this.fetchBalance();
         if (this.isDisposed) return;
 
         // woo doesnt provides unrealized pnl in the account endpoint
@@ -116,6 +116,9 @@ export class Woo extends BaseExchange {
           positions.length > 0
             ? Math.round(sumBy(positions, 'unrealizedPnl') * 100) / 100
             : 0;
+
+        // total balance from API already takes in account uPNL
+        balance.total = balance.total - balance.upnl;
 
         this.store.balance = balance;
         this.store.positions = positions;
