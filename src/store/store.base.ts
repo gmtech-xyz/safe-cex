@@ -1,5 +1,3 @@
-import { proxy, snapshot } from '@iam4x/valtio/dist/vanilla';
-
 import type { Order, Position, StoreData, Ticker, Writable } from '../types';
 import { clone } from '../utils/clone';
 
@@ -26,7 +24,7 @@ export const defaultStore: StoreData = {
 
 export class DefaultStore implements Store {
   private listeners = new Set<(data: StoreData) => void>();
-  private state = proxy<Writable<StoreData>>(clone(defaultStore));
+  private state: Writable<StoreData> = clone(defaultStore);
 
   get latency() {
     return this.state.latency;
@@ -66,7 +64,7 @@ export class DefaultStore implements Store {
   };
 
   reset = () => {
-    this.state = proxy<Writable<StoreData>>(clone(defaultStore));
+    this.state = clone(defaultStore);
     this.notify();
   };
 
@@ -202,8 +200,7 @@ export class DefaultStore implements Store {
 
   private notify = () => {
     if (this.listeners.size > 0) {
-      const data = snapshot(this.state);
-      this.listeners.forEach((cb) => cb(data as StoreData));
+      this.listeners.forEach((cb) => cb(this.state));
     }
   };
 }
