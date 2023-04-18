@@ -33,7 +33,7 @@ import { normalizeSymbol, reverseSymbol } from './woo.utils';
 import { WooPrivateWebscoket } from './woo.ws-private';
 import { WooPublicWebsocket } from './woo.ws-public';
 
-export class Woo extends BaseExchange {
+export class WOOXExchange extends BaseExchange {
   xhr: Axios;
 
   publicWebsocket: WooPublicWebsocket;

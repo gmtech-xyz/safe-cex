@@ -2,7 +2,7 @@ import type { OHLCVOptions, Candle, OrderBook } from '../../types';
 import { calcOrderBookTotal, sortOrderBook } from '../../utils/orderbook';
 import { BaseWebSocket } from '../base.ws';
 
-import type { Woo } from './woo.exchange';
+import type { WOOXExchange } from './woo.exchange';
 import { BASE_WS_URL, ENDPOINTS } from './woo.types';
 import { normalizeSymbol, reverseSymbol } from './woo.utils';
 
@@ -11,7 +11,7 @@ type MessageHandlers = {
   [topic: string]: (json: Data) => void;
 };
 
-export class WooPublicWebsocket extends BaseWebSocket<Woo> {
+export class WooPublicWebsocket extends BaseWebSocket<WOOXExchange> {
   messageHandlers: MessageHandlers = {
     ping: () => this.handlePingEvent(),
     pong: () => this.handlePongEvent(),

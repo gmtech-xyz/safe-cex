@@ -4,10 +4,10 @@ import type { Position } from '../../types';
 import { v } from '../../utils/get-key';
 import { BaseWebSocket } from '../base.ws';
 
-import type { Bybit } from './bybit.exchange';
+import type { BybitExchange } from './bybit.exchange';
 import { BASE_WS_URL } from './bybit.types';
 
-export class BybitPrivateWebsocket extends BaseWebSocket<Bybit> {
+export class BybitPrivateWebsocket extends BaseWebSocket<BybitExchange> {
   connectAndSubscribe = () => {
     if (!this.isDisposed) {
       this.ws = new WebSocket(

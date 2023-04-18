@@ -46,7 +46,7 @@ import {
 import { BinancePrivateWebsocket } from './binance.ws-private';
 import { BinancePublicWebsocket } from './binance.ws-public';
 
-export class Binance extends BaseExchange {
+export class BinanceExchange extends BaseExchange {
   xhr: Axios;
   unlimitedXHR: Axios;
 

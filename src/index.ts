@@ -1,15 +1,17 @@
-import { Binance } from './exchanges/binance/binance.exchange';
-import { Bybit } from './exchanges/bybit/bybit.exchange';
-import { Woo } from './exchanges/woo/woo.exchange';
+import { BinanceExchange } from './exchanges/binance/binance.exchange';
+import { BybitExchange } from './exchanges/bybit/bybit.exchange';
+import { OKXExchange } from './exchanges/okx/okx.exchange';
+import { WOOXExchange } from './exchanges/woo/woo.exchange';
 import { DefaultStore } from './store/store.base';
 import type { Store } from './store/store.interface';
 import type { ExchangeOptions } from './types';
 import { virtualClock } from './utils/virtual-clock';
 
 const exchanges = {
-  bybit: Bybit,
-  binance: Binance,
-  woo: Woo,
+  bybit: BybitExchange,
+  binance: BinanceExchange,
+  woo: WOOXExchange,
+  okx: OKXExchange,
 };
 
 export const createExchange = (

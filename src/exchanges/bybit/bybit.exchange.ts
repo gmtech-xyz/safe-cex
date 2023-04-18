@@ -47,7 +47,7 @@ import {
 import { BybitPrivateWebsocket } from './bybit.ws-private';
 import { BybitPublicWebsocket } from './bybit.ws-public';
 
-export class Bybit extends BaseExchange {
+export class BybitExchange extends BaseExchange {
   xhr: Axios;
   unlimitedXHR: Axios;
 

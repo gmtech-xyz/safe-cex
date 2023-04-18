@@ -3,7 +3,7 @@ import { v } from '../../utils/get-key';
 import { calcOrderBookTotal, sortOrderBook } from '../../utils/orderbook';
 import { BaseWebSocket } from '../base.ws';
 
-import type { Binance } from './binance.exchange';
+import type { BinanceExchange } from './binance.exchange';
 import { BASE_WS_URL, ENDPOINTS } from './binance.types';
 
 type Data = Array<Record<string, any>>;
@@ -11,7 +11,7 @@ type MessageHandlers = {
   [topic: string]: (json: Data) => void;
 };
 
-export class BinancePublicWebsocket extends BaseWebSocket<Binance> {
+export class BinancePublicWebsocket extends BaseWebSocket<BinanceExchange> {
   messageHandlers: MessageHandlers = {
     '24hrTicker': (d: Data) => this.handleTickerStreamEvents(d),
     bookTicker: (d: Data) => this.handleBookTickersStreamEvents(d),

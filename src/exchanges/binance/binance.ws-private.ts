@@ -1,7 +1,7 @@
 import { OrderStatus } from '../../types';
 import { BaseWebSocket } from '../base.ws';
 
-import type { Binance } from './binance.exchange';
+import type { BinanceExchange } from './binance.exchange';
 import {
   BASE_WS_URL,
   ENDPOINTS,
@@ -10,7 +10,7 @@ import {
   POSITION_SIDE,
 } from './binance.types';
 
-export class BinancePrivateWebsocket extends BaseWebSocket<Binance> {
+export class BinancePrivateWebsocket extends BaseWebSocket<BinanceExchange> {
   connectAndSubscribe = async () => {
     if (!this.isDisposed) {
       const listenKey = await this.fetchListenKey();

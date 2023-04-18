@@ -10,7 +10,7 @@ import type {
 import { calcOrderBookTotal, sortOrderBook } from '../../utils/orderbook';
 import { BaseWebSocket } from '../base.ws';
 
-import type { Bybit } from './bybit.exchange';
+import type { BybitExchange } from './bybit.exchange';
 import { BASE_WS_URL, INTERVAL } from './bybit.types';
 
 type Data = Record<string, any>;
@@ -22,7 +22,7 @@ type SubscribedTopics = {
   [id: string]: string[] | string;
 };
 
-export class BybitPublicWebsocket extends BaseWebSocket<Bybit> {
+export class BybitPublicWebsocket extends BaseWebSocket<BybitExchange> {
   topics: SubscribedTopics = {};
   messageHandlers: MessageHandlers = {
     instrument_info: (d: Data) => this.handleInstrumentInfoEvents(d),

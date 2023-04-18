@@ -4,11 +4,11 @@ import { v } from '../../utils/get-key';
 import { virtualClock } from '../../utils/virtual-clock';
 import { BaseWebSocket } from '../base.ws';
 
-import type { Woo } from './woo.exchange';
+import type { WOOXExchange } from './woo.exchange';
 import { BASE_WS_URL, ORDER_SIDE } from './woo.types';
 import { normalizeSymbol } from './woo.utils';
 
-export class WooPrivateWebscoket extends BaseWebSocket<Woo> {
+export class WooPrivateWebscoket extends BaseWebSocket<WOOXExchange> {
   connectAndSubscribe = () => {
     if (!this.isDisposed) {
       const baseURL =
