@@ -1,4 +1,4 @@
-import { memoize } from 'lodash';
+import memoize from 'lodash/memoize';
 
 export const normalizeSymbol = memoize((str: string) => {
   const [, baseAsset, quoteAsset] = str.split('_');

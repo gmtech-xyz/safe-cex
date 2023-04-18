@@ -1,7 +1,7 @@
 import axios from 'axios';
 import retry, { isNetworkError } from 'axios-retry';
 import createHmac from 'create-hmac';
-import { omit } from 'lodash';
+import omit from 'lodash/omit';
 import qs from 'qs';
 
 import type { ExchangeOptions } from '../../types';

@@ -1,4 +1,4 @@
-import { uniq } from 'lodash';
+import uniq from 'lodash/uniq';
 import { forEachSeries, mapSeries } from 'p-iteration';
 import Emitter from 'tiny-emitter';
 

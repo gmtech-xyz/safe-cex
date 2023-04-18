@@ -1,6 +1,7 @@
 import type { Axios } from 'axios';
 import rateLimit from 'axios-rate-limit';
-import { sumBy, times } from 'lodash';
+import sumBy from 'lodash/sumBy';
+import times from 'lodash/times';
 import { forEachSeries, mapSeries } from 'p-iteration';
 
 import type { Store } from '../../store/store.interface';

@@ -1,8 +1,11 @@
 import type { Axios } from 'axios';
 import rateLimit from 'axios-rate-limit';
-import { chunk, groupBy, omit, times } from 'lodash';
+import chunk from 'lodash/chunk';
+import groupBy from 'lodash/groupBy';
+import omit from 'lodash/omit';
+import times from 'lodash/times';
+import { nanoid } from 'nanoid';
 import { forEachSeries } from 'p-iteration';
-import { v4 } from 'uuid';
 
 import type { Store } from '../../store/store.interface';
 import type {
@@ -642,7 +645,7 @@ export class Binance extends BaseExchange {
     // otherwise Binance will duplicate the IDs
     // when its sent in batches
     for (const payload of payloads) {
-      payload.newClientOrderId = v4().replace(/-/g, '');
+      payload.newClientOrderId = nanoid().replace(/-|_/g, '');
     }
 
     return payloads;
@@ -682,7 +685,7 @@ export class Binance extends BaseExchange {
       quantity: `${position.contracts}`,
       callbackRate: `${distancePercentage}`,
       priceProtect: 'true',
-      newClientOrderId: v4().replace(/-/g, ''),
+      newClientOrderId: nanoid().replace(/-|_/g, ''),
     };
 
     return [payload];

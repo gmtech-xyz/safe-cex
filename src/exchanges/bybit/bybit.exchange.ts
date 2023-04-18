@@ -2,7 +2,10 @@ import type { Axios } from 'axios';
 import rateLimit from 'axios-rate-limit';
 import type { ManipulateType } from 'dayjs';
 import dayjs from 'dayjs';
-import { omit, orderBy, times, uniqBy } from 'lodash';
+import omit from 'lodash/omit';
+import orderBy from 'lodash/orderBy';
+import times from 'lodash/times';
+import uniqBy from 'lodash/uniqBy';
 import { forEachSeries, mapSeries } from 'p-iteration';
 
 import type { Store } from '../../store/store.interface';

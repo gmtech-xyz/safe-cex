@@ -1,4 +1,6 @@
-import { camelCase, memoize, snakeCase } from 'lodash';
+import camelCase from 'lodash/camelCase';
+import memoize from 'lodash/memoize';
+import snakeCase from 'lodash/snakeCase';
 
 const s = memoize(snakeCase);
 const c = memoize(camelCase);
