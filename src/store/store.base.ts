@@ -1,10 +1,6 @@
-import type {
-  Order,
-  Position,
-  StoreData,
-  Ticker,
-  WritableStoreData,
-} from '../types';
+import { proxy, snapshot } from '@iam4x/valtio/dist/vanilla';
+
+import type { Order, Position, StoreData, Ticker, Writable } from '../types';
 import { clone } from '../utils/clone';
 
 import type { Store } from './store.interface';
@@ -30,9 +26,7 @@ export const defaultStore: StoreData = {
 
 export class DefaultStore implements Store {
   private listeners = new Set<(data: StoreData) => void>();
-  private state: WritableStoreData = JSON.parse(
-    JSON.stringify(defaultStore, null, 4)
-  );
+  private state = proxy<Writable<StoreData>>(clone(defaultStore));
 
   get latency() {
     return this.state.latency;
@@ -72,7 +66,7 @@ export class DefaultStore implements Store {
   };
 
   reset = () => {
-    this.state = clone(defaultStore);
+    this.state = proxy<Writable<StoreData>>(clone(defaultStore));
     this.notify();
   };
 
@@ -82,21 +76,19 @@ export class DefaultStore implements Store {
   };
 
   removeOrders = (orders: Array<Pick<Order, 'id'>>) => {
-    const idxs = orders.map((order) =>
-      this.state.orders.findIndex((o) => o.id === order.id)
-    );
+    orders.forEach((order) => {
+      const idx = this.state.orders.findIndex((o) => o.id === order.id);
+      if (idx > -1) this.state.orders.splice(idx, 1);
+    });
 
-    if (idxs.some((idx) => idx === -1)) {
-      this.removeFromArray('orders', idxs);
-      this.notify();
-    }
+    this.notify();
   };
 
   removeOrder = (order: Pick<Order, 'id'>) => {
     const idx = this.state.orders.findIndex((o) => o.id === order.id);
 
     if (idx > -1) {
-      this.removeFromArray('orders', [idx]);
+      this.state.orders.splice(idx, 1);
       this.notify();
     }
   };
@@ -143,7 +135,7 @@ export class DefaultStore implements Store {
     );
 
     if (idx > -1) {
-      this.removeFromArray('positions', [idx]);
+      this.state.orders.splice(idx, 1);
       this.notify();
     }
   };
@@ -196,20 +188,6 @@ export class DefaultStore implements Store {
     }
   };
 
-  private removeFromArray = <
-    K extends 'markets' | 'orders' | 'positions' | 'tickers'
-  >(
-    key: K,
-    indexes: number[]
-  ) => {
-    indexes
-      .filter((idx) => idx > -1)
-      .forEach((idx, lastIdx) => {
-        const nextIdx = indexes[lastIdx] > idx ? idx + 1 : idx;
-        this.state[key].splice(nextIdx, 1);
-      });
-  };
-
   private updateInArray = <
     K extends 'markets' | 'orders' | 'positions' | 'tickers'
   >(
@@ -218,11 +196,14 @@ export class DefaultStore implements Store {
     changes: Partial<StoreData[K][number]>
   ) => {
     if (idx > -1 && key in this.state) {
-      Object.assign(this.state[key][idx], changes);
+      this.state[key][idx] = { ...this.state[key][idx], ...changes };
     }
   };
 
   private notify = () => {
-    this.listeners.forEach((cb) => cb(this.state));
+    if (this.listeners.size > 0) {
+      const data = snapshot(this.state);
+      this.listeners.forEach((cb) => cb(data as StoreData));
+    }
   };
 }
