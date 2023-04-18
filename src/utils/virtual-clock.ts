@@ -45,7 +45,7 @@ class VirtualClock {
 
     // if the difference is less than 5 seconds
     // assume the time is correct
-    if (Math.abs(this.server.diff(this.client, 'milliseconds')) < 5_000) {
+    if (Math.abs(this.server.diff(this.client, 'milliseconds')) < 1000) {
       this.server = null;
       this.client = null;
     }
@@ -53,26 +53,20 @@ class VirtualClock {
 
   private fetchServerTime = async () => {
     try {
-      const start = performance.now();
       const { data } = await axios.get(
         'https://worldtimeapi.org/api/timezone/etc/utc',
         { timeout: 5000 }
       );
-      return dayjs
-        .utc(data.utc_datetime)
-        .add((performance.now() - start) / 2, 'milliseconds');
+      return dayjs.utc(data.utc_datetime);
     } catch {
       // ignore
     }
 
     try {
-      const start = performance.now();
       const {
         data: { time },
       } = await axios.get('https://tuleep.trade/api/time', { timeout: 5000 });
-      return dayjs
-        .utc(time)
-        .add((performance.now() - start) / 2, 'milliseconds');
+      return dayjs.utc(time);
     } catch {
       // ignore
     }
