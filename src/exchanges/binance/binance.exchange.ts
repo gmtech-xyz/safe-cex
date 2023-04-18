@@ -515,7 +515,7 @@ export class Binance extends BaseExchange {
       });
 
       this.store.removeOrders(
-        this.store.orders.filter((o) => o.symbol !== symbol)
+        this.store.orders.filter((o) => o.symbol === symbol)
       );
     } catch (err: any) {
       this.emitter.emit('error', err?.response?.data?.msg || err?.message);

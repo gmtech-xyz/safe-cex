@@ -90,7 +90,7 @@ export class BinancePrivateWebsocket extends BaseWebSocket<Binance> {
       }
 
       if (data.X === 'CANCELED' || data.X === 'FILLED') {
-        this.store.removeOrder(data.c);
+        this.store.removeOrder({ id: data.c });
       }
     });
   };
