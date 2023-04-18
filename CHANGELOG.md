@@ -1,10 +1,12 @@
-## [3.0.7](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v3.0.7) (2023-04-17)
+# [4.0.0](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v4.0.0) (2023-04-18)
 
 
 ### Bug Fixes
 
 * **afterDecimals:** support exponential ([3331f8e](https://github.com/gmtech-xyz/safe-cex/commit/3331f8e4e0b4f0fa0c093989c5925af4cb150c65))
+* **baseStore:** wrong idx check ([8951b30](https://github.com/gmtech-xyz/safe-cex/commit/8951b306180150519ec0f965b3ec1b784704d3ae))
 * **bybit:** positionIdx for one-way positional SL/TP ([7c5efad](https://github.com/gmtech-xyz/safe-cex/commit/7c5efad72183a4c10c684d0f3c9c9e9506c893b4))
+* **defaultStore:** reset use a new object ([2fe682e](https://github.com/gmtech-xyz/safe-cex/commit/2fe682e8acd50cc1686591a40debf9f2d7b32116))
 * **exchanges:** revert latency calc to ping ([b19644c](https://github.com/gmtech-xyz/safe-cex/commit/b19644c8357f8323f8fdded2b31b80c84b12615c))
 * **orderbook:** clear timeout, check if disposed after snapshot ([27dc929](https://github.com/gmtech-xyz/safe-cex/commit/27dc92914ead0496174604a3e8e34ff55b4fdc34))
 * **safe-math:** need to round with `adjust()` ([d5fc628](https://github.com/gmtech-xyz/safe-cex/commit/d5fc6284babed44231fe8febe0ef48cca2bbd4e5))
@@ -23,6 +25,10 @@
 * **bybit-ws-public:** re-subscribe topics on disconnect ([e56a138](https://github.com/gmtech-xyz/safe-cex/commit/e56a1389bd4d5ffe749cdb6555962cdbd769bb12))
 * **bybit:** add `listenOrderBook` ([db314bf](https://github.com/gmtech-xyz/safe-cex/commit/db314bf0bc0ca2c735acc874cee48295dfe6bc65))
 * **bybit:** emit error if any on update positional TP/SL ([5d5aba2](https://github.com/gmtech-xyz/safe-cex/commit/5d5aba2f9e7697186a628a60ddefd89a90bedbaa))
+* **bybit:** retry signature errors ([83d53ec](https://github.com/gmtech-xyz/safe-cex/commit/83d53ec5291d33b7440cebc6e4698d97dc25f6a6))
+* **exchange:** make store overridable ([ab23d2f](https://github.com/gmtech-xyz/safe-cex/commit/ab23d2f5c883d857650e61a9bd9bb44879a0419c))
+* **store:** use agnostic implementation ([6b2f891](https://github.com/gmtech-xyz/safe-cex/commit/6b2f8912a36a47355f6e3587d007487b8fa99c4a))
+* **virtual-clock:** rely on computer date ([473003d](https://github.com/gmtech-xyz/safe-cex/commit/473003de499fd0c0ea55457dbc62e3c613b3f350))
 * **woo:** add listenOrderBook ([4c1c216](https://github.com/gmtech-xyz/safe-cex/commit/4c1c2160bfc217be0f304d3494e50cfe50a1a4e0))
 
 
