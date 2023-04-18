@@ -1,4 +1,4 @@
-## [4.0.1](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v4.0.1) (2023-04-18)
+## [4.0.2](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v4.0.2) (2023-04-18)
 
 
 ### Bug Fixes
@@ -28,6 +28,7 @@
 * **bybit:** retry signature errors ([83d53ec](https://github.com/gmtech-xyz/safe-cex/commit/83d53ec5291d33b7440cebc6e4698d97dc25f6a6))
 * **exchange:** make store overridable ([ab23d2f](https://github.com/gmtech-xyz/safe-cex/commit/ab23d2f5c883d857650e61a9bd9bb44879a0419c))
 * **store:** use agnostic implementation ([6b2f891](https://github.com/gmtech-xyz/safe-cex/commit/6b2f8912a36a47355f6e3587d007487b8fa99c4a))
+* **utils:** add clone ([88fa847](https://github.com/gmtech-xyz/safe-cex/commit/88fa8475352cf9681886c710c0ca95cdda2e53bf))
 * **virtual-clock:** rely on computer date ([473003d](https://github.com/gmtech-xyz/safe-cex/commit/473003de499fd0c0ea55457dbc62e3c613b3f350))
 * **woo:** add listenOrderBook ([4c1c216](https://github.com/gmtech-xyz/safe-cex/commit/4c1c2160bfc217be0f304d3494e50cfe50a1a4e0))
 
