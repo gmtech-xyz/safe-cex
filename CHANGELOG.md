@@ -1,4 +1,4 @@
-## [4.0.2](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v4.0.2) (2023-04-18)
+## [4.0.3](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v4.0.3) (2023-04-18)
 
 
 ### Bug Fixes
@@ -11,6 +11,7 @@
 * **orderbook:** clear timeout, check if disposed after snapshot ([27dc929](https://github.com/gmtech-xyz/safe-cex/commit/27dc92914ead0496174604a3e8e34ff55b4fdc34))
 * **safe-math:** need to round with `adjust()` ([d5fc628](https://github.com/gmtech-xyz/safe-cex/commit/d5fc6284babed44231fe8febe0ef48cca2bbd4e5))
 * **safe-math:** remove memoize, its a memory leak ([9277dd2](https://github.com/gmtech-xyz/safe-cex/commit/9277dd2bdef0ac1b328367a5b36db1dcb4b9484f))
+* **virtual-clock:** enforce smaller timediff ([226123e](https://github.com/gmtech-xyz/safe-cex/commit/226123eb7f068675473405143a091bb3b32c6f5c))
 * **woo:** apply rate limitter on every calls ([70095bd](https://github.com/gmtech-xyz/safe-cex/commit/70095bd2900a7f2e91b509acca39d7bd2d2e6f5f))
 * **woo:** balance calculation ([897891c](https://github.com/gmtech-xyz/safe-cex/commit/897891cf7cc35de21de66b2a3828b3c82cbad360))
 * **woo:** dont crash when couldnt find market of filled order ([fa0c3c3](https://github.com/gmtech-xyz/safe-cex/commit/fa0c3c3001012076f89759ed2a8b421fa99bd628))
