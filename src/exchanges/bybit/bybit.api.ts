@@ -44,12 +44,12 @@ export const createAPI = (options: ExchangeOptions) => {
       return { ...nextConfig, headers: new AxiosHeaders({}) };
     }
 
-    const timestamp = virtualClock.getCurrentTime();
     const data =
       config.method === 'get'
         ? qs.stringify(config.params)
         : JSON.stringify(config.data);
 
+    const timestamp = virtualClock.getCurrentTime();
     const signature = createHmac('sha256', options.secret)
       .update([timestamp, options.key, RECV_WINDOW, data].join(''))
       .digest('hex');
