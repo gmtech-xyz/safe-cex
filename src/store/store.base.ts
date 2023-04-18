@@ -5,6 +5,7 @@ import type {
   Ticker,
   WritableStoreData,
 } from '../types';
+import { clone } from '../utils/clone';
 
 import type { Store } from './store.interface';
 
@@ -71,7 +72,7 @@ export class DefaultStore implements Store {
   };
 
   reset = () => {
-    this.state = JSON.parse(JSON.stringify(defaultStore));
+    this.state = clone(defaultStore);
     this.notify();
   };
 
