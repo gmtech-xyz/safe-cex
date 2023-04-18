@@ -1,16 +1,18 @@
-## [4.0.3](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v4.0.3) (2023-04-18)
+## [4.0.4](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v4.0.4) (2023-04-18)
 
 
 ### Bug Fixes
 
 * **afterDecimals:** support exponential ([3331f8e](https://github.com/gmtech-xyz/safe-cex/commit/3331f8e4e0b4f0fa0c093989c5925af4cb150c65))
 * **baseStore:** wrong idx check ([8951b30](https://github.com/gmtech-xyz/safe-cex/commit/8951b306180150519ec0f965b3ec1b784704d3ae))
+* **binance:** remove cancelled orders ([811e0c0](https://github.com/gmtech-xyz/safe-cex/commit/811e0c0f5f0de61c0a81f82141ec74c81626e321))
 * **bybit:** positionIdx for one-way positional SL/TP ([7c5efad](https://github.com/gmtech-xyz/safe-cex/commit/7c5efad72183a4c10c684d0f3c9c9e9506c893b4))
 * **defaultStore:** reset use a new object ([2fe682e](https://github.com/gmtech-xyz/safe-cex/commit/2fe682e8acd50cc1686591a40debf9f2d7b32116))
 * **exchanges:** revert latency calc to ping ([b19644c](https://github.com/gmtech-xyz/safe-cex/commit/b19644c8357f8323f8fdded2b31b80c84b12615c))
 * **orderbook:** clear timeout, check if disposed after snapshot ([27dc929](https://github.com/gmtech-xyz/safe-cex/commit/27dc92914ead0496174604a3e8e34ff55b4fdc34))
 * **safe-math:** need to round with `adjust()` ([d5fc628](https://github.com/gmtech-xyz/safe-cex/commit/d5fc6284babed44231fe8febe0ef48cca2bbd4e5))
 * **safe-math:** remove memoize, its a memory leak ([9277dd2](https://github.com/gmtech-xyz/safe-cex/commit/9277dd2bdef0ac1b328367a5b36db1dcb4b9484f))
+* **store:** use proxy from valtio ([998b3ee](https://github.com/gmtech-xyz/safe-cex/commit/998b3ee50574c9a4bb3baa8e1f66ee82be332d14))
 * **virtual-clock:** enforce smaller timediff ([226123e](https://github.com/gmtech-xyz/safe-cex/commit/226123eb7f068675473405143a091bb3b32c6f5c))
 * **woo:** apply rate limitter on every calls ([70095bd](https://github.com/gmtech-xyz/safe-cex/commit/70095bd2900a7f2e91b509acca39d7bd2d2e6f5f))
 * **woo:** balance calculation ([897891c](https://github.com/gmtech-xyz/safe-cex/commit/897891cf7cc35de21de66b2a3828b3c82cbad360))
