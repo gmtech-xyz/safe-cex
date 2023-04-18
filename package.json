@@ -42,7 +42,7 @@
     "create-hmac": "^1.1.7",
     "dayjs": "^1.11.7",
     "lodash": "^4.17.21",
-    "nanoid": "^4.0.2",
+    "nanoid": "~3.3.5",
     "p-iteration": "^1.1.8",
     "qs": "^6.11.0",
     "tiny-emitter": "^2.1.0"
