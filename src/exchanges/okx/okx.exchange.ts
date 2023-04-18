@@ -1,8 +1,18 @@
 import type { Axios } from 'axios';
 import rateLimit from 'axios-rate-limit';
+import sumBy from 'lodash/sumBy';
 
 import type { Store } from '../../store/store.interface';
-import type { ExchangeOptions } from '../../types';
+import {
+  PositionSide,
+  type Balance,
+  type ExchangeOptions,
+  type Position,
+  type Ticker,
+} from '../../types';
+import { loop } from '../../utils/loop';
+import { roundUSD } from '../../utils/round-usd';
+import { subtract } from '../../utils/safe-math';
 import { BaseExchange } from '../base';
 
 import { createAPI } from './okx.api';
@@ -28,6 +38,40 @@ export class OKXExchange extends BaseExchange {
       markets,
       loaded: { ...this.store.loaded, markets: true },
     });
+
+    const tickers = await this.fetchTickers();
+    if (this.isDisposed) return;
+
+    this.log(`Loaded ${Math.min(tickers.length, markets.length)} OKX markets`);
+
+    this.store.update({
+      tickers,
+      loaded: { ...this.store.loaded, tickers: true },
+    });
+
+    await this.tick();
+    if (this.isDisposed) return;
+
+    this.log(`Ready to trade on OKX`);
+  };
+
+  tick = async () => {
+    if (!this.isDisposed) {
+      try {
+        const { balance, positions } = await this.fetchBalanceAndPositions();
+        if (this.isDisposed) return;
+
+        this.store.update({
+          balance,
+          positions,
+          loaded: { ...this.store.loaded, balance: true, positions: true },
+        });
+      } catch (err: any) {
+        this.emitter.emit('error', err?.message);
+      }
+
+      loop(() => this.tick());
+    }
   };
 
   fetchMarkets = async () => {
@@ -72,5 +116,120 @@ export class OKXExchange extends BaseExchange {
     });
 
     return markets;
+  };
+
+  fetchTickers = async () => {
+    const {
+      data: { data },
+    } = await this.xhr.get(ENDPOINTS.TICKERS, {
+      params: {
+        instType: 'SWAP',
+      },
+    });
+
+    const tickers: Ticker[] = data.reduce(
+      (acc: Ticker[], t: Record<string, any>) => {
+        const market = this.store.markets.find((m) => m.id === t.instId);
+
+        if (!market) return acc;
+
+        const open = parseFloat(t.open24h);
+        const last = parseFloat(t.last);
+        const percentage = roundUSD(((last - open) / open) * 100);
+
+        const ticker = {
+          id: market.id,
+          symbol: market.symbol,
+          bid: parseFloat(t.bidPx),
+          ask: parseFloat(t.askPx),
+          last,
+          mark: 0,
+          index: 0,
+          percentage,
+          fundingRate: 0,
+          volume: parseFloat(t.vol24h),
+          quoteVolume: parseFloat(t.volCcy24h),
+          openInterest: 0,
+        };
+
+        return [...acc, ticker];
+      },
+      []
+    );
+
+    return tickers;
+  };
+
+  fetchBalanceAndPositions = async () => {
+    try {
+      const {
+        data: {
+          data: [{ balData: bal }],
+        },
+      } = await this.xhr.get<{
+        data: Array<Record<string, Array<Record<string, any>>>>;
+      }>(ENDPOINTS.BALANCE, { params: { instType: 'SWAP' } });
+
+      const {
+        data: { data: pData },
+      } = await this.xhr.get<{ data: Array<Record<string, any>> }>(
+        ENDPOINTS.POSITIONS,
+        { params: { instType: 'SWAP' } }
+      );
+
+      const totalCollateral = roundUSD(sumBy(bal, (b) => parseFloat(b.disEq)));
+      const used = roundUSD(sumBy(pData, (p) => parseFloat(p.mmr)));
+      const upnl = roundUSD(sumBy(pData, (p) => parseFloat(p.upl)));
+
+      const balance: Balance = {
+        used,
+        free: subtract(totalCollateral, used),
+        total: totalCollateral,
+        upnl,
+      };
+
+      const positions: Position[] = pData.reduce(
+        (acc: Position[], p: Record<string, any>) => {
+          const market = this.store.markets.find((m) => m.id === p.instId);
+
+          if (!market) return acc;
+          const position: Position = {
+            symbol: market.symbol,
+            side:
+              parseFloat(p.pos) > 0 ? PositionSide.Long : PositionSide.Short,
+            entryPrice: parseFloat(p.avgPx),
+            notional: parseFloat(p.notionalUsd),
+            leverage: parseFloat(p.lever),
+            unrealizedPnl: parseFloat(p.upl),
+            contracts: parseFloat(p.pos),
+            liquidationPrice: parseFloat(p.liqPx) ?? 0,
+          };
+
+          return [...acc, position];
+        },
+        []
+      );
+
+      return {
+        balance,
+        positions,
+      };
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data || err?.message);
+      return {
+        balance: this.store.balance,
+        positions: this.store.positions,
+      };
+    }
+  };
+
+  fetchPositions = async () => {
+    const { positions } = await this.fetchBalanceAndPositions();
+    return positions;
+  };
+
+  fetchBalance = async () => {
+    const { balance } = await this.fetchBalanceAndPositions();
+    return balance;
   };
 }

@@ -1,6 +1,7 @@
 export type ExchangeOptions = {
   readonly key: string;
   readonly secret: string;
+  readonly passphrase?: string;
   readonly applicationId?: string;
   readonly testnet?: boolean;
   readonly corsAnywhere?: string;
