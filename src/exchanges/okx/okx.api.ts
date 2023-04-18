@@ -9,11 +9,18 @@ import { virtualClock } from '../../utils/virtual-clock';
 import { BASE_URL, RECV_WINDOW } from './okx.types';
 
 export const createAPI = (options: ExchangeOptions) => {
-  const passphrase = options.passphrase;
-  if (!passphrase) throw new Error('OKX requires a passphrase');
+  const { corsAnywhere, passphrase } = options;
+
+  if (!passphrase) {
+    throw new Error('OKX requires a passphrase');
+  }
+
+  if (typeof window !== 'undefined' && !corsAnywhere) {
+    throw new Error('OKX requires corsAnywhere in browser');
+  }
 
   const xhr = axios.create({
-    baseURL: BASE_URL,
+    baseURL: corsAnywhere ? `${corsAnywhere}${BASE_URL}` : BASE_URL,
     timeout: RECV_WINDOW,
     headers: options.testnet ? { 'x-simulated-trading': 1 } : {},
   });
@@ -33,16 +40,11 @@ export const createAPI = (options: ExchangeOptions) => {
     const data = config.data ? JSON.stringify(config.data) : null;
 
     const timestamp = virtualClock.getCurrentTime().toISOString();
-    const toSign = [timestamp, method, url];
-    if (data) toSign.push(data);
-
-    // console.log(toSign.join(''));
+    const toSign = [timestamp, method, url, data ? data : ''];
 
     const signature = createHmac('sha256', options.secret)
       .update(toSign.join(''))
       .digest('base64');
-
-    // console.log(signature);
 
     const headers = new AxiosHeaders({
       ...nextConfig.headers,

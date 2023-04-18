@@ -3,16 +3,11 @@ import rateLimit from 'axios-rate-limit';
 import sumBy from 'lodash/sumBy';
 
 import type { Store } from '../../store/store.interface';
-import {
-  PositionSide,
-  type Balance,
-  type ExchangeOptions,
-  type Position,
-  type Ticker,
-} from '../../types';
+import { PositionSide } from '../../types';
+import type { Balance, ExchangeOptions, Position, Ticker } from '../../types';
 import { loop } from '../../utils/loop';
 import { roundUSD } from '../../utils/round-usd';
-import { subtract } from '../../utils/safe-math';
+import { multiply, subtract } from '../../utils/safe-math';
 import { BaseExchange } from '../base';
 
 import { createAPI } from './okx.api';
@@ -25,6 +20,16 @@ export class OKXExchange extends BaseExchange {
     super(opts, store);
     this.xhr = rateLimit(createAPI(opts), { maxRPS: 3 });
   }
+
+  validateAccount = async () => {
+    try {
+      await this.xhr.get(ENDPOINTS.BALANCE);
+      return '';
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data || err?.message);
+      return JSON.stringify(err?.response?.data || err?.message);
+    }
+  };
 
   dispose = () => {
     super.dispose();
@@ -49,10 +54,14 @@ export class OKXExchange extends BaseExchange {
       loaded: { ...this.store.loaded, tickers: true },
     });
 
+    // TODO: Start websocket
+
     await this.tick();
     if (this.isDisposed) return;
 
     this.log(`Ready to trade on OKX`);
+
+    // TODO: Fetch orders
   };
 
   tick = async () => {
@@ -143,8 +152,8 @@ export class OKXExchange extends BaseExchange {
           bid: parseFloat(t.bidPx),
           ask: parseFloat(t.askPx),
           last,
-          mark: 0,
-          index: 0,
+          mark: last,
+          index: last,
           percentage,
           fundingRate: 0,
           volume: parseFloat(t.vol24h),
@@ -198,11 +207,15 @@ export class OKXExchange extends BaseExchange {
             side:
               parseFloat(p.pos) > 0 ? PositionSide.Long : PositionSide.Short,
             entryPrice: parseFloat(p.avgPx),
-            notional: parseFloat(p.notionalUsd),
-            leverage: parseFloat(p.lever),
+            notional: Math.abs(
+              multiply(parseFloat(p.notionalUsd), market.precision.amount)
+            ),
+            leverage: parseFloat(p.lever) || 1,
             unrealizedPnl: parseFloat(p.upl),
-            contracts: parseFloat(p.pos),
-            liquidationPrice: parseFloat(p.liqPx) ?? 0,
+            contracts: Math.abs(
+              multiply(parseFloat(p.pos), market.precision.amount)
+            ),
+            liquidationPrice: parseFloat(p.liqPx || '0'),
           };
 
           return [...acc, position];
@@ -232,4 +245,6 @@ export class OKXExchange extends BaseExchange {
     const { balance } = await this.fetchBalanceAndPositions();
     return balance;
   };
+
+  // fetchOHLCV = async (opts: OHLCVOptions) => {};
 }
