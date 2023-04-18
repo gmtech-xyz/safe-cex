@@ -32,7 +32,7 @@ export const createAPI = (options: ExchangeOptions) => {
     }
 
     const nextConfig = { ...config };
-    const timestamp = virtualClock.getCurrentTime();
+    const timestamp = virtualClock.getCurrentTime().valueOf();
 
     const data = config.data || config.params || {};
     data.timestamp = timestamp;

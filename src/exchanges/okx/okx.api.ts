@@ -32,7 +32,7 @@ export const createAPI = (options: ExchangeOptions) => {
     const url = `${config.url}${params ? `?${params}` : ''}`;
     const data = config.data ? JSON.stringify(config.data) : null;
 
-    const timestamp = virtualClock.getCurrentTime();
+    const timestamp = virtualClock.getCurrentTime().toISOString();
     const toSign = [timestamp, method, url];
     if (data) toSign.push(data);
 

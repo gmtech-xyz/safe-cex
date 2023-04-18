@@ -49,7 +49,7 @@ export const createAPI = (options: ExchangeOptions) => {
         ? qs.stringify(config.params)
         : JSON.stringify(config.data);
 
-    const timestamp = virtualClock.getCurrentTime();
+    const timestamp = virtualClock.getCurrentTime().valueOf();
     const signature = createHmac('sha256', options.secret)
       .update([timestamp, options.key, RECV_WINDOW, data].join(''))
       .digest('hex');

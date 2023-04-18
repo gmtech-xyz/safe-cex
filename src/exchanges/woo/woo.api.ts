@@ -29,7 +29,7 @@ const signV1 = (config: AxiosRequestConfig, options: ExchangeOptions) => {
     delete nextConfig.params;
   }
 
-  const timestamp = virtualClock.getCurrentTime();
+  const timestamp = virtualClock.getCurrentTime().valueOf();
   const signature = createHmac('sha256', options.secret)
     .update(`${asString}|${timestamp}`)
     .digest('hex');
@@ -63,7 +63,7 @@ const signV3 = (c: AxiosRequestConfig, options: ExchangeOptions) => {
     delete nextConfig.params;
   }
 
-  const timestamp = virtualClock.getCurrentTime();
+  const timestamp = virtualClock.getCurrentTime().valueOf();
   const textSign = [
     timestamp,
     nextConfig.method,

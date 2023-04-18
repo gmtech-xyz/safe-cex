@@ -24,10 +24,10 @@ class VirtualClock {
     if (this.server && this.client) {
       const now = dayjs.utc();
       const nowClientDiff = now.diff(this.client, 'milliseconds');
-      return this.server.add(nowClientDiff, 'milliseconds').valueOf();
+      return this.server.add(nowClientDiff, 'milliseconds');
     }
 
-    return dayjs.utc().valueOf();
+    return dayjs.utc();
   };
 
   private syncClientServerTime = async () => {
