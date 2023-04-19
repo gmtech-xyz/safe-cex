@@ -98,12 +98,12 @@ export class WOOXExchange extends BaseExchange {
     await this.tick();
     if (this.isDisposed) return;
 
-    this.log(`Ready to trade on Woo X`);
+    this.log(`Ready to trade on WOO X`);
 
     const orders = await this.fetchOrders();
     if (this.isDisposed) return;
 
-    this.log(`Loaded Woo X orders`);
+    this.log(`Loaded WOO X orders`);
 
     this.store.update({
       orders,
