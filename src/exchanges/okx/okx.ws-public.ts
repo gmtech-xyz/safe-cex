@@ -174,6 +174,9 @@ export class OKXPublicWebsocket extends BaseWebSocket<OKXExchange> {
 
           this.ws?.send?.(JSON.stringify({ op: 'subscribe', args: [topic] }));
           this.parent.log(`Switched to [${opts.symbol}:${opts.interval}]`);
+
+          // store the topic so we can unsubscribe later
+          this.topics.candle = [topic];
         }
       } else {
         timeoutId = setTimeout(() => waitForConnectedAndSubscribe(), 100);
@@ -184,6 +187,7 @@ export class OKXPublicWebsocket extends BaseWebSocket<OKXExchange> {
 
     return () => {
       delete this.messageHandlers.candle;
+      delete this.topics.candle;
 
       if (timeoutId) {
         clearTimeout(timeoutId);
@@ -304,6 +308,9 @@ export class OKXPublicWebsocket extends BaseWebSocket<OKXExchange> {
 
           const payload = JSON.stringify({ op: 'subscribe', args: [topic] });
           this.ws?.send?.(payload);
+
+          // store subscribed topic to re-subscribe on reconnect
+          this.topics.orderBook = [topic];
         }
       } else {
         timeoutId = setTimeout(() => waitForConnectedAndSubscribe(), 100);
@@ -314,6 +321,7 @@ export class OKXPublicWebsocket extends BaseWebSocket<OKXExchange> {
 
     return () => {
       delete this.messageHandlers.books;
+      delete this.topics.orderBook;
       orderBook.bids = [];
       orderBook.asks = [];
 
