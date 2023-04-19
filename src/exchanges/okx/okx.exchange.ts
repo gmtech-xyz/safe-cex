@@ -529,6 +529,16 @@ export class OKXExchange extends BaseExchange {
   };
 
   placeOrder = async (opts: PlaceOrderOpts) => {
+    const payloads = this.formatCreateOrder(opts);
+    return await this.placeOrderBatch(payloads);
+  };
+
+  placeOrders = async (orders: PlaceOrderOpts[]) => {
+    const requests = orders.flatMap((o) => this.formatCreateOrder(o));
+    return await this.placeOrderBatch(requests);
+  };
+
+  formatCreateOrder = (opts: PlaceOrderOpts) => {
     const market = this.store.markets.find((m) => m.symbol === opts.symbol);
 
     if (!market) {
@@ -575,6 +585,10 @@ export class OKXExchange extends BaseExchange {
       payloads[0].slTriggerPxType = 'mark';
     }
 
+    return payloads;
+  };
+
+  placeOrderBatch = async (payloads: Array<Record<string, any>>) => {
     const batches = chunk(payloads, 20);
     const responses = await mapSeries(batches, async (batch) => {
       const {
