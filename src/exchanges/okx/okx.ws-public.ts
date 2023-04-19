@@ -288,6 +288,14 @@ export class OKXPublicWebsocket extends BaseWebSocket<OKXExchange> {
               });
             }
 
+            const ticker = this.store.tickers.find(
+              (t) => t.symbol === market.symbol
+            );
+
+            const lastPrice = ticker?.last || 0;
+            orderBook.asks = orderBook.asks.filter((a) => a.price >= lastPrice);
+            orderBook.bids = orderBook.bids.filter((b) => b.price <= lastPrice);
+
             sortOrderBook(orderBook);
             calcOrderBookTotal(orderBook);
 
