@@ -9,6 +9,7 @@ import type {
   Candle,
   ExchangeOptions,
   OHLCVOptions,
+  Order,
   OrderBook,
   Position,
   Ticker,
@@ -19,7 +20,7 @@ import { multiply, subtract } from '../../utils/safe-math';
 import { BaseExchange } from '../base';
 
 import { createAPI } from './okx.api';
-import { ENDPOINTS } from './okx.types';
+import { ENDPOINTS, ORDER_SIDE, ORDER_STATUS, ORDER_TYPE } from './okx.types';
 import { OKXPublicWebsocket } from './okx.ws-public';
 
 export class OKXExchange extends BaseExchange {
@@ -80,7 +81,15 @@ export class OKXExchange extends BaseExchange {
 
     this.log(`Ready to trade on OKX`);
 
-    // TODO: Fetch orders
+    const orders = await this.fetchOrders();
+    if (this.isDisposed) return;
+
+    this.log(`Loaded ${orders.length} OKX orders`);
+
+    this.store.update({
+      orders,
+      loaded: { ...this.store.loaded, orders: true },
+    });
   };
 
   tick = async () => {
@@ -275,6 +284,35 @@ export class OKXExchange extends BaseExchange {
     return balance;
   };
 
+  fetchOrders = async () => {
+    const recursiveFetch = async (
+      orders: Array<Record<string, any>> = []
+    ): Promise<Array<Record<string, any>>> => {
+      const {
+        data: { data },
+      } = await this.xhr.get<{ data: Array<Record<string, any>> }>(
+        ENDPOINTS.UNFILLED_ORDERS,
+        {
+          params: {
+            instType: 'SWAP',
+            after: orders.length ? orders[orders.length - 1].ordId : undefined,
+          },
+        }
+      );
+
+      if (data.length === 100) {
+        return recursiveFetch([...orders, ...data]);
+      }
+
+      return [...orders, ...data];
+    };
+
+    const okxOrders = await recursiveFetch();
+    const orders = this.mapOrders(okxOrders);
+
+    return orders;
+  };
+
   fetchOHLCV = async (opts: OHLCVOptions) => {
     const market = this.store.markets.find((m) => m.symbol === opts.symbol);
 
@@ -319,5 +357,31 @@ export class OKXExchange extends BaseExchange {
     callback: (orderBook: OrderBook) => void
   ) => {
     return this.publicWebsocket.listenOrderBook(symbol, callback);
+  };
+
+  private mapOrders = (orders: Array<Record<string, any>>) => {
+    return orders.reduce<Order[]>((acc, o: Record<string, any>) => {
+      const market = this.store.markets.find((m) => m.id === o.instId);
+      if (!market) return acc;
+
+      const amount = multiply(parseFloat(o.sz), market.precision.amount);
+      const filled = multiply(parseFloat(o.accFillSz), market.precision.amount);
+      const remaining = subtract(amount, filled);
+
+      const order = {
+        id: o.ordId,
+        status: ORDER_STATUS[o.state],
+        symbol: market.symbol,
+        type: ORDER_TYPE[o.ordType],
+        side: ORDER_SIDE[o.side],
+        price: parseFloat(o.px),
+        amount,
+        filled,
+        remaining,
+        reduceOnly: o.reduceOnly === 'true',
+      };
+
+      return [...acc, order];
+    }, []);
   };
 }

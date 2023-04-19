@@ -1,3 +1,5 @@
+import { OrderSide, OrderStatus, OrderType } from '../../types';
+
 export const RECV_WINDOW = 5000;
 
 // OKX requires CORS
@@ -21,4 +23,24 @@ export const ENDPOINTS = {
   BALANCE: '/api/v5/account/account-position-risk',
   POSITIONS: '/api/v5/account/positions',
   KLINE: '/api/v5/market/candles',
+  UNFILLED_ORDERS: '/api/v5/trade/orders-pending',
+};
+
+export const ORDER_STATUS: Record<string, OrderStatus> = {
+  live: OrderStatus.Open,
+  partially_filled: OrderStatus.Open,
+};
+
+export const ORDER_TYPE: Record<string, OrderType> = {
+  market: OrderType.Market,
+  limit: OrderType.Limit,
+  post_only: OrderType.Limit,
+  fok: OrderType.Limit,
+  ioc: OrderType.Limit,
+  optimal_limit_ioc: OrderType.Market,
+};
+
+export const ORDER_SIDE: Record<string, OrderSide> = {
+  buy: OrderSide.Buy,
+  sell: OrderSide.Sell,
 };
