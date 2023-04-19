@@ -12,7 +12,7 @@ export const BASE_WS_URL = {
     testnet: 'wss://okx-testnet-wss.tuleep.trade/ws/v5/public?brokerId=9999',
   },
   private: {
-    livenet: 'wss://wsaws.okx.com:8443/ws/v5/private',
+    livenet: 'wss://okx-wss.tuleep.trade/ws/v5/private',
     testnet: 'wss://okx-testnet-wss.tuleep.trade/ws/v5/private?brokerId=9999',
   },
 };
