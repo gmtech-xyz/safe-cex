@@ -15,10 +15,6 @@ export const createAPI = (options: ExchangeOptions) => {
     throw new Error('OKX requires a passphrase');
   }
 
-  if (typeof window !== 'undefined' && !corsAnywhere) {
-    throw new Error('OKX requires corsAnywhere in browser');
-  }
-
   const xhr = axios.create({
     baseURL: corsAnywhere ? `${corsAnywhere}${BASE_URL}` : BASE_URL,
     timeout: RECV_WINDOW,

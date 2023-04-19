@@ -12,13 +12,21 @@ import { BaseExchange } from '../base';
 
 import { createAPI } from './okx.api';
 import { ENDPOINTS } from './okx.types';
+import { OKXPublicWebsocket } from './okx.ws-public';
 
 export class OKXExchange extends BaseExchange {
   xhr: Axios;
+  unlimitedXHR: Axios;
+
+  publicWebsocket: OKXPublicWebsocket;
 
   constructor(opts: ExchangeOptions, store: Store) {
     super(opts, store);
+
     this.xhr = rateLimit(createAPI(opts), { maxRPS: 3 });
+    this.unlimitedXHR = createAPI(opts);
+
+    this.publicWebsocket = new OKXPublicWebsocket(this);
   }
 
   validateAccount = async () => {
@@ -26,13 +34,14 @@ export class OKXExchange extends BaseExchange {
       await this.xhr.get(ENDPOINTS.BALANCE);
       return '';
     } catch (err: any) {
-      this.emitter.emit('error', err?.response?.data || err?.message);
-      return JSON.stringify(err?.response?.data || err?.message);
+      this.emitter.emit('error', err?.response?.data?.msg || err?.message);
+      return err?.response?.data?.msg || err?.message;
     }
   };
 
   dispose = () => {
     super.dispose();
+    this.publicWebsocket.dispose();
   };
 
   start = async () => {
@@ -54,7 +63,8 @@ export class OKXExchange extends BaseExchange {
       loaded: { ...this.store.loaded, tickers: true },
     });
 
-    // TODO: Start websocket
+    // Start websocket
+    this.publicWebsocket.connectAndSubscribe();
 
     await this.tick();
     if (this.isDisposed) return;
@@ -84,89 +94,99 @@ export class OKXExchange extends BaseExchange {
   };
 
   fetchMarkets = async () => {
-    const {
-      data: { data },
-    } = await this.xhr.get<{ data: Array<Record<string, any>> }>(
-      ENDPOINTS.MARKETS,
-      { params: { instType: 'SWAP' } }
-    );
-
-    const markets = data.map((m) => {
-      const maxAmount = Math.min(
-        parseFloat(m.maxIcebergSz),
-        parseFloat(m.maxLmtSz),
-        parseFloat(m.maxMktSz),
-        parseFloat(m.maxStopSz),
-        parseFloat(m.maxTriggerSz),
-        parseFloat(m.maxTwapSz)
+    try {
+      const {
+        data: { data },
+      } = await this.xhr.get<{ data: Array<Record<string, any>> }>(
+        ENDPOINTS.MARKETS,
+        { params: { instType: 'SWAP' } }
       );
 
-      return {
-        id: m.instId,
-        symbol: m.instFamily.replace(/-/g, ''),
-        base: m.ctValCcy,
-        quote: m.settleCcy,
-        active: m.state === 'live',
-        precision: {
-          amount: parseFloat(m.ctVal),
-          price: parseFloat(m.tickSz),
-        },
-        limits: {
-          amount: {
-            min: parseFloat(m.minSz) * parseFloat(m.ctVal),
-            max: maxAmount,
-          },
-          leverage: {
-            min: 1,
-            max: parseFloat(m.lever),
-          },
-        },
-      };
-    });
+      const markets = data.map((m) => {
+        const maxAmount = Math.min(
+          parseFloat(m.maxIcebergSz),
+          parseFloat(m.maxLmtSz),
+          parseFloat(m.maxMktSz),
+          parseFloat(m.maxStopSz),
+          parseFloat(m.maxTriggerSz),
+          parseFloat(m.maxTwapSz)
+        );
 
-    return markets;
+        return {
+          id: m.instId,
+          symbol: m.instFamily.replace(/-/g, ''),
+          base: m.ctValCcy,
+          quote: m.settleCcy,
+          active: m.state === 'live',
+          precision: {
+            amount: parseFloat(m.ctVal),
+            price: parseFloat(m.tickSz),
+          },
+          limits: {
+            amount: {
+              min: parseFloat(m.minSz) * parseFloat(m.ctVal),
+              max: maxAmount,
+            },
+            leverage: {
+              min: 1,
+              max: parseFloat(m.lever),
+            },
+          },
+        };
+      });
+
+      return markets;
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.msg || err?.message);
+      return this.store.markets;
+    }
   };
 
   fetchTickers = async () => {
-    const {
-      data: { data },
-    } = await this.xhr.get(ENDPOINTS.TICKERS, {
-      params: {
-        instType: 'SWAP',
-      },
-    });
+    try {
+      const {
+        data: { data },
+      } = await this.xhr.get(ENDPOINTS.TICKERS, {
+        params: {
+          instType: 'SWAP',
+        },
+      });
 
-    const tickers: Ticker[] = data.reduce(
-      (acc: Ticker[], t: Record<string, any>) => {
-        const market = this.store.markets.find((m) => m.id === t.instId);
+      const tickers: Ticker[] = data.reduce(
+        (acc: Ticker[], t: Record<string, any>) => {
+          const market = this.store.markets.find((m) => m.id === t.instId);
 
-        if (!market) return acc;
+          if (!market) return acc;
 
-        const open = parseFloat(t.open24h);
-        const last = parseFloat(t.last);
-        const percentage = roundUSD(((last - open) / open) * 100);
+          const open = parseFloat(t.open24h);
+          const last = parseFloat(t.last);
+          const percentage = roundUSD(((last - open) / open) * 100);
 
-        const ticker = {
-          id: market.id,
-          symbol: market.symbol,
-          bid: parseFloat(t.bidPx),
-          ask: parseFloat(t.askPx),
-          last,
-          mark: last,
-          index: last,
-          percentage,
-          fundingRate: 0,
-          volume: parseFloat(t.vol24h),
-          quoteVolume: parseFloat(t.volCcy24h),
-          openInterest: 0,
-        };
+          const ticker = {
+            id: market.id,
+            symbol: market.symbol,
+            bid: parseFloat(t.bidPx),
+            ask: parseFloat(t.askPx),
+            last,
+            mark: last,
+            index: last,
+            percentage,
+            fundingRate: 0,
+            volume: parseFloat(t.volCcy24h),
+            quoteVolume: parseFloat(t.vol24h),
+            openInterest: 0,
+          };
 
-        return [...acc, ticker];
-      },
-      []
-    );
+          return [...acc, ticker];
+        },
+        []
+      );
 
-    return tickers;
+      return tickers;
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.msg || err?.message);
+      return this.store.tickers;
+    }
   };
 
   fetchBalanceAndPositions = async () => {
@@ -228,7 +248,7 @@ export class OKXExchange extends BaseExchange {
         positions,
       };
     } catch (err: any) {
-      this.emitter.emit('error', err?.response?.data || err?.message);
+      this.emitter.emit('error', err?.response?.data?.msg || err?.message);
       return {
         balance: this.store.balance,
         positions: this.store.positions,
