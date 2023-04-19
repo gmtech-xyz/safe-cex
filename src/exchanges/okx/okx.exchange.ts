@@ -7,7 +7,7 @@ import times from 'lodash/times';
 import { forEachSeries, mapSeries } from 'p-iteration';
 
 import type { Store } from '../../store/store.interface';
-import { OrderStatus, OrderType, PositionSide } from '../../types';
+import { OrderSide, OrderStatus, OrderType, PositionSide } from '../../types';
 import type {
   Balance,
   Candle,
@@ -33,6 +33,7 @@ import {
   ORDER_SIDE,
   ORDER_STATUS,
   ORDER_TYPE,
+  POSITION_SIDE,
   REVERSE_ORDER_TYPE,
 } from './okx.types';
 import { OKXPrivateWebsocket } from './okx.ws-private';
@@ -278,9 +279,13 @@ export class OKXExchange extends BaseExchange {
             market.precision.amount
           );
 
+          const side =
+            POSITION_SIDE[p.posSide] ||
+            (contracts > 0 ? PositionSide.Long : PositionSide.Short);
+
           const position: Position = {
             symbol: market.symbol,
-            side: contracts > 0 ? PositionSide.Long : PositionSide.Short,
+            side,
             entryPrice: parseFloat(p.avgPx),
             notional: Math.abs(notional),
             leverage: parseFloat(p.lever) || this.leverageHash[market.id] || 0,
@@ -612,6 +617,7 @@ export class OKXExchange extends BaseExchange {
       sz: amount,
       px: opts.type === OrderType.Limit ? `${price}` : undefined,
       reduceOnly: opts.reduceOnly || undefined,
+      posSide: this.getPositionSide(opts),
     });
 
     const lots = amount > maxSize ? Math.ceil(amount / maxSize) : 1;
@@ -639,16 +645,37 @@ export class OKXExchange extends BaseExchange {
     return payloads;
   };
 
+  getPositionSide = (opts: Pick<PlaceOrderOpts, 'reduceOnly' | 'side'>) => {
+    if (!this.store.options.isHedged) return undefined;
+
+    if (opts.reduceOnly) {
+      if (opts.side === OrderSide.Buy) return 'short';
+      if (opts.side === OrderSide.Sell) return 'long';
+    }
+
+    if (opts.side === OrderSide.Buy) return 'long';
+    if (opts.side === OrderSide.Sell) return 'short';
+
+    return undefined;
+  };
+
   placeOrderBatch = async (payloads: Array<Record<string, any>>) => {
-    const batches = chunk(payloads, 20);
-    const responses = await mapSeries(batches, async (batch) => {
+    const responses = await mapSeries(chunk(payloads, 20), async (batch) => {
       const {
         data: { data },
       } = await this.unlimitedXHR.post<{ data: Array<Record<string, any>> }>(
         ENDPOINTS.PLACE_ORDERS,
         batch
       );
-      return data.map((o) => o.ordId);
+
+      return data.reduce((acc: string[], o) => {
+        if (o.ordId) {
+          return [...acc, o.ordId];
+        }
+
+        this.emitter.emit('error', o.sMsg);
+        return acc;
+      }, []);
     });
 
     return flatten(responses);

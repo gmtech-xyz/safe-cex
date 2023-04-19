@@ -1,4 +1,4 @@
-import { OrderSide, OrderStatus, OrderType } from '../../types';
+import { OrderSide, OrderStatus, OrderType, PositionSide } from '../../types';
 
 export const RECV_WINDOW = 5000;
 
@@ -58,4 +58,9 @@ export const REVERSE_ORDER_TYPE: Record<OrderType, string> = {
 export const ORDER_SIDE: Record<string, OrderSide> = {
   buy: OrderSide.Buy,
   sell: OrderSide.Sell,
+};
+
+export const POSITION_SIDE: Record<string, PositionSide> = {
+  long: PositionSide.Long,
+  short: PositionSide.Short,
 };
