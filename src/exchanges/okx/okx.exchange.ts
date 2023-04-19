@@ -72,6 +72,7 @@ export class OKXExchange extends BaseExchange {
 
     // Start websocket
     this.publicWebsocket.connectAndSubscribe();
+    // TODO: Start private websocket
 
     await this.tick();
     if (this.isDisposed) return;
@@ -306,5 +307,9 @@ export class OKXExchange extends BaseExchange {
 
     this.emitter.emit('error', `Market ${opts.symbol} not found on OKX`);
     return [];
+  };
+
+  listenOHLCV = (opts: OHLCVOptions, callback: (candle: Candle) => void) => {
+    return this.publicWebsocket.listenOHLCV(opts, callback);
   };
 }

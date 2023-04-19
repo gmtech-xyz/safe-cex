@@ -1,5 +1,6 @@
 import flatten from 'lodash/flatten';
 
+import type { Candle, OHLCVOptions } from '../../types';
 import { roundUSD } from '../../utils/round-usd';
 import { BaseWebSocket } from '../base.ws';
 
@@ -81,5 +82,55 @@ export class OKXPublicWebsocket extends BaseWebSocket<OKXExchange> {
         quoteVolume: parseFloat(update.vol24h),
       }
     );
+  };
+
+  listenOHLCV = (opts: OHLCVOptions, callback: (candle: Candle) => void) => {
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    const market = this.store.markets.find((m) => m.symbol === opts.symbol);
+    if (!market) return () => {};
+
+    const topic = {
+      channel: `candle${opts.interval}`,
+      instId: market.id,
+    };
+
+    const waitForConnectedAndSubscribe = () => {
+      if (this.isConnected) {
+        if (!this.isDisposed) {
+          this.messageHandlers.candle = ({ data: [c] }: Data) => {
+            callback({
+              timestamp: parseInt(c[0], 10),
+              open: parseFloat(c[1]),
+              high: parseFloat(c[2]),
+              low: parseFloat(c[3]),
+              close: parseFloat(c[4]),
+              volume: parseFloat(c[7]),
+            });
+          };
+
+          this.ws?.send?.(JSON.stringify({ op: 'subscribe', args: [topic] }));
+          this.parent.log(`Switched to [${opts.symbol}:${opts.interval}]`);
+        }
+      } else {
+        timeoutId = setTimeout(() => waitForConnectedAndSubscribe(), 100);
+      }
+    };
+
+    waitForConnectedAndSubscribe();
+
+    return () => {
+      delete this.messageHandlers.candle;
+
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+
+      if (this.isConnected) {
+        const payload = { op: 'unsubscribe', args: topic };
+        this.ws?.send?.(JSON.stringify(payload));
+      }
+    };
   };
 }
