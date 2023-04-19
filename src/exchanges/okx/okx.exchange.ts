@@ -7,7 +7,7 @@ import times from 'lodash/times';
 import { forEachSeries, mapSeries } from 'p-iteration';
 
 import type { Store } from '../../store/store.interface';
-import { OrderType, PositionSide } from '../../types';
+import { OrderStatus, OrderType, PositionSide } from '../../types';
 import type {
   Balance,
   Candle,
@@ -302,6 +302,13 @@ export class OKXExchange extends BaseExchange {
   };
 
   fetchOrders = async () => {
+    const orders = await this.fetchNormalOrders();
+    const ocoOrders = await this.fetchAlgoOrders('oco');
+    const trailingOrders = await this.fetchAlgoOrders('move_order_stop');
+    return [...orders, ...ocoOrders, ...trailingOrders];
+  };
+
+  fetchNormalOrders = async () => {
     const recursiveFetch = async (
       orders: Array<Record<string, any>> = []
     ): Promise<Array<Record<string, any>>> => {
@@ -313,6 +320,36 @@ export class OKXExchange extends BaseExchange {
           params: {
             instType: 'SWAP',
             after: orders.length ? orders[orders.length - 1].ordId : undefined,
+          },
+        }
+      );
+
+      if (data.length === 100) {
+        return recursiveFetch([...orders, ...data]);
+      }
+
+      return [...orders, ...data];
+    };
+
+    const okxOrders = await recursiveFetch();
+    const orders = this.mapOrders(okxOrders);
+
+    return orders;
+  };
+
+  fetchAlgoOrders = async (type: 'move_order_stop' | 'oco') => {
+    const recursiveFetch = async (
+      orders: Array<Record<string, any>> = []
+    ): Promise<Array<Record<string, any>>> => {
+      const {
+        data: { data },
+      } = await this.xhr.get<{ data: Array<Record<string, any>> }>(
+        ENDPOINTS.UNFILLED_ALGO_ORDERS,
+        {
+          params: {
+            instType: 'SWAP',
+            ordType: type,
+            after: orders.length ? orders[orders.length - 1].algoId : undefined,
           },
         }
       );
@@ -376,12 +413,15 @@ export class OKXExchange extends BaseExchange {
     return this.publicWebsocket.listenOrderBook(symbol, callback);
   };
 
+  // TODO: Cancel algo orders
   cancelOrders = async (orders: Order[]) => {
-    const batches = orders.reduce((acc: Array<Record<string, any>>, o) => {
-      const market = this.store.markets.find((m) => m.symbol === o.symbol);
-      if (!market) return acc;
-      return [...acc, { instId: market.id, ordId: o.id }];
-    }, []);
+    const batches = orders
+      .filter((o) => o.type === OrderType.Limit)
+      .reduce((acc: Array<Record<string, any>>, o) => {
+        const market = this.store.markets.find((m) => m.symbol === o.symbol);
+        if (!market) return acc;
+        return [...acc, { instId: market.id, ordId: o.id }];
+      }, []);
 
     await forEachSeries(chunk(batches, 20), async (batch) => {
       await this.unlimitedXHR.post(ENDPOINTS.CANCEL_ORDERS, batch);
@@ -392,9 +432,11 @@ export class OKXExchange extends BaseExchange {
     const market = this.store.markets.find((m) => m.symbol === symbol);
     if (!market) return;
 
-    const orders = this.store.orders.filter((o) => o.symbol === symbol);
-    const batches = orders.map((o) => ({ instId: market.id, ordId: o.id }));
+    const orders = this.store.orders.filter(
+      (o) => o.symbol === symbol && o.type === OrderType.Limit
+    );
 
+    const batches = orders.map((o) => ({ instId: market.id, ordId: o.id }));
     await forEachSeries(chunk(batches, 20), async (batch) => {
       await this.unlimitedXHR.post(ENDPOINTS.CANCEL_ORDERS, batch);
     });
@@ -465,6 +507,42 @@ export class OKXExchange extends BaseExchange {
     return orders.reduce<Order[]>((acc, o: Record<string, any>) => {
       const market = this.store.markets.find((m) => m.id === o.instId);
       if (!market) return acc;
+
+      if (o.ordType === 'oco') {
+        const newOrders: Order[] = [];
+
+        if (o.slTriggerPx) {
+          newOrders.push({
+            id: `${o.algoId}_sl`,
+            status: OrderStatus.Open,
+            symbol: market.symbol,
+            type: OrderType.StopLoss,
+            side: ORDER_SIDE[o.side],
+            price: parseFloat(o.slTriggerPx),
+            amount: 0,
+            filled: 0,
+            remaining: 0,
+            reduceOnly: true,
+          });
+        }
+
+        if (o.tpTriggerPx) {
+          newOrders.push({
+            id: `${o.algoId}_tp`,
+            status: OrderStatus.Open,
+            symbol: market.symbol,
+            type: OrderType.TakeProfit,
+            side: ORDER_SIDE[o.side],
+            price: parseFloat(o.tpTriggerPx),
+            amount: 0,
+            filled: 0,
+            remaining: 0,
+            reduceOnly: true,
+          });
+        }
+
+        return [...acc, ...newOrders];
+      }
 
       const amount = multiply(parseFloat(o.sz), market.precision.amount);
       const filled = multiply(parseFloat(o.accFillSz), market.precision.amount);

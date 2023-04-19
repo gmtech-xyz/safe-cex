@@ -24,6 +24,7 @@ export const ENDPOINTS = {
   POSITIONS: '/api/v5/account/positions',
   KLINE: '/api/v5/market/candles',
   UNFILLED_ORDERS: '/api/v5/trade/orders-pending',
+  UNFILLED_ALGO_ORDERS: '/api/v5/trade/orders-algo-pending',
   CANCEL_ORDERS: '/api/v5/trade/cancel-batch-orders',
   PLACE_ORDERS: '/api/v5/trade/batch-orders',
 };

@@ -58,7 +58,10 @@ export class OKXPrivateWebsocket extends BaseWebSocket<OKXExchange> {
     this.ws?.send?.(
       JSON.stringify({
         op: 'subscribe',
-        args: [{ channel: 'orders', instType: 'SWAP' }],
+        args: [
+          { channel: 'orders', instType: 'SWAP' },
+          { channel: 'orders-algo', instType: 'SWAP' },
+        ],
       })
     );
   };
@@ -76,6 +79,11 @@ export class OKXPrivateWebsocket extends BaseWebSocket<OKXExchange> {
 
     if (!data.includes('event":"subscribe"')) {
       if (data.includes('"channel":"orders"')) {
+        this.handleOrderTopic(JSON.parse(data));
+        return;
+      }
+
+      if (data.includes('"channel":"orders-algo"')) {
         this.handleOrderTopic(JSON.parse(data));
       }
     }
@@ -95,23 +103,23 @@ export class OKXPrivateWebsocket extends BaseWebSocket<OKXExchange> {
 
   handleOrderTopic = ({ data: okxOrders }: Record<string, any>) => {
     for (const o of okxOrders) {
-      const [order] = this.parent.mapOrders([o]);
+      const orders = this.parent.mapOrders([o]);
 
-      if (order) {
+      if (orders.length) {
         if (o.state === 'filled' || o.state === 'canceled') {
-          this.store.removeOrder(order);
+          this.store.removeOrders(orders);
         }
 
         if (o.state === 'live' || o.state === 'partially_filled') {
-          this.store.addOrUpdateOrder(order);
+          this.store.addOrUpdateOrders(orders);
         }
 
         if (o.state === 'filled' || o.state === 'partially_filled') {
           this.emitter.emit('fill', {
-            side: order.side,
-            symbol: order.symbol,
-            price: order.price,
-            amount: order.amount,
+            side: orders[0].side,
+            symbol: orders[0].symbol,
+            price: orders[0].price,
+            amount: orders[0].amount,
           });
         }
       }
