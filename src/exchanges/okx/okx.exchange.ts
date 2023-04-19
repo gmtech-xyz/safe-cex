@@ -1,11 +1,13 @@
 import type { Axios } from 'axios';
 import rateLimit from 'axios-rate-limit';
 import chunk from 'lodash/chunk';
+import flatten from 'lodash/flatten';
 import sumBy from 'lodash/sumBy';
-import { forEachSeries } from 'p-iteration';
+import times from 'lodash/times';
+import { forEachSeries, mapSeries } from 'p-iteration';
 
 import type { Store } from '../../store/store.interface';
-import { PositionSide } from '../../types';
+import { OrderType, PositionSide } from '../../types';
 import type {
   Balance,
   Candle,
@@ -13,16 +15,25 @@ import type {
   OHLCVOptions,
   Order,
   OrderBook,
+  PlaceOrderOpts,
   Position,
   Ticker,
 } from '../../types';
+import { inverseObj } from '../../utils/inverse-obj';
 import { loop } from '../../utils/loop';
+import { omitUndefined } from '../../utils/omit-undefined';
 import { roundUSD } from '../../utils/round-usd';
-import { multiply, subtract } from '../../utils/safe-math';
+import { adjust, divide, multiply, subtract } from '../../utils/safe-math';
 import { BaseExchange } from '../base';
 
 import { createAPI } from './okx.api';
-import { ENDPOINTS, ORDER_SIDE, ORDER_STATUS, ORDER_TYPE } from './okx.types';
+import {
+  ENDPOINTS,
+  ORDER_SIDE,
+  ORDER_STATUS,
+  ORDER_TYPE,
+  REVERSE_ORDER_TYPE,
+} from './okx.types';
 import { OKXPrivateWebsocket } from './okx.ws-private';
 import { OKXPublicWebsocket } from './okx.ws-public';
 
@@ -373,7 +384,7 @@ export class OKXExchange extends BaseExchange {
     }, []);
 
     await forEachSeries(chunk(batches, 20), async (batch) => {
-      await this.xhr.post(ENDPOINTS.CANCEL_ORDERS, batch);
+      await this.unlimitedXHR.post(ENDPOINTS.CANCEL_ORDERS, batch);
     });
   };
 
@@ -385,8 +396,57 @@ export class OKXExchange extends BaseExchange {
     const batches = orders.map((o) => ({ instId: market.id, ordId: o.id }));
 
     await forEachSeries(chunk(batches, 20), async (batch) => {
-      await this.xhr.post(ENDPOINTS.CANCEL_ORDERS, batch);
+      await this.unlimitedXHR.post(ENDPOINTS.CANCEL_ORDERS, batch);
     });
+  };
+
+  placeOrder = async (opts: PlaceOrderOpts) => {
+    const market = this.store.markets.find((m) => m.symbol === opts.symbol);
+
+    if (!market) {
+      throw new Error(`Market ${opts.symbol} not found on OKX`);
+    }
+
+    const maxSize = market.limits.amount.max;
+    const pPrice = market.precision.price;
+    const pAmount = market.precision.amount;
+
+    const amount = divide(opts.amount, pAmount);
+
+    const price = opts.price ? adjust(opts.price, pPrice) : null;
+
+    const req = omitUndefined({
+      instId: market.id,
+      tdMode: 'cross',
+      side: inverseObj(ORDER_SIDE)[opts.side],
+      ordType: REVERSE_ORDER_TYPE[opts.type],
+      sz: amount,
+      px: opts.type === OrderType.Limit ? `${price}` : undefined,
+      reduceOnly: opts.reduceOnly || undefined,
+    });
+
+    const lots = amount > maxSize ? Math.ceil(amount / maxSize) : 1;
+    const rest = amount > maxSize ? adjust(amount % maxSize, pAmount) : 0;
+
+    const lotSize = adjust((amount - rest) / lots, pAmount);
+    const payloads = times(lots, () => {
+      return { ...req, qty: lotSize };
+    });
+
+    if (rest) payloads.push({ ...req, qty: rest });
+
+    const batches = chunk(payloads, 20);
+    const responses = await mapSeries(batches, async (batch) => {
+      const {
+        data: { data },
+      } = await this.unlimitedXHR.post<{ data: Array<Record<string, any>> }>(
+        ENDPOINTS.PLACE_ORDERS,
+        batch
+      );
+      return data.map((o) => o.ordId);
+    });
+
+    return flatten(responses);
   };
 
   mapOrders = (orders: Array<Record<string, any>>) => {

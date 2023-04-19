@@ -25,6 +25,7 @@ export const ENDPOINTS = {
   KLINE: '/api/v5/market/candles',
   UNFILLED_ORDERS: '/api/v5/trade/orders-pending',
   CANCEL_ORDERS: '/api/v5/trade/cancel-batch-orders',
+  PLACE_ORDERS: '/api/v5/trade/batch-orders',
 };
 
 export const ORDER_STATUS: Record<string, OrderStatus> = {
@@ -39,6 +40,14 @@ export const ORDER_TYPE: Record<string, OrderType> = {
   fok: OrderType.Limit,
   ioc: OrderType.Limit,
   optimal_limit_ioc: OrderType.Market,
+};
+
+export const REVERSE_ORDER_TYPE: Record<OrderType, string> = {
+  [OrderType.Market]: 'market',
+  [OrderType.Limit]: 'limit',
+  [OrderType.StopLoss]: 'trigger',
+  [OrderType.TakeProfit]: 'trigger',
+  [OrderType.TrailingStopLoss]: 'move_order_stop',
 };
 
 export const ORDER_SIDE: Record<string, OrderSide> = {
