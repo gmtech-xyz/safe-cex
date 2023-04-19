@@ -367,8 +367,9 @@ export class OKXExchange extends BaseExchange {
   fetchOrders = async () => {
     const orders = await this.fetchNormalOrders();
     const ocoOrders = await this.fetchAlgoOrders('oco');
+    const conditionalOrders = await this.fetchAlgoOrders('conditional');
     const trailingOrders = await this.fetchAlgoOrders('move_order_stop');
-    return [...orders, ...ocoOrders, ...trailingOrders];
+    return [...orders, ...ocoOrders, ...trailingOrders, ...conditionalOrders];
   };
 
   fetchNormalOrders = async () => {
@@ -400,7 +401,7 @@ export class OKXExchange extends BaseExchange {
     return orders;
   };
 
-  fetchAlgoOrders = async (type: 'move_order_stop' | 'oco') => {
+  fetchAlgoOrders = async (type: 'conditional' | 'move_order_stop' | 'oco') => {
     const recursiveFetch = async (
       orders: Array<Record<string, any>> = []
     ): Promise<Array<Record<string, any>>> => {
@@ -593,7 +594,7 @@ export class OKXExchange extends BaseExchange {
       const market = this.store.markets.find((m) => m.id === o.instId);
       if (!market) return acc;
 
-      if (o.ordType === 'oco') {
+      if (o.ordType === 'oco' || o.ordType === 'conditional') {
         const newOrders: Order[] = [];
 
         if (o.slTriggerPx) {
