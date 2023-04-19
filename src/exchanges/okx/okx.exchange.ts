@@ -429,11 +429,23 @@ export class OKXExchange extends BaseExchange {
     const rest = amount > maxSize ? adjust(amount % maxSize, pAmount) : 0;
 
     const lotSize = adjust((amount - rest) / lots, pAmount);
-    const payloads = times(lots, () => {
+    const payloads: Array<Record<string, any>> = times(lots, () => {
       return { ...req, qty: lotSize };
     });
 
     if (rest) payloads.push({ ...req, qty: rest });
+
+    if (opts.takeProfit) {
+      payloads[0].tpTriggerPx = `${adjust(opts.takeProfit, pPrice)}`;
+      payloads[0].tpOrdPx = '-1';
+      payloads[0].tpTriggerPxType = 'mark';
+    }
+
+    if (opts.stopLoss) {
+      payloads[0].slTriggerPx = `${adjust(opts.stopLoss, pPrice)}`;
+      payloads[0].slOrdPx = '-1';
+      payloads[0].slTriggerPxType = 'mark';
+    }
 
     const batches = chunk(payloads, 20);
     const responses = await mapSeries(batches, async (batch) => {
