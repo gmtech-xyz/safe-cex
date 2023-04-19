@@ -260,7 +260,7 @@ export class OKXExchange extends BaseExchange {
       const balance: Balance = {
         used,
         free: subtract(totalCollateral, used),
-        total: totalCollateral,
+        total: subtract(totalCollateral, upnl),
         upnl,
       };
 
