@@ -20,4 +20,5 @@ export const ENDPOINTS = {
   TICKERS: '/api/v5/market/tickers',
   BALANCE: '/api/v5/account/account-position-risk',
   POSITIONS: '/api/v5/account/positions',
+  KLINE: '/api/v5/market/candles',
 };

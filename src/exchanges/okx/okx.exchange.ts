@@ -4,7 +4,14 @@ import sumBy from 'lodash/sumBy';
 
 import type { Store } from '../../store/store.interface';
 import { PositionSide } from '../../types';
-import type { Balance, ExchangeOptions, Position, Ticker } from '../../types';
+import type {
+  Balance,
+  Candle,
+  ExchangeOptions,
+  OHLCVOptions,
+  Position,
+  Ticker,
+} from '../../types';
 import { loop } from '../../utils/loop';
 import { roundUSD } from '../../utils/round-usd';
 import { multiply, subtract } from '../../utils/safe-math';
@@ -266,5 +273,38 @@ export class OKXExchange extends BaseExchange {
     return balance;
   };
 
-  // fetchOHLCV = async (opts: OHLCVOptions) => {};
+  fetchOHLCV = async (opts: OHLCVOptions) => {
+    const market = this.store.markets.find((m) => m.symbol === opts.symbol);
+
+    if (market) {
+      try {
+        const {
+          data: { data },
+        } = await this.xhr.get(ENDPOINTS.KLINE, {
+          params: { instId: market.id, bar: opts.interval, limit: 300 },
+        });
+
+        const candles: Candle[] = data.map((c: string[]) => {
+          return {
+            timestamp: parseInt(c[0], 10),
+            open: parseFloat(c[1]),
+            high: parseFloat(c[2]),
+            low: parseFloat(c[3]),
+            close: parseFloat(c[4]),
+            volume: parseFloat(c[7]),
+          };
+        });
+
+        candles.sort((a, b) => a.timestamp - b.timestamp);
+
+        return candles;
+      } catch (err: any) {
+        this.emitter.emit('error', err?.response?.data?.msg || err?.message);
+        return [];
+      }
+    }
+
+    this.emitter.emit('error', `Market ${opts.symbol} not found on OKX`);
+    return [];
+  };
 }
