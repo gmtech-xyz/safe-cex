@@ -66,7 +66,6 @@ export class OKXPublicWebsocket extends BaseWebSocket<OKXExchange> {
 
   ping = () => {
     if (!this.isDisposed) {
-      this.pingAt = performance.now();
       this.ws?.send?.('ping');
     }
   };
@@ -97,9 +96,6 @@ export class OKXPublicWebsocket extends BaseWebSocket<OKXExchange> {
   };
 
   handlePongEvent = () => {
-    const diff = performance.now() - this.pingAt;
-    this.store.update({ latency: Math.round(diff / 2) });
-
     if (this.pingTimeoutId) {
       clearTimeout(this.pingTimeoutId);
       this.pingTimeoutId = undefined;

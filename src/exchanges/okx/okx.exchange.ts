@@ -23,6 +23,7 @@ import { BaseExchange } from '../base';
 
 import { createAPI } from './okx.api';
 import { ENDPOINTS, ORDER_SIDE, ORDER_STATUS, ORDER_TYPE } from './okx.types';
+import { OKXPrivateWebsocket } from './okx.ws-private';
 import { OKXPublicWebsocket } from './okx.ws-public';
 
 export class OKXExchange extends BaseExchange {
@@ -30,6 +31,7 @@ export class OKXExchange extends BaseExchange {
   unlimitedXHR: Axios;
 
   publicWebsocket: OKXPublicWebsocket;
+  privateWebsocket: OKXPrivateWebsocket;
 
   constructor(opts: ExchangeOptions, store: Store) {
     super(opts, store);
@@ -38,6 +40,7 @@ export class OKXExchange extends BaseExchange {
     this.unlimitedXHR = createAPI(opts);
 
     this.publicWebsocket = new OKXPublicWebsocket(this);
+    this.privateWebsocket = new OKXPrivateWebsocket(this);
   }
 
   validateAccount = async () => {
@@ -53,6 +56,7 @@ export class OKXExchange extends BaseExchange {
   dispose = () => {
     super.dispose();
     this.publicWebsocket.dispose();
+    this.privateWebsocket.dispose();
   };
 
   start = async () => {
@@ -76,7 +80,7 @@ export class OKXExchange extends BaseExchange {
 
     // Start websocket
     this.publicWebsocket.connectAndSubscribe();
-    // TODO: Start private websocket
+    this.privateWebsocket.connectAndSubscribe();
 
     await this.tick();
     if (this.isDisposed) return;
@@ -385,7 +389,7 @@ export class OKXExchange extends BaseExchange {
     });
   };
 
-  private mapOrders = (orders: Array<Record<string, any>>) => {
+  mapOrders = (orders: Array<Record<string, any>>) => {
     return orders.reduce<Order[]>((acc, o: Record<string, any>) => {
       const market = this.store.markets.find((m) => m.id === o.instId);
       if (!market) return acc;
