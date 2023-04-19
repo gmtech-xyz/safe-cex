@@ -1,7 +1,14 @@
 import flatten from 'lodash/flatten';
 
-import type { Candle, OHLCVOptions } from '../../types';
+import type {
+  Candle,
+  OHLCVOptions,
+  OrderBook,
+  OrderBookOrders,
+} from '../../types';
+import { calcOrderBookTotal, sortOrderBook } from '../../utils/orderbook';
 import { roundUSD } from '../../utils/round-usd';
+import { multiply } from '../../utils/safe-math';
 import { BaseWebSocket } from '../base.ws';
 
 import type { OKXExchange } from './okx.exchange';
@@ -85,10 +92,10 @@ export class OKXPublicWebsocket extends BaseWebSocket<OKXExchange> {
   };
 
   listenOHLCV = (opts: OHLCVOptions, callback: (candle: Candle) => void) => {
-    let timeoutId: NodeJS.Timeout | null = null;
-
     const market = this.store.markets.find((m) => m.symbol === opts.symbol);
     if (!market) return () => {};
+
+    let timeoutId: NodeJS.Timeout | null = null;
 
     const topic = {
       channel: `candle${opts.interval}`,
@@ -128,7 +135,118 @@ export class OKXPublicWebsocket extends BaseWebSocket<OKXExchange> {
       }
 
       if (this.isConnected) {
-        const payload = { op: 'unsubscribe', args: topic };
+        const payload = { op: 'unsubscribe', args: [topic] };
+        this.ws?.send?.(JSON.stringify(payload));
+      }
+    };
+  };
+
+  listenOrderBook = (
+    symbol: string,
+    callback: (orderBook: OrderBook) => void
+  ) => {
+    const market = this.store.markets.find((m) => m.symbol === symbol);
+    if (!market) return () => {};
+
+    let timeoutId: NodeJS.Timeout | null = null;
+    const sides = ['bids', 'asks'] as const;
+    const orderBook: OrderBook = { bids: [], asks: [] };
+    const topic = { channel: 'books', instId: market.id };
+
+    const waitForConnectedAndSubscribe = () => {
+      if (this.isConnected) {
+        if (!this.isDisposed) {
+          this.messageHandlers.books = (data: Data) => {
+            if (data.action === 'snapshot') {
+              const {
+                data: [snapshot],
+              } = data;
+
+              sides.forEach((side) => {
+                orderBook[side] = snapshot[side].reduce(
+                  (acc: OrderBookOrders[], [price, amount]: string[]) => {
+                    if (parseFloat(amount) === 0) return acc;
+                    return [
+                      ...acc,
+                      {
+                        price: parseFloat(price),
+                        amount: multiply(
+                          parseFloat(amount),
+                          market.precision.amount
+                        ),
+                      },
+                    ];
+                  },
+                  []
+                );
+              });
+            }
+
+            if (data.action === 'update') {
+              const {
+                data: [update],
+              } = data;
+
+              sides.forEach((side) => {
+                for (const [rPrice, rAmount] of update[side]) {
+                  const price = parseFloat(rPrice);
+                  const amount = parseFloat(rAmount);
+
+                  const index = orderBook[side].findIndex(
+                    (b) => b.price === price
+                  );
+
+                  if (amount === 0 && index !== -1) {
+                    orderBook[side].splice(index, 1);
+                    return;
+                  }
+
+                  if (amount !== 0) {
+                    if (index === -1) {
+                      orderBook[side].push({
+                        price,
+                        amount: multiply(amount, market.precision.amount),
+                        total: 0,
+                      });
+                      return;
+                    }
+
+                    orderBook[side][index].amount = multiply(
+                      amount,
+                      market.precision.amount
+                    );
+                  }
+                }
+              });
+            }
+
+            sortOrderBook(orderBook);
+            calcOrderBookTotal(orderBook);
+
+            callback(orderBook);
+          };
+
+          const payload = JSON.stringify({ op: 'subscribe', args: [topic] });
+          this.ws?.send?.(payload);
+        }
+      } else {
+        timeoutId = setTimeout(() => waitForConnectedAndSubscribe(), 100);
+      }
+    };
+
+    waitForConnectedAndSubscribe();
+
+    return () => {
+      orderBook.bids = [];
+      orderBook.asks = [];
+
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+
+      if (this.isConnected) {
+        const payload = { op: 'unsubscribe', args: [topic] };
         this.ws?.send?.(JSON.stringify(payload));
       }
     };
