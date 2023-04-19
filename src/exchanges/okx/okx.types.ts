@@ -27,6 +27,8 @@ export const ENDPOINTS = {
   UNFILLED_ALGO_ORDERS: '/api/v5/trade/orders-algo-pending',
   CANCEL_ORDERS: '/api/v5/trade/cancel-batch-orders',
   PLACE_ORDERS: '/api/v5/trade/batch-orders',
+  SET_LEVERAGE: '/api/v5/account/set-leverage',
+  LEVERAGE: '/api/v5/account/leverage-info',
 };
 
 export const ORDER_STATUS: Record<string, OrderStatus> = {

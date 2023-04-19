@@ -18,6 +18,7 @@ import type {
   PlaceOrderOpts,
   Position,
   Ticker,
+  Writable,
 } from '../../types';
 import { inverseObj } from '../../utils/inverse-obj';
 import { loop } from '../../utils/loop';
@@ -43,6 +44,8 @@ export class OKXExchange extends BaseExchange {
 
   publicWebsocket: OKXPublicWebsocket;
   privateWebsocket: OKXPrivateWebsocket;
+
+  leverageHash: Record<string, number> = {};
 
   constructor(opts: ExchangeOptions, store: Store) {
     super(opts, store);
@@ -115,6 +118,11 @@ export class OKXExchange extends BaseExchange {
         const { balance, positions } = await this.fetchBalanceAndPositions();
         if (this.isDisposed) return;
 
+        // fetch leverage for each symbols
+        if (!this.store.loaded.positions) {
+          this.fetchLeverageAndEditPositions(positions);
+        }
+
         this.store.update({
           balance,
           positions,
@@ -149,7 +157,7 @@ export class OKXExchange extends BaseExchange {
 
         return {
           id: m.instId,
-          symbol: m.instFamily.replace(/-/g, ''),
+          symbol: m.instId.replace(/-SWAP$/, '').replace(/-/g, ''),
           base: m.ctValCcy,
           quote: m.settleCcy,
           active: m.state === 'live',
@@ -255,8 +263,8 @@ export class OKXExchange extends BaseExchange {
       const positions: Position[] = pData.reduce(
         (acc: Position[], p: Record<string, any>) => {
           const market = this.store.markets.find((m) => m.id === p.instId);
-
           if (!market) return acc;
+
           const position: Position = {
             symbol: market.symbol,
             side:
@@ -265,7 +273,7 @@ export class OKXExchange extends BaseExchange {
             notional: Math.abs(
               multiply(parseFloat(p.notionalUsd), market.precision.amount)
             ),
-            leverage: parseFloat(p.lever) || 1,
+            leverage: parseFloat(p.lever) || this.leverageHash[market.id] || 0,
             unrealizedPnl: parseFloat(p.upl),
             contracts: Math.abs(
               multiply(parseFloat(p.pos), market.precision.amount)
@@ -278,9 +286,32 @@ export class OKXExchange extends BaseExchange {
         []
       );
 
+      // We create fake positions for the leverage setting
+      // since the API doesn't return it for positions with 0 contracts
+      const fakePositions: Position[] = this.store.markets.reduce(
+        (acc: Position[], m) => {
+          const hasPosition = positions.find((p) => p.symbol === m.symbol);
+          if (hasPosition) return acc;
+
+          const position: Position = {
+            symbol: m.symbol,
+            side: PositionSide.Long,
+            entryPrice: 0,
+            notional: 0,
+            leverage: this.leverageHash[m.id] || 0,
+            unrealizedPnl: 0,
+            contracts: 0,
+            liquidationPrice: 0,
+          };
+
+          return [...acc, position];
+        },
+        []
+      );
+
       return {
         balance,
-        positions,
+        positions: [...positions, ...fakePositions],
       };
     } catch (err: any) {
       this.emitter.emit('error', err?.response?.data?.msg || err?.message);
@@ -299,6 +330,38 @@ export class OKXExchange extends BaseExchange {
   fetchBalance = async () => {
     const { balance } = await this.fetchBalanceAndPositions();
     return balance;
+  };
+
+  fetchLeverageAndEditPositions = async (
+    positions: Array<Writable<Position>>
+  ) => {
+    const responses = flatten(
+      await mapSeries(chunk(this.store.markets, 20), async (batch) => {
+        const {
+          data: { data },
+        } = await this.xhr.get(ENDPOINTS.LEVERAGE, {
+          params: {
+            instId: batch.map((m) => m.id).join(','),
+            mgnMode: 'cross',
+          },
+        });
+
+        return data;
+      })
+    );
+
+    responses.forEach((r: Record<string, any>) => {
+      this.leverageHash[r.instId] = parseFloat(r.lever);
+
+      const idx = positions.findIndex(
+        (p) => p.symbol === r.instId.replace(/-SWAP$/, '').replace(/-/g, '')
+      );
+
+      if (idx !== -1) {
+        // eslint-disable-next-line no-param-reassign
+        positions[idx].leverage = this.leverageHash[r.instId];
+      }
+    });
   };
 
   fetchOrders = async () => {
@@ -440,6 +503,28 @@ export class OKXExchange extends BaseExchange {
     await forEachSeries(chunk(batches, 20), async (batch) => {
       await this.unlimitedXHR.post(ENDPOINTS.CANCEL_ORDERS, batch);
     });
+  };
+
+  setLeverage = async (symbol: string, inputLeverage: number) => {
+    const market = this.store.markets.find((m) => m.symbol === symbol);
+    if (!market) throw new Error(`Market ${symbol} not found on OKX`);
+
+    const leverage = Math.min(
+      Math.max(inputLeverage, market.limits.leverage.min),
+      market.limits.leverage.max
+    );
+
+    await this.xhr.post(ENDPOINTS.SET_LEVERAGE, {
+      instId: market.id,
+      lever: `${leverage}`,
+      mgnMode: 'cross',
+    });
+
+    this.leverageHash[market.id] = leverage;
+    this.store.updatePositions([
+      [{ symbol, side: PositionSide.Long }, { leverage }],
+      [{ symbol, side: PositionSide.Short }, { leverage }],
+    ]);
   };
 
   placeOrder = async (opts: PlaceOrderOpts) => {

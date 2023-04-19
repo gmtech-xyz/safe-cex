@@ -31,7 +31,9 @@ export const createAPI = (options: ExchangeOptions) => {
     const nextConfig = { ...config };
 
     const method = config.method?.toUpperCase?.() || 'GET';
-    const params = config.params ? qs.stringify(config.params) : null;
+    const params = config.params
+      ? decodeURIComponent(qs.stringify(config.params))
+      : null;
     const url = `${config.url}${params ? `?${params}` : ''}`;
     const data = config.data ? JSON.stringify(config.data) : null;
 
