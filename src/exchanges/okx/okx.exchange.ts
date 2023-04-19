@@ -39,6 +39,12 @@ import {
 import { OKXPrivateWebsocket } from './okx.ws-private';
 import { OKXPublicWebsocket } from './okx.ws-public';
 
+// TODO: Cancel algo orders
+// TODO: Update orders
+// TODO: Update algo orders
+// TODO: Place trailing stops
+// TODO: Place single TP/SL
+
 export class OKXExchange extends BaseExchange {
   xhr: Axios;
   unlimitedXHR: Axios;
@@ -505,7 +511,6 @@ export class OKXExchange extends BaseExchange {
     return this.publicWebsocket.listenOrderBook(symbol, callback);
   };
 
-  // TODO: Cancel algo orders
   cancelOrders = async (orders: Order[]) => {
     const batches = orders
       .filter((o) => o.type === OrderType.Limit)
@@ -605,8 +610,7 @@ export class OKXExchange extends BaseExchange {
     const pPrice = market.precision.price;
     const pAmount = market.precision.amount;
 
-    const amount = divide(opts.amount, pAmount);
-
+    const amount = adjust(divide(opts.amount, pAmount), pAmount);
     const price = opts.price ? adjust(opts.price, pPrice) : null;
 
     const req = omitUndefined({
@@ -614,7 +618,7 @@ export class OKXExchange extends BaseExchange {
       tdMode: 'cross',
       side: inverseObj(ORDER_SIDE)[opts.side],
       ordType: REVERSE_ORDER_TYPE[opts.type],
-      sz: amount,
+      sz: `${amount}`,
       px: opts.type === OrderType.Limit ? `${price}` : undefined,
       reduceOnly: opts.reduceOnly || undefined,
       posSide: this.getPositionSide(opts),
@@ -625,7 +629,7 @@ export class OKXExchange extends BaseExchange {
 
     const lotSize = adjust((amount - rest) / lots, pAmount);
     const payloads: Array<Record<string, any>> = times(lots, () => {
-      return { ...req, qty: lotSize };
+      return { ...req, sz: `${lotSize}` };
     });
 
     if (rest) payloads.push({ ...req, qty: rest });
