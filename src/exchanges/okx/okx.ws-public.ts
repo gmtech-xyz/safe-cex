@@ -26,6 +26,8 @@ export class OKXPublicWebsocket extends BaseWebSocket<OKXExchange> {
   topics: SubscribedTopics = {};
   messageHandlers: MessageHandlers = {
     tickers: (d: Data) => this.handleTickerEvents(d),
+    'mark-price': (d: Data) => this.handleMarkPriceEvents(d),
+    'index-tickers': (d: Data) => this.handleIndexTickerEvents(d),
   };
 
   connectAndSubscribe = () => {
@@ -37,6 +39,16 @@ export class OKXPublicWebsocket extends BaseWebSocket<OKXExchange> {
       this.topics.tickers = this.store.markets.map((m) => ({
         channel: 'tickers',
         instId: m.id,
+      }));
+
+      this.topics['mark-price'] = this.store.markets.map((m) => ({
+        channel: 'mark-price',
+        instId: m.id,
+      }));
+
+      this.topics['index-tickers'] = this.store.markets.map((m) => ({
+        channel: 'index-tickers',
+        instId: m.id.replace('-SWAP', ''),
       }));
 
       this.ws.addEventListener('open', this.onOpen);
@@ -82,12 +94,24 @@ export class OKXPublicWebsocket extends BaseWebSocket<OKXExchange> {
         bid: parseFloat(update.bidPx),
         ask: parseFloat(update.askPx),
         last,
-        mark: last,
-        index: last,
         percentage,
         volume: parseFloat(update.volCcy24h),
         quoteVolume: parseFloat(update.vol24h),
       }
+    );
+  };
+
+  handleMarkPriceEvents = ({ data: [update] }: Data) => {
+    this.store.updateTicker(
+      { id: update.instId },
+      { mark: parseFloat(update.markPx) }
+    );
+  };
+
+  handleIndexTickerEvents = ({ data: [update] }: Data) => {
+    this.store.updateTicker(
+      { id: `${update.instId}-SWAP` },
+      { index: parseFloat(update.idxPx) }
     );
   };
 
