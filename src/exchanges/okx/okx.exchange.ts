@@ -1,6 +1,8 @@
 import type { Axios } from 'axios';
 import rateLimit from 'axios-rate-limit';
+import chunk from 'lodash/chunk';
 import sumBy from 'lodash/sumBy';
+import { forEachSeries } from 'p-iteration';
 
 import type { Store } from '../../store/store.interface';
 import { PositionSide } from '../../types';
@@ -357,6 +359,30 @@ export class OKXExchange extends BaseExchange {
     callback: (orderBook: OrderBook) => void
   ) => {
     return this.publicWebsocket.listenOrderBook(symbol, callback);
+  };
+
+  cancelOrders = async (orders: Order[]) => {
+    const batches = orders.reduce((acc: Array<Record<string, any>>, o) => {
+      const market = this.store.markets.find((m) => m.symbol === o.symbol);
+      if (!market) return acc;
+      return [...acc, { instId: market.id, ordId: o.id }];
+    }, []);
+
+    await forEachSeries(chunk(batches, 20), async (batch) => {
+      await this.xhr.post(ENDPOINTS.CANCEL_ORDERS, batch);
+    });
+  };
+
+  cancelSymbolOrders = async (symbol: string) => {
+    const market = this.store.markets.find((m) => m.symbol === symbol);
+    if (!market) return;
+
+    const orders = this.store.orders.filter((o) => o.symbol === symbol);
+    const batches = orders.map((o) => ({ instId: market.id, ordId: o.id }));
+
+    await forEachSeries(chunk(batches, 20), async (batch) => {
+      await this.xhr.post(ENDPOINTS.CANCEL_ORDERS, batch);
+    });
   };
 
   private mapOrders = (orders: Array<Record<string, any>>) => {
