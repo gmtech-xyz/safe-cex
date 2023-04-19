@@ -92,10 +92,21 @@ export class OKXPublicWebsocket extends BaseWebSocket<OKXExchange> {
   };
 
   listenOHLCV = (opts: OHLCVOptions, callback: (candle: Candle) => void) => {
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    if (!this.store.loaded.markets) {
+      timeoutId = setTimeout(() => this.listenOHLCV(opts, callback), 100);
+
+      return () => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+      };
+    }
+
     const market = this.store.markets.find((m) => m.symbol === opts.symbol);
     if (!market) return () => {};
-
-    let timeoutId: NodeJS.Timeout | null = null;
 
     const topic = {
       channel: `candle${opts.interval}`,
@@ -145,10 +156,22 @@ export class OKXPublicWebsocket extends BaseWebSocket<OKXExchange> {
     symbol: string,
     callback: (orderBook: OrderBook) => void
   ) => {
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    if (!this.store.loaded.markets) {
+      timeoutId = setTimeout(() => this.listenOrderBook(symbol, callback), 100);
+
+      return () => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+      };
+    }
+
     const market = this.store.markets.find((m) => m.symbol === symbol);
     if (!market) return () => {};
 
-    let timeoutId: NodeJS.Timeout | null = null;
     const sides = ['bids', 'asks'] as const;
     const orderBook: OrderBook = { bids: [], asks: [] };
     const topic = { channel: 'books', instId: market.id };
@@ -237,6 +260,7 @@ export class OKXPublicWebsocket extends BaseWebSocket<OKXExchange> {
     waitForConnectedAndSubscribe();
 
     return () => {
+      delete this.messageHandlers.books;
       orderBook.bids = [];
       orderBook.asks = [];
 
