@@ -29,6 +29,8 @@ export const ENDPOINTS = {
   PLACE_ORDERS: '/api/v5/trade/batch-orders',
   SET_LEVERAGE: '/api/v5/account/set-leverage',
   LEVERAGE: '/api/v5/account/leverage-info',
+  SET_POSITION_MODE: '/api/v5/account/set-position-mode',
+  ACCOUNT_CONFIG: '/api/v5/account/config',
 };
 
 export const ORDER_STATUS: Record<string, OrderStatus> = {

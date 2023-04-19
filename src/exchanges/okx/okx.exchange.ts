@@ -96,6 +96,9 @@ export class OKXExchange extends BaseExchange {
     this.publicWebsocket.connectAndSubscribe();
     this.privateWebsocket.connectAndSubscribe();
 
+    // fetch current position mode (Hedge/One-way)
+    this.store.setSetting('isHedged', await this.fetchPositionMode());
+
     await this.tick();
     if (this.isDisposed) return;
 
@@ -265,19 +268,24 @@ export class OKXExchange extends BaseExchange {
           const market = this.store.markets.find((m) => m.id === p.instId);
           if (!market) return acc;
 
+          const contracts = multiply(
+            parseFloat(p.pos),
+            market.precision.amount
+          );
+
+          const notional = multiply(
+            parseFloat(p.notionalUsd),
+            market.precision.amount
+          );
+
           const position: Position = {
             symbol: market.symbol,
-            side:
-              parseFloat(p.pos) > 0 ? PositionSide.Long : PositionSide.Short,
+            side: contracts > 0 ? PositionSide.Long : PositionSide.Short,
             entryPrice: parseFloat(p.avgPx),
-            notional: Math.abs(
-              multiply(parseFloat(p.notionalUsd), market.precision.amount)
-            ),
+            notional: Math.abs(notional),
             leverage: parseFloat(p.lever) || this.leverageHash[market.id] || 0,
             unrealizedPnl: parseFloat(p.upl),
-            contracts: Math.abs(
-              multiply(parseFloat(p.pos), market.precision.amount)
-            ),
+            contracts: Math.abs(contracts),
             liquidationPrice: parseFloat(p.liqPx || '0'),
           };
 
@@ -293,18 +301,33 @@ export class OKXExchange extends BaseExchange {
           const hasPosition = positions.find((p) => p.symbol === m.symbol);
           if (hasPosition) return acc;
 
-          const position: Position = {
-            symbol: m.symbol,
-            side: PositionSide.Long,
-            entryPrice: 0,
-            notional: 0,
-            leverage: this.leverageHash[m.id] || 0,
-            unrealizedPnl: 0,
-            contracts: 0,
-            liquidationPrice: 0,
-          };
+          const fakeMarketPositions: Position[] = [
+            {
+              symbol: m.symbol,
+              side: PositionSide.Long,
+              entryPrice: 0,
+              notional: 0,
+              leverage: this.leverageHash[m.id] || 0,
+              unrealizedPnl: 0,
+              contracts: 0,
+              liquidationPrice: 0,
+            },
+          ];
 
-          return [...acc, position];
+          if (this.store.options.isHedged) {
+            fakeMarketPositions.push({
+              symbol: m.symbol,
+              side: PositionSide.Short,
+              entryPrice: 0,
+              notional: 0,
+              leverage: this.leverageHash[m.id] || 0,
+              unrealizedPnl: 0,
+              contracts: 0,
+              liquidationPrice: 0,
+            });
+          }
+
+          return [...acc, ...fakeMarketPositions];
         },
         []
       );
@@ -526,6 +549,34 @@ export class OKXExchange extends BaseExchange {
       [{ symbol, side: PositionSide.Long }, { leverage }],
       [{ symbol, side: PositionSide.Short }, { leverage }],
     ]);
+  };
+
+  fetchPositionMode = async () => {
+    const {
+      data: {
+        data: [{ posMode }],
+      },
+    } = await this.xhr.get(ENDPOINTS.ACCOUNT_CONFIG);
+    return posMode === 'long_short_mode';
+  };
+
+  changePositionMode = async (hedged: boolean) => {
+    if (this.store.positions.filter((p) => p.contracts > 0).length > 0) {
+      this.emitter.emit(
+        'error',
+        'Please close all positions before switching position mode'
+      );
+      return;
+    }
+
+    try {
+      await this.xhr.post(ENDPOINTS.SET_POSITION_MODE, {
+        posMode: hedged ? 'long_short_mode' : 'net_mode',
+      });
+      this.store.setSetting('isHedged', hedged);
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.msg || err?.message);
+    }
   };
 
   placeOrder = async (opts: PlaceOrderOpts) => {
