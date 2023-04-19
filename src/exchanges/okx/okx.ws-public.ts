@@ -60,6 +60,14 @@ export class OKXPublicWebsocket extends BaseWebSocket<OKXExchange> {
   onOpen = () => {
     if (!this.isDisposed) {
       this.subscribe();
+      this.ping();
+    }
+  };
+
+  ping = () => {
+    if (!this.isDisposed) {
+      this.pingAt = performance.now();
+      this.ws?.send?.('ping');
     }
   };
 
@@ -71,6 +79,11 @@ export class OKXPublicWebsocket extends BaseWebSocket<OKXExchange> {
 
   onMessage = ({ data }: MessageEvent) => {
     if (!this.isDisposed) {
+      if (data === 'pong') {
+        this.handlePongEvent();
+        return;
+      }
+
       for (const [channel, handler] of Object.entries(this.messageHandlers)) {
         if (
           data.includes(`channel":"${channel}`) &&
@@ -81,6 +94,18 @@ export class OKXPublicWebsocket extends BaseWebSocket<OKXExchange> {
         }
       }
     }
+  };
+
+  handlePongEvent = () => {
+    const diff = performance.now() - this.pingAt;
+    this.store.update({ latency: Math.round(diff / 2) });
+
+    if (this.pingTimeoutId) {
+      clearTimeout(this.pingTimeoutId);
+      this.pingTimeoutId = undefined;
+    }
+
+    this.pingTimeoutId = setTimeout(() => this.ping(), 10_000);
   };
 
   handleTickerEvents = ({ data: [update] }: Data) => {
