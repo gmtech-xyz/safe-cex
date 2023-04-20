@@ -189,7 +189,7 @@ export class OKXPublicWebsocket extends BaseWebSocket<OKXExchange> {
         if (!this.isDisposed) {
           this.messageHandlers.candle = ({ data: [c] }: Data) => {
             callback({
-              timestamp: parseInt(c[0], 10),
+              timestamp: parseInt(c[0], 10) / 1000,
               open: parseFloat(c[1]),
               high: parseFloat(c[2]),
               low: parseFloat(c[3]),

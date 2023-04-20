@@ -480,7 +480,7 @@ export class OKXExchange extends BaseExchange {
 
         const candles: Candle[] = data.map((c: string[]) => {
           return {
-            timestamp: parseInt(c[0], 10),
+            timestamp: parseInt(c[0], 10) / 1000,
             open: parseFloat(c[1]),
             high: parseFloat(c[2]),
             low: parseFloat(c[3]),
