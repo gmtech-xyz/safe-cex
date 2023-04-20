@@ -26,7 +26,7 @@ import { inverseObj } from '../../utils/inverse-obj';
 import { loop } from '../../utils/loop';
 import { omitUndefined } from '../../utils/omit-undefined';
 import { roundUSD } from '../../utils/round-usd';
-import { adjust, divide, multiply, subtract } from '../../utils/safe-math';
+import { add, adjust, divide, multiply, subtract } from '../../utils/safe-math';
 import { uuid } from '../../utils/uuid';
 import { BaseExchange } from '../base';
 
@@ -687,6 +687,49 @@ export class OKXExchange extends BaseExchange {
         return [...acc, ...newOrders];
       }
 
+      if (o.ordType === 'move_order_stop') {
+        const side = ORDER_SIDE[o.side];
+        const existingPosition = this.store.positions.find((pos) => {
+          return (
+            pos.symbol === market.symbol &&
+            (side === OrderSide.Sell
+              ? pos.side === PositionSide.Long
+              : pos.side === PositionSide.Short)
+          );
+        });
+
+        const callbackSpread = parseFloat(o.callbackSpread);
+        const moveTriggerPx = existingPosition
+          ? subtract(
+              Math.min(existingPosition.entryPrice, callbackSpread),
+              Math.max(existingPosition.entryPrice, callbackSpread)
+            )
+          : parseFloat(o.moveTriggerPx);
+
+        const price = adjust(
+          side === OrderSide.Buy
+            ? subtract(parseFloat(o.last), moveTriggerPx)
+            : add(parseFloat(o.last), moveTriggerPx),
+          market.precision.price
+        );
+
+        return [
+          ...acc,
+          {
+            id: `${o.algoId}_tsl`,
+            status: OrderStatus.Open,
+            symbol: market.symbol,
+            type: OrderType.TrailingStopLoss,
+            side: ORDER_SIDE[o.side],
+            price,
+            amount: 0,
+            filled: 0,
+            remaining: 0,
+            reduceOnly: true,
+          },
+        ];
+      }
+
       const amount = multiply(parseFloat(o.sz), market.precision.amount);
       const filled = multiply(parseFloat(o.accFillSz), market.precision.amount);
       const remaining = subtract(amount, filled);
@@ -729,9 +772,15 @@ export class OKXExchange extends BaseExchange {
         opts.type === OrderType.TrailingStopLoss
           ? 'move_order_stop'
           : 'conditional',
-      closeFraction: '1',
-      reduceOnly: true,
     });
+
+    if (
+      opts.type === OrderType.StopLoss ||
+      opts.type === OrderType.TakeProfit
+    ) {
+      req.closeFraction = '1';
+      req.reduceOnly = true;
+    }
 
     if (opts.type === OrderType.StopLoss) {
       req.slTriggerPx = `${price}`;
@@ -746,9 +795,13 @@ export class OKXExchange extends BaseExchange {
     }
 
     if (opts.type === OrderType.TrailingStopLoss) {
+      const pAmount = market.precision.amount;
+      const amount = adjust(divide(opts.amount, pAmount), pAmount);
+
       req.activePx = '';
       req.callbackRatio = '';
       req.callbackSpread = `${price}`;
+      req.sz = `${amount}`;
     }
 
     return req;
