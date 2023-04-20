@@ -516,24 +516,29 @@ export class OKXExchange extends BaseExchange {
 
   setLeverage = async (symbol: string, inputLeverage: number) => {
     const market = this.store.markets.find((m) => m.symbol === symbol);
+    const position = this.store.positions.find((p) => p.symbol === symbol);
+
     if (!market) throw new Error(`Market ${symbol} not found on OKX`);
+    if (!position) throw new Error(`Position ${symbol} not found on OKX`);
 
     const leverage = Math.min(
       Math.max(inputLeverage, market.limits.leverage.min),
       market.limits.leverage.max
     );
 
-    await this.xhr.post(ENDPOINTS.SET_LEVERAGE, {
-      instId: market.id,
-      lever: `${leverage}`,
-      mgnMode: 'cross',
-    });
+    if (position.leverage !== leverage) {
+      await this.xhr.post(ENDPOINTS.SET_LEVERAGE, {
+        instId: market.id,
+        lever: `${leverage}`,
+        mgnMode: 'cross',
+      });
 
-    this.leverageHash[market.id] = leverage;
-    this.store.updatePositions([
-      [{ symbol, side: PositionSide.Long }, { leverage }],
-      [{ symbol, side: PositionSide.Short }, { leverage }],
-    ]);
+      this.leverageHash[market.id] = leverage;
+      this.store.updatePositions([
+        [{ symbol, side: PositionSide.Long }, { leverage }],
+        [{ symbol, side: PositionSide.Short }, { leverage }],
+      ]);
+    }
   };
 
   fetchPositionMode = async () => {
@@ -713,7 +718,7 @@ export class OKXExchange extends BaseExchange {
         side,
         entryPrice: contracts ? parseFloat(p.avgPx) : 0,
         notional: contracts ? Math.abs(parseFloat(p.notionalUsd)) : 0,
-        leverage: parseFloat(p.lever) || this.leverageHash[market.id] || 0,
+        leverage: this.leverageHash[market.id] || 0,
         unrealizedPnl: contracts
           ? adjust(parseFloat(p.upl), market.precision.price)
           : 0,
