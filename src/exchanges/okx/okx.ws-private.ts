@@ -158,8 +158,8 @@ export class OKXPrivateWebsocket extends BaseWebSocket<OKXExchange> {
       const used = roundUSD(sumBy(okxPositions, (p) => parseFloat(p.mmr)));
       const upnl = roundUSD(sumBy(okxPositions, (p) => parseFloat(p.upl)));
 
+      this.store.updatePositions(positions.map((p) => [p, p]));
       this.store.update({
-        positions,
         balance: { ...this.store.balance, used: used || 0, upnl: upnl || 0 },
       });
     }

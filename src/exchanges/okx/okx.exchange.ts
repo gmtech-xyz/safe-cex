@@ -1,11 +1,10 @@
 import type { Axios } from 'axios';
-import rateLimit from 'axios-rate-limit';
 import { partition } from 'lodash';
 import chunk from 'lodash/chunk';
 import flatten from 'lodash/flatten';
 import sumBy from 'lodash/sumBy';
 import times from 'lodash/times';
-import { forEachSeries, mapSeries } from 'p-iteration';
+import { forEachSeries, map, mapSeries } from 'p-iteration';
 
 import type { Store } from '../../store/store.interface';
 import { OrderSide, OrderStatus, OrderType, PositionSide } from '../../types';
@@ -44,7 +43,6 @@ import { OKXPublicWebsocket } from './okx.ws-public';
 
 export class OKXExchange extends BaseExchange {
   xhr: Axios;
-  unlimitedXHR: Axios;
 
   publicWebsocket: OKXPublicWebsocket;
   privateWebsocket: OKXPrivateWebsocket;
@@ -54,9 +52,7 @@ export class OKXExchange extends BaseExchange {
   constructor(opts: ExchangeOptions, store: Store) {
     super(opts, store);
 
-    this.xhr = rateLimit(createAPI(opts), { maxRPS: 3 });
-    this.unlimitedXHR = createAPI(opts);
-
+    this.xhr = createAPI(opts);
     this.publicWebsocket = new OKXPublicWebsocket(this);
     this.privateWebsocket = new OKXPrivateWebsocket(this);
   }
@@ -78,8 +74,6 @@ export class OKXExchange extends BaseExchange {
   };
 
   start = async () => {
-    this.fetchLeverage();
-
     const markets = await this.fetchMarkets();
     if (this.isDisposed) return;
 
@@ -97,6 +91,10 @@ export class OKXExchange extends BaseExchange {
       tickers,
       loaded: { ...this.store.loaded, tickers: true },
     });
+
+    // we need to fetch leverage before positions
+    // this means before ws connect and before balance/positions fetch
+    await this.fetchLeverage();
 
     // Start websocket
     this.publicWebsocket.connectAndSubscribe();
@@ -316,7 +314,7 @@ export class OKXExchange extends BaseExchange {
 
   fetchLeverage = async () => {
     const responses = flatten(
-      await mapSeries(chunk(this.store.markets, 20), async (batch) => {
+      await map(chunk(this.store.markets, 20), async (batch) => {
         if (this.isDisposed) return [];
 
         const {
@@ -687,7 +685,7 @@ export class OKXExchange extends BaseExchange {
         symbol: market.symbol,
         type: ORDER_TYPE[o.ordType],
         side: ORDER_SIDE[o.side],
-        price: parseFloat(o.px),
+        price: parseFloat(o.px || '0'),
         amount,
         filled,
         remaining,
@@ -893,7 +891,7 @@ export class OKXExchange extends BaseExchange {
     await forEachSeries(chunk(batches, 20), async (batch) => {
       const {
         data: { data },
-      } = await this.unlimitedXHR.post(ENDPOINTS.CANCEL_ORDERS, batch);
+      } = await this.xhr.post(ENDPOINTS.CANCEL_ORDERS, batch);
 
       data.forEach((d: Record<string, any>) => {
         if (d.sMsg) this.emitter.emit('error', d.sMsg);
@@ -916,7 +914,7 @@ export class OKXExchange extends BaseExchange {
     await forEachSeries(chunk(batches, 20), async (batch) => {
       const {
         data: { data },
-      } = await this.unlimitedXHR.post(ENDPOINTS.CANCEL_ALGO_ORDERS, batch);
+      } = await this.xhr.post(ENDPOINTS.CANCEL_ALGO_ORDERS, batch);
 
       data.forEach((d: Record<string, any>) => {
         if (d.sMsg) this.emitter.emit('error', d.sMsg);
