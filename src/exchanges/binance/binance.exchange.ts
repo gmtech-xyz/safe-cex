@@ -4,7 +4,6 @@ import chunk from 'lodash/chunk';
 import groupBy from 'lodash/groupBy';
 import omit from 'lodash/omit';
 import times from 'lodash/times';
-import { nanoid } from 'nanoid';
 import { forEachSeries } from 'p-iteration';
 
 import type { Store } from '../../store/store.interface';
@@ -33,6 +32,7 @@ import { inverseObj } from '../../utils/inverse-obj';
 import { loop } from '../../utils/loop';
 import { omitUndefined } from '../../utils/omit-undefined';
 import { adjust, subtract } from '../../utils/safe-math';
+import { uuid } from '../../utils/uuid';
 import { BaseExchange } from '../base';
 
 import { createAPI } from './binance.api';
@@ -645,7 +645,7 @@ export class BinanceExchange extends BaseExchange {
     // otherwise Binance will duplicate the IDs
     // when its sent in batches
     for (const payload of payloads) {
-      payload.newClientOrderId = nanoid().replace(/-|_/g, '');
+      payload.newClientOrderId = uuid();
     }
 
     return payloads;
@@ -685,7 +685,7 @@ export class BinanceExchange extends BaseExchange {
       quantity: `${position.contracts}`,
       callbackRate: `${distancePercentage}`,
       priceProtect: 'true',
-      newClientOrderId: nanoid().replace(/-|_/g, ''),
+      newClientOrderId: uuid(),
     };
 
     return [payload];

@@ -1,6 +1,7 @@
 import { OrderSide, OrderStatus, OrderType, PositionSide } from '../../types';
 
 export const RECV_WINDOW = 5000;
+export const BROKER_ID = 'f4f16f76ea9fBCDE';
 
 // OKX requires CORS
 // OKX needs to add a custom header for WSS testnet, so we reverse_proxy

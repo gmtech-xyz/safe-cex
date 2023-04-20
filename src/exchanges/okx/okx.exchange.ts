@@ -25,10 +25,12 @@ import { loop } from '../../utils/loop';
 import { omitUndefined } from '../../utils/omit-undefined';
 import { roundUSD } from '../../utils/round-usd';
 import { adjust, divide, multiply, subtract } from '../../utils/safe-math';
+import { uuid } from '../../utils/uuid';
 import { BaseExchange } from '../base';
 
 import { createAPI } from './okx.api';
 import {
+  BROKER_ID,
   ENDPOINTS,
   ORDER_SIDE,
   ORDER_STATUS,
@@ -615,6 +617,8 @@ export class OKXExchange extends BaseExchange {
 
     const req = omitUndefined({
       instId: market.id,
+      clOrdId: `${BROKER_ID}${uuid()}`,
+      tag: BROKER_ID,
       tdMode: 'cross',
       side: inverseObj(ORDER_SIDE)[opts.side],
       ordType: REVERSE_ORDER_TYPE[opts.type],
