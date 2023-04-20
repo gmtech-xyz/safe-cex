@@ -18,6 +18,7 @@ import type {
   PlaceOrderOpts,
   Position,
   Ticker,
+  UpdateOrderOpts,
   Writable,
 } from '../../types';
 import { inverseObj } from '../../utils/inverse-obj';
@@ -41,8 +42,6 @@ import {
 import { OKXPrivateWebsocket } from './okx.ws-private';
 import { OKXPublicWebsocket } from './okx.ws-public';
 
-// TODO: Update orders
-// TODO: Update algo orders
 // TODO: Place trailing stops
 // TODO: Place single TP/SL
 
@@ -512,6 +511,52 @@ export class OKXExchange extends BaseExchange {
     return this.publicWebsocket.listenOrderBook(symbol, callback);
   };
 
+  updateOrder = async ({ order, update }: UpdateOrderOpts) => {
+    if (order.type !== OrderType.Limit) {
+      return this.updateAlgoOrder({ order, update });
+    }
+
+    const market = this.store.markets.find((m) => m.symbol === order.symbol);
+    if (!market) throw new Error(`Market ${order.symbol} not found on OKX`);
+
+    const payload: Record<string, any> = { instId: market.id, ordId: order.id };
+    if ('price' in update) payload.newPx = `${update.price}`;
+    if ('amount' in update) {
+      const pAmount = market.precision.amount;
+      const amount = adjust(divide(update.amount, pAmount), pAmount);
+      payload.newSz = `${amount}`;
+    }
+
+    try {
+      await this.xhr.post(ENDPOINTS.UPDATE_ORDER, payload);
+      return [order.id];
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.msg || err?.message);
+      return [];
+    }
+  };
+
+  updateAlgoOrder = async ({ order, update }: UpdateOrderOpts) => {
+    const orders = this.store.orders.filter((o) =>
+      o.id.startsWith(order.id.replace(/_[a-zA-Z]+$/, ''))
+    );
+
+    const newOrder = {
+      symbol: order.symbol,
+      type: order.type,
+      side: order.side,
+      price: order.price,
+      amount: order.amount,
+      reduceOnly: order.reduceOnly || false,
+    };
+
+    if ('price' in update) newOrder.price = update.price;
+    if ('amount' in update) newOrder.amount = update.amount;
+
+    await this.cancelAlgoOrders(orders);
+    return await this.placeOrder(newOrder);
+  };
+
   cancelOrders = async (orders: Order[]) => {
     await this.cancelNormalOrders(orders);
     await this.cancelAlgoOrders(orders);
@@ -545,10 +590,7 @@ export class OKXExchange extends BaseExchange {
         if (!market) return acc;
         return [
           ...acc,
-          {
-            instId: market.id,
-            algoId: o.id.replace('_sl', '').replace('_tp', ''),
-          },
+          { instId: market.id, algoId: o.id.replace(/_[a-zA-Z]+$/, '') },
         ];
       }, []);
 
