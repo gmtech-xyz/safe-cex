@@ -162,7 +162,7 @@ export class DefaultStore implements Store {
       return [idx, changes] as const;
     });
 
-    if (idexesChanges.some(([idx]) => idx === -1)) {
+    if (idexesChanges.some(([idx]) => idx !== -1)) {
       idexesChanges.forEach(([idx, changes]) =>
         this.updateInArray('positions', idx, changes)
       );
