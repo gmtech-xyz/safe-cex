@@ -617,7 +617,7 @@ export class OKXExchange extends BaseExchange {
 
     const req = omitUndefined({
       instId: market.id,
-      clOrdId: `${BROKER_ID}${uuid()}`,
+      clOrdId: `${BROKER_ID}${uuid()}`.slice(0, 32),
       tag: BROKER_ID,
       tdMode: 'cross',
       side: inverseObj(ORDER_SIDE)[opts.side],
