@@ -642,15 +642,6 @@ export class BybitExchange extends BaseExchange {
 
     if (v(data, 'retMsg') !== 'OK') {
       this.emitter.emit('error', v(data, 'retMsg'));
-    } else {
-      const list = Array.isArray(data.result) ? data.result : [];
-      // we use `startsWith` because we generate SL and TP orders with
-      // their original ID `[order_id]__stop_loss` and `[order_id]__take_profit`
-      this.store.removeOrders(
-        this.store.orders.filter(
-          (order) => !list.some((id: string) => order.id.startsWith(id))
-        )
-      );
     }
   };
 
