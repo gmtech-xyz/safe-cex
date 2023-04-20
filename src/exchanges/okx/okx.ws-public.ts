@@ -12,7 +12,7 @@ import { multiply } from '../../utils/safe-math';
 import { BaseWebSocket } from '../base.ws';
 
 import type { OKXExchange } from './okx.exchange';
-import { BASE_WS_URL } from './okx.types';
+import { BASE_WS_URL, INTERVAL } from './okx.types';
 
 type Data = Record<string, any>;
 type MessageHandlers = {
@@ -180,7 +180,7 @@ export class OKXPublicWebsocket extends BaseWebSocket<OKXExchange> {
     if (!market) return () => {};
 
     const topic = {
-      channel: `candle${opts.interval}`,
+      channel: `candle${INTERVAL[opts.interval]}`,
       instId: market.id,
     };
 

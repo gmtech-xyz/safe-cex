@@ -34,6 +34,7 @@ import { createAPI } from './okx.api';
 import {
   BROKER_ID,
   ENDPOINTS,
+  INTERVAL,
   ORDER_SIDE,
   ORDER_STATUS,
   ORDER_TYPE,
@@ -471,7 +472,11 @@ export class OKXExchange extends BaseExchange {
         const {
           data: { data },
         } = await this.xhr.get(ENDPOINTS.KLINE, {
-          params: { instId: market.id, bar: opts.interval, limit: 300 },
+          params: {
+            instId: market.id,
+            bar: INTERVAL[opts.interval],
+            limit: 300,
+          },
         });
 
         const candles: Candle[] = data.map((c: string[]) => {
