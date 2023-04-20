@@ -721,7 +721,7 @@ export class OKXExchange extends BaseExchange {
             symbol: market.symbol,
             type: OrderType.TrailingStopLoss,
             side: ORDER_SIDE[o.side],
-            price,
+            price: price || callbackSpread,
             amount: 0,
             filled: 0,
             remaining: 0,
