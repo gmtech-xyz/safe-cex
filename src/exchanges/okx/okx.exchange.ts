@@ -41,7 +41,6 @@ import {
 import { OKXPrivateWebsocket } from './okx.ws-private';
 import { OKXPublicWebsocket } from './okx.ws-public';
 
-// TODO: Cancel algo orders
 // TODO: Update orders
 // TODO: Update algo orders
 // TODO: Place trailing stops
@@ -514,6 +513,11 @@ export class OKXExchange extends BaseExchange {
   };
 
   cancelOrders = async (orders: Order[]) => {
+    await this.cancelNormalOrders(orders);
+    await this.cancelAlgoOrders(orders);
+  };
+
+  cancelNormalOrders = async (orders: Order[]) => {
     const batches = orders
       .filter((o) => o.type === OrderType.Limit)
       .reduce((acc: Array<Record<string, any>>, o) => {
@@ -523,7 +527,39 @@ export class OKXExchange extends BaseExchange {
       }, []);
 
     await forEachSeries(chunk(batches, 20), async (batch) => {
-      await this.unlimitedXHR.post(ENDPOINTS.CANCEL_ORDERS, batch);
+      const {
+        data: { data },
+      } = await this.unlimitedXHR.post(ENDPOINTS.CANCEL_ORDERS, batch);
+
+      data.forEach((d: Record<string, any>) => {
+        if (d.sMsg) this.emitter.emit('error', d.sMsg);
+      });
+    });
+  };
+
+  cancelAlgoOrders = async (orders: Order[]) => {
+    const batches = orders
+      .filter((o) => o.type !== OrderType.Limit)
+      .reduce((acc: Array<Record<string, any>>, o) => {
+        const market = this.store.markets.find((m) => m.symbol === o.symbol);
+        if (!market) return acc;
+        return [
+          ...acc,
+          {
+            instId: market.id,
+            algoId: o.id.replace('_sl', '').replace('_tp', ''),
+          },
+        ];
+      }, []);
+
+    await forEachSeries(chunk(batches, 20), async (batch) => {
+      const {
+        data: { data },
+      } = await this.unlimitedXHR.post(ENDPOINTS.CANCEL_ALGO_ORDERS, batch);
+
+      data.forEach((d: Record<string, any>) => {
+        if (d.sMsg) this.emitter.emit('error', d.sMsg);
+      });
     });
   };
 
@@ -531,14 +567,8 @@ export class OKXExchange extends BaseExchange {
     const market = this.store.markets.find((m) => m.symbol === symbol);
     if (!market) return;
 
-    const orders = this.store.orders.filter(
-      (o) => o.symbol === symbol && o.type === OrderType.Limit
-    );
-
-    const batches = orders.map((o) => ({ instId: market.id, ordId: o.id }));
-    await forEachSeries(chunk(batches, 20), async (batch) => {
-      await this.unlimitedXHR.post(ENDPOINTS.CANCEL_ORDERS, batch);
-    });
+    const orders = this.store.orders.filter((o) => o.symbol === symbol);
+    await this.cancelOrders(orders);
   };
 
   setLeverage = async (symbol: string, inputLeverage: number) => {
