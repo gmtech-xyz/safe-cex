@@ -2,6 +2,7 @@ import createHmac from 'create-hmac';
 import { sumBy } from 'lodash';
 
 import { roundUSD } from '../../utils/round-usd';
+import { subtract } from '../../utils/safe-math';
 import { virtualClock } from '../../utils/virtual-clock';
 import { BaseWebSocket } from '../base.ws';
 
@@ -61,10 +62,11 @@ export class OKXPrivateWebsocket extends BaseWebSocket<OKXExchange> {
       JSON.stringify({
         op: 'subscribe',
         args: [
+          { channel: 'account' },
+          { channel: 'positions', instType: 'SWAP' },
           { channel: 'orders', instType: 'SWAP' },
           { channel: 'orders-algo', instType: 'SWAP' },
           { channel: 'algo-advance', instType: 'SWAP' },
-          { channel: 'positions', instType: 'SWAP' },
         ],
       })
     );
@@ -96,6 +98,11 @@ export class OKXPrivateWebsocket extends BaseWebSocket<OKXExchange> {
 
     if (data.includes('"channel":"positions"')) {
       this.handlePositionTopic(JSON.parse(data));
+      return;
+    }
+
+    if (data.includes('"channel":"account"')) {
+      this.handleAccountTopic(JSON.parse(data));
     }
   };
 
@@ -152,5 +159,17 @@ export class OKXPrivateWebsocket extends BaseWebSocket<OKXExchange> {
         balance: { ...this.store.balance, used: used || 0, upnl: upnl || 0 },
       });
     }
+  };
+
+  handleAccountTopic = ({ data }: { data: Array<Record<string, any>> }) => {
+    const totalCollateral = roundUSD(sumBy(data, (b) => parseFloat(b.totalEq)));
+
+    this.store.update({
+      balance: {
+        ...this.store.balance,
+        free: subtract(totalCollateral, this.store.balance.used),
+        total: subtract(totalCollateral, this.store.balance.upnl),
+      },
+    });
   };
 }
