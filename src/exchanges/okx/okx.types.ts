@@ -29,6 +29,7 @@ export const ENDPOINTS = {
   CANCEL_ORDERS: '/api/v5/trade/cancel-batch-orders',
   CANCEL_ALGO_ORDERS: '/api/v5/trade/cancel-algos',
   PLACE_ORDERS: '/api/v5/trade/batch-orders',
+  PLACE_ALGO_ORDER: '/api/v5/trade/order-algo',
   SET_LEVERAGE: '/api/v5/account/set-leverage',
   LEVERAGE: '/api/v5/account/leverage-info',
   SET_POSITION_MODE: '/api/v5/account/set-position-mode',

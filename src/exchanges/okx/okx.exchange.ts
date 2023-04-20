@@ -1,5 +1,6 @@
 import type { Axios } from 'axios';
 import rateLimit from 'axios-rate-limit';
+import { partition } from 'lodash';
 import chunk from 'lodash/chunk';
 import flatten from 'lodash/flatten';
 import sumBy from 'lodash/sumBy';
@@ -41,9 +42,6 @@ import {
 } from './okx.types';
 import { OKXPrivateWebsocket } from './okx.ws-private';
 import { OKXPublicWebsocket } from './okx.ws-public';
-
-// TODO: Place trailing stops
-// TODO: Place single TP/SL
 
 export class OKXExchange extends BaseExchange {
   xhr: Axios;
@@ -558,57 +556,15 @@ export class OKXExchange extends BaseExchange {
   };
 
   cancelOrders = async (orders: Order[]) => {
-    await this.cancelNormalOrders(orders);
-    await this.cancelAlgoOrders(orders);
-  };
+    const [algoOrders, normalOrders] = partition(orders, (o) =>
+      this.isAlgoOrder(o.type)
+    );
 
-  cancelNormalOrders = async (orders: Order[]) => {
-    const batches = orders
-      .filter((o) => o.type === OrderType.Limit)
-      .reduce((acc: Array<Record<string, any>>, o) => {
-        const market = this.store.markets.find((m) => m.symbol === o.symbol);
-        if (!market) return acc;
-        return [...acc, { instId: market.id, ordId: o.id }];
-      }, []);
-
-    await forEachSeries(chunk(batches, 20), async (batch) => {
-      const {
-        data: { data },
-      } = await this.unlimitedXHR.post(ENDPOINTS.CANCEL_ORDERS, batch);
-
-      data.forEach((d: Record<string, any>) => {
-        if (d.sMsg) this.emitter.emit('error', d.sMsg);
-      });
-    });
-  };
-
-  cancelAlgoOrders = async (orders: Order[]) => {
-    const batches = orders
-      .filter((o) => o.type !== OrderType.Limit)
-      .reduce((acc: Array<Record<string, any>>, o) => {
-        const market = this.store.markets.find((m) => m.symbol === o.symbol);
-        if (!market) return acc;
-        return [
-          ...acc,
-          { instId: market.id, algoId: o.id.replace(/_[a-zA-Z]+$/, '') },
-        ];
-      }, []);
-
-    await forEachSeries(chunk(batches, 20), async (batch) => {
-      const {
-        data: { data },
-      } = await this.unlimitedXHR.post(ENDPOINTS.CANCEL_ALGO_ORDERS, batch);
-
-      data.forEach((d: Record<string, any>) => {
-        if (d.sMsg) this.emitter.emit('error', d.sMsg);
-      });
-    });
+    if (normalOrders.length) await this.cancelNormalOrders(normalOrders);
+    if (algoOrders.length) await this.cancelAlgoOrders(algoOrders);
   };
 
   cancelSymbolOrders = async (symbol: string) => {
-    const market = this.store.markets.find((m) => m.symbol === symbol);
-    if (!market) return;
-
     const orders = this.store.orders.filter((o) => o.symbol === symbol);
     await this.cancelOrders(orders);
   };
@@ -664,101 +620,30 @@ export class OKXExchange extends BaseExchange {
   };
 
   placeOrder = async (opts: PlaceOrderOpts) => {
+    if (this.isAlgoOrder(opts.type)) {
+      const payload = this.formatAlgoOrder(opts);
+      return await this.placeAlgoOrderBatch([payload]);
+    }
+
     const payloads = this.formatCreateOrder(opts);
     return await this.placeOrderBatch(payloads);
   };
 
   placeOrders = async (orders: PlaceOrderOpts[]) => {
-    const requests = orders.flatMap((o) => this.formatCreateOrder(o));
-    return await this.placeOrderBatch(requests);
-  };
+    const [algoOrders, normalOrders] = partition(orders, (o) =>
+      this.isAlgoOrder(o.type)
+    );
 
-  formatCreateOrder = (opts: PlaceOrderOpts) => {
-    const market = this.store.markets.find((m) => m.symbol === opts.symbol);
+    const orderIds = [
+      ...(await this.placeOrderBatch(
+        normalOrders.flatMap((o) => this.formatCreateOrder(o))
+      )),
+      ...(await this.placeAlgoOrderBatch(
+        algoOrders.map((o) => this.formatAlgoOrder(o))
+      )),
+    ];
 
-    if (!market) {
-      throw new Error(`Market ${opts.symbol} not found on OKX`);
-    }
-
-    const maxSize = market.limits.amount.max;
-    const pPrice = market.precision.price;
-    const pAmount = market.precision.amount;
-
-    const amount = adjust(divide(opts.amount, pAmount), pAmount);
-    const price = opts.price ? adjust(opts.price, pPrice) : null;
-
-    const req = omitUndefined({
-      instId: market.id,
-      clOrdId: `${BROKER_ID}${uuid()}`.slice(0, 32),
-      tag: BROKER_ID,
-      tdMode: 'cross',
-      side: inverseObj(ORDER_SIDE)[opts.side],
-      ordType: REVERSE_ORDER_TYPE[opts.type],
-      sz: `${amount}`,
-      px: opts.type === OrderType.Limit ? `${price}` : undefined,
-      reduceOnly: opts.reduceOnly || undefined,
-      posSide: this.getPositionSide(opts),
-    });
-
-    const lots = amount > maxSize ? Math.ceil(amount / maxSize) : 1;
-    const rest = amount > maxSize ? adjust(amount % maxSize, pAmount) : 0;
-
-    const lotSize = adjust((amount - rest) / lots, pAmount);
-    const payloads: Array<Record<string, any>> = times(lots, () => {
-      return { ...req, sz: `${lotSize}` };
-    });
-
-    if (rest) payloads.push({ ...req, qty: rest });
-
-    if (opts.takeProfit) {
-      payloads[0].tpTriggerPx = `${adjust(opts.takeProfit, pPrice)}`;
-      payloads[0].tpOrdPx = '-1';
-      payloads[0].tpTriggerPxType = 'mark';
-    }
-
-    if (opts.stopLoss) {
-      payloads[0].slTriggerPx = `${adjust(opts.stopLoss, pPrice)}`;
-      payloads[0].slOrdPx = '-1';
-      payloads[0].slTriggerPxType = 'mark';
-    }
-
-    return payloads;
-  };
-
-  getPositionSide = (opts: Pick<PlaceOrderOpts, 'reduceOnly' | 'side'>) => {
-    if (!this.store.options.isHedged) return undefined;
-
-    if (opts.reduceOnly) {
-      if (opts.side === OrderSide.Buy) return 'short';
-      if (opts.side === OrderSide.Sell) return 'long';
-    }
-
-    if (opts.side === OrderSide.Buy) return 'long';
-    if (opts.side === OrderSide.Sell) return 'short';
-
-    return undefined;
-  };
-
-  placeOrderBatch = async (payloads: Array<Record<string, any>>) => {
-    const responses = await mapSeries(chunk(payloads, 20), async (batch) => {
-      const {
-        data: { data },
-      } = await this.unlimitedXHR.post<{ data: Array<Record<string, any>> }>(
-        ENDPOINTS.PLACE_ORDERS,
-        batch
-      );
-
-      return data.reduce((acc: string[], o) => {
-        if (o.ordId) {
-          return [...acc, o.ordId];
-        }
-
-        this.emitter.emit('error', o.sMsg);
-        return acc;
-      }, []);
-    });
-
-    return flatten(responses);
+    return orderIds;
   };
 
   mapOrders = (orders: Array<Record<string, any>>) => {
@@ -821,5 +706,216 @@ export class OKXExchange extends BaseExchange {
 
       return [...acc, order];
     }, []);
+  };
+
+  private formatAlgoOrder = (opts: PlaceOrderOpts) => {
+    const market = this.store.markets.find((m) => m.symbol === opts.symbol);
+
+    if (!market) {
+      throw new Error(`Market ${opts.symbol} not found on OKX`);
+    }
+
+    const pPrice = market.precision.price;
+    const price = opts.price ? adjust(opts.price, pPrice) : null;
+
+    const req: Record<string, any> = omitUndefined({
+      instId: market.id,
+      tdMode: 'cross',
+      algoClOrdId: `${BROKER_ID}${uuid()}`.slice(0, 32),
+      tag: BROKER_ID,
+      side: inverseObj(ORDER_SIDE)[opts.side],
+      posSide: this.getPositionSide(opts),
+      ordType:
+        opts.type === OrderType.TrailingStopLoss
+          ? 'move_order_stop'
+          : 'conditional',
+      closeFraction: '1',
+      reduceOnly: true,
+    });
+
+    if (opts.type === OrderType.StopLoss) {
+      req.slTriggerPx = `${price}`;
+      req.slOrdPx = '-1';
+      req.slTriggerPxType = 'mark';
+    }
+
+    if (opts.type === OrderType.TakeProfit) {
+      req.tpTriggerPx = `${price}`;
+      req.tpOrdPx = '-1';
+      req.tpTriggerPxType = 'mark';
+    }
+
+    if (opts.type === OrderType.TrailingStopLoss) {
+      req.activePx = '';
+      req.callbackRatio = '';
+      req.callbackSpread = `${price}`;
+    }
+
+    return req;
+  };
+
+  private formatCreateOrder = (opts: PlaceOrderOpts) => {
+    const market = this.store.markets.find((m) => m.symbol === opts.symbol);
+
+    if (!market) {
+      throw new Error(`Market ${opts.symbol} not found on OKX`);
+    }
+
+    const maxSize = market.limits.amount.max;
+    const pPrice = market.precision.price;
+    const pAmount = market.precision.amount;
+
+    const amount = adjust(divide(opts.amount, pAmount), pAmount);
+    const price = opts.price ? adjust(opts.price, pPrice) : null;
+
+    const req = omitUndefined({
+      instId: market.id,
+      clOrdId: `${BROKER_ID}${uuid()}`.slice(0, 32),
+      tag: BROKER_ID,
+      tdMode: 'cross',
+      side: inverseObj(ORDER_SIDE)[opts.side],
+      ordType: REVERSE_ORDER_TYPE[opts.type],
+      sz: `${amount}`,
+      px: opts.type === OrderType.Limit ? `${price}` : undefined,
+      reduceOnly: opts.reduceOnly || undefined,
+      posSide: this.getPositionSide(opts),
+    });
+
+    const lots = amount > maxSize ? Math.ceil(amount / maxSize) : 1;
+    const rest = amount > maxSize ? adjust(amount % maxSize, pAmount) : 0;
+
+    const lotSize = adjust((amount - rest) / lots, pAmount);
+    const payloads: Array<Record<string, any>> = times(lots, () => {
+      return { ...req, sz: `${lotSize}` };
+    });
+
+    if (rest) payloads.push({ ...req, qty: rest });
+
+    if (opts.takeProfit) {
+      payloads[0].tpTriggerPx = `${adjust(opts.takeProfit, pPrice)}`;
+      payloads[0].tpOrdPx = '-1';
+      payloads[0].tpTriggerPxType = 'mark';
+    }
+
+    if (opts.stopLoss) {
+      payloads[0].slTriggerPx = `${adjust(opts.stopLoss, pPrice)}`;
+      payloads[0].slOrdPx = '-1';
+      payloads[0].slTriggerPxType = 'mark';
+    }
+
+    return payloads;
+  };
+
+  private placeOrderBatch = async (payloads: Array<Record<string, any>>) => {
+    const responses = await mapSeries(chunk(payloads, 20), async (batch) => {
+      const {
+        data: { data },
+      } = await this.xhr.post<{ data: Array<Record<string, any>> }>(
+        ENDPOINTS.PLACE_ORDERS,
+        batch
+      );
+
+      return data.reduce((acc: string[], o) => {
+        if (o.ordId) {
+          return [...acc, o.ordId];
+        }
+
+        this.emitter.emit('error', o.sMsg);
+        return acc;
+      }, []);
+    });
+
+    return flatten(responses);
+  };
+
+  private placeAlgoOrderBatch = async (
+    payloads: Array<Record<string, any>>
+  ) => {
+    const responses = await mapSeries(payloads, async (payload) => {
+      const {
+        data: { data },
+      } = await this.xhr.post<{ data: Array<Record<string, any>> }>(
+        ENDPOINTS.PLACE_ALGO_ORDER,
+        payload
+      );
+
+      return data.reduce((acc: string[], o) => {
+        if (o.algoId) {
+          return [...acc, o.algoId];
+        }
+
+        this.emitter.emit('error', o.sMsg);
+        return acc;
+      }, []);
+    });
+
+    return flatten(responses);
+  };
+
+  private cancelNormalOrders = async (orders: Order[]) => {
+    const batches = orders
+      .filter((o) => !this.isAlgoOrder(o.type))
+      .reduce((acc: Array<Record<string, any>>, o) => {
+        const market = this.store.markets.find((m) => m.symbol === o.symbol);
+        if (!market) return acc;
+        return [...acc, { instId: market.id, ordId: o.id }];
+      }, []);
+
+    await forEachSeries(chunk(batches, 20), async (batch) => {
+      const {
+        data: { data },
+      } = await this.unlimitedXHR.post(ENDPOINTS.CANCEL_ORDERS, batch);
+
+      data.forEach((d: Record<string, any>) => {
+        if (d.sMsg) this.emitter.emit('error', d.sMsg);
+      });
+    });
+  };
+
+  private cancelAlgoOrders = async (orders: Order[]) => {
+    const batches = orders
+      .filter((o) => this.isAlgoOrder(o.type))
+      .reduce((acc: Array<Record<string, any>>, o) => {
+        const market = this.store.markets.find((m) => m.symbol === o.symbol);
+        if (!market) return acc;
+        return [
+          ...acc,
+          { instId: market.id, algoId: o.id.replace(/_[a-zA-Z]+$/, '') },
+        ];
+      }, []);
+
+    await forEachSeries(chunk(batches, 20), async (batch) => {
+      const {
+        data: { data },
+      } = await this.unlimitedXHR.post(ENDPOINTS.CANCEL_ALGO_ORDERS, batch);
+
+      data.forEach((d: Record<string, any>) => {
+        if (d.sMsg) this.emitter.emit('error', d.sMsg);
+      });
+    });
+  };
+
+  private isAlgoOrder = (orderType: OrderType) => {
+    return (
+      orderType === OrderType.StopLoss ||
+      orderType === OrderType.TakeProfit ||
+      orderType === OrderType.TrailingStopLoss
+    );
+  };
+
+  private getPositionSide = (
+    opts: Pick<PlaceOrderOpts, 'reduceOnly' | 'side'>
+  ) => {
+    if (!this.store.options.isHedged) return undefined;
+
+    if (opts.reduceOnly) {
+      if (opts.side === OrderSide.Buy) return 'short';
+      if (opts.side === OrderSide.Sell) return 'long';
+    }
+
+    if (opts.side === OrderSide.Buy) return 'long';
+    if (opts.side === OrderSide.Sell) return 'short';
+
+    return undefined;
   };
 }
