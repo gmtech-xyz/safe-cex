@@ -1,5 +1,7 @@
 import createHmac from 'create-hmac';
+import { sumBy } from 'lodash';
 
+import { roundUSD } from '../../utils/round-usd';
 import { virtualClock } from '../../utils/virtual-clock';
 import { BaseWebSocket } from '../base.ws';
 
@@ -62,6 +64,7 @@ export class OKXPrivateWebsocket extends BaseWebSocket<OKXExchange> {
           { channel: 'orders', instType: 'SWAP' },
           { channel: 'orders-algo', instType: 'SWAP' },
           { channel: 'algo-advance', instType: 'SWAP' },
+          { channel: 'positions', instType: 'SWAP' },
         ],
       })
     );
@@ -88,6 +91,11 @@ export class OKXPrivateWebsocket extends BaseWebSocket<OKXExchange> {
       data.includes('"channel":"algo-advance"')
     ) {
       this.handleOrderTopic(JSON.parse(data));
+      return;
+    }
+
+    if (data.includes('"channel":"positions"')) {
+      this.handlePositionTopic(JSON.parse(data));
     }
   };
 
@@ -125,6 +133,24 @@ export class OKXPrivateWebsocket extends BaseWebSocket<OKXExchange> {
           });
         }
       }
+    }
+  };
+
+  handlePositionTopic = ({
+    data: okxPositions,
+  }: {
+    data: Array<Record<string, any>>;
+  }) => {
+    const positions = this.parent.mapPositions(okxPositions);
+
+    if (positions.length) {
+      const used = roundUSD(sumBy(okxPositions, (p) => parseFloat(p.mmr)));
+      const upnl = roundUSD(sumBy(okxPositions, (p) => parseFloat(p.upl)));
+
+      this.store.update({
+        positions,
+        balance: { ...this.store.balance, used: used || 0, upnl: upnl || 0 },
+      });
     }
   };
 }

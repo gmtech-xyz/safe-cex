@@ -20,10 +20,8 @@ import type {
   Position,
   Ticker,
   UpdateOrderOpts,
-  Writable,
 } from '../../types';
 import { inverseObj } from '../../utils/inverse-obj';
-import { loop } from '../../utils/loop';
 import { omitUndefined } from '../../utils/omit-undefined';
 import { roundUSD } from '../../utils/round-usd';
 import { add, adjust, divide, multiply, subtract } from '../../utils/safe-math';
@@ -80,6 +78,8 @@ export class OKXExchange extends BaseExchange {
   };
 
   start = async () => {
+    this.fetchLeverage();
+
     const markets = await this.fetchMarkets();
     if (this.isDisposed) return;
 
@@ -105,8 +105,14 @@ export class OKXExchange extends BaseExchange {
     // fetch current position mode (Hedge/One-way)
     this.store.setSetting('isHedged', await this.fetchPositionMode());
 
-    await this.tick();
+    const { balance, positions } = await this.fetchBalanceAndPositions();
     if (this.isDisposed) return;
+
+    this.store.update({
+      balance,
+      positions,
+      loaded: { ...this.store.loaded, balance: true, positions: true },
+    });
 
     this.log(`Ready to trade on OKX`);
 
@@ -119,30 +125,6 @@ export class OKXExchange extends BaseExchange {
       orders,
       loaded: { ...this.store.loaded, orders: true },
     });
-  };
-
-  tick = async () => {
-    if (!this.isDisposed) {
-      try {
-        const { balance, positions } = await this.fetchBalanceAndPositions();
-        if (this.isDisposed) return;
-
-        // fetch leverage for each symbols
-        if (!this.store.loaded.positions) {
-          this.fetchLeverageAndEditPositions(positions);
-        }
-
-        this.store.update({
-          balance,
-          positions,
-          loaded: { ...this.store.loaded, balance: true, positions: true },
-        });
-      } catch (err: any) {
-        this.emitter.emit('error', err?.message);
-      }
-
-      loop(() => this.tick());
-    }
   };
 
   fetchMarkets = async () => {
@@ -269,40 +251,7 @@ export class OKXExchange extends BaseExchange {
         upnl,
       };
 
-      const positions: Position[] = pData.reduce(
-        (acc: Position[], p: Record<string, any>) => {
-          const market = this.store.markets.find((m) => m.id === p.instId);
-          if (!market) return acc;
-
-          const contracts = multiply(
-            parseFloat(p.pos),
-            market.precision.amount
-          );
-
-          const notional = multiply(
-            parseFloat(p.notionalUsd),
-            market.precision.amount
-          );
-
-          const side =
-            POSITION_SIDE[p.posSide] ||
-            (contracts > 0 ? PositionSide.Long : PositionSide.Short);
-
-          const position: Position = {
-            symbol: market.symbol,
-            side,
-            entryPrice: parseFloat(p.avgPx),
-            notional: Math.abs(notional),
-            leverage: parseFloat(p.lever) || this.leverageHash[market.id] || 0,
-            unrealizedPnl: parseFloat(p.upl),
-            contracts: Math.abs(contracts),
-            liquidationPrice: parseFloat(p.liqPx || '0'),
-          };
-
-          return [...acc, position];
-        },
-        []
-      );
+      const positions: Position[] = this.mapPositions(pData);
 
       // We create fake positions for the leverage setting
       // since the API doesn't return it for positions with 0 contracts
@@ -365,11 +314,11 @@ export class OKXExchange extends BaseExchange {
     return balance;
   };
 
-  fetchLeverageAndEditPositions = async (
-    positions: Array<Writable<Position>>
-  ) => {
+  fetchLeverage = async () => {
     const responses = flatten(
       await mapSeries(chunk(this.store.markets, 20), async (batch) => {
+        if (this.isDisposed) return [];
+
         const {
           data: { data },
         } = await this.xhr.get(ENDPOINTS.LEVERAGE, {
@@ -383,18 +332,11 @@ export class OKXExchange extends BaseExchange {
       })
     );
 
-    responses.forEach((r: Record<string, any>) => {
-      this.leverageHash[r.instId] = parseFloat(r.lever);
-
-      const idx = positions.findIndex(
-        (p) => p.symbol === r.instId.replace(/-SWAP$/, '').replace(/-/g, '')
-      );
-
-      if (idx !== -1) {
-        // eslint-disable-next-line no-param-reassign
-        positions[idx].leverage = this.leverageHash[r.instId];
-      }
-    });
+    if (!this.isDisposed) {
+      responses.forEach((r: Record<string, any>) => {
+        this.leverageHash[r.instId] = parseFloat(r.lever);
+      });
+    }
   };
 
   fetchOrders = async () => {
@@ -753,6 +695,35 @@ export class OKXExchange extends BaseExchange {
       };
 
       return [...acc, order];
+    }, []);
+  };
+
+  mapPositions = (data: Array<Record<string, any>>) => {
+    return data.reduce((acc: Position[], p: Record<string, any>) => {
+      const market = this.store.markets.find((m) => m.id === p.instId);
+      if (!market) return acc;
+
+      const pos = parseFloat(p.pos);
+      const contracts = pos ? multiply(pos, market.precision.amount) : 0;
+
+      const side =
+        POSITION_SIDE[p.posSide] ||
+        (contracts > 0 ? PositionSide.Long : PositionSide.Short);
+
+      const position: Position = {
+        symbol: market.symbol,
+        side,
+        entryPrice: contracts ? parseFloat(p.avgPx) : 0,
+        notional: contracts ? Math.abs(parseFloat(p.notionalUsd)) : 0,
+        leverage: parseFloat(p.lever) || this.leverageHash[market.id] || 0,
+        unrealizedPnl: contracts
+          ? adjust(parseFloat(p.upl), market.precision.price)
+          : 0,
+        contracts: Math.abs(contracts),
+        liquidationPrice: parseFloat(p.liqPx || '0'),
+      };
+
+      return [...acc, position];
     }, []);
   };
 
