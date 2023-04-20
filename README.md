@@ -20,7 +20,7 @@ It also implements robust error handling, rate limiting, and other safeguards to
 
 One key feature of safe-cex is its support for multiple exchanges, which allows tuleep.trade to offer a wider range of trading options to its users.
 
-Currently, the library supports Bybit and Binance Futures contracts, with plans to add more exchanges in the future.
+Currently, the library supports Bybit and Binance Futures contracts, OKX Perpetual Swaps and WOO X Futures.
 
 ## Differences with CCXT
 
@@ -35,6 +35,7 @@ Currently, the library supports Bybit and Binance Futures contracts, with plans 
 - [Bybit](https://partner.bybit.com/b/safecex) Futures USDT contracts (not the unified margin)
 - [Binance](https://accounts.binance.com/en/register?ref=KOLLSXK0) USD-M futures (USDT & BUSD contracts)
 - [WOO X](https://x.woo.org/en/trade?ref=safecex) Futures USDT & futures unified margin
+- [OKX](https://www.okx.com/join/TULEEP) Perpetuals unified margin
 
 ---
 
@@ -62,6 +63,8 @@ import { createExchange } from "safe-cex";
 const exchange = createExchange("bybit" | "binance", {
   key: API_KEY,
   secret: API_SECRET,
+  applicationId: string, // FOR WOO X
+  passphrase: string, // FOR OKX
   testnet: boolean,
   corsAnywhere: "https://cors-anywhere.example.com",
 });
@@ -433,7 +436,8 @@ You need to add [vite-plugin-node-stdlib-browser](https://github.com/sodatea/vit
 
 If you found this project interesting or useful, create accounts with my referral links:
 
-- [Bybit](https://partner.bybit.com/b/safecex) **Up to $30,000 deposit bonus - No KYC required**
+- [Bybit](https://partner.bybit.com/b/safecex) **Up to $30,000 deposit bonus**
+- [OKX](https://www.okx.com/join/TULEEP) **20% less fees, up to $10,000 deposit bonus**
 - [WOO X](https://x.woo.org/en/trade?ref=safecex) **Deposit $100 and 0 fees for 14 days!**
 - [Binance](https://accounts.binance.com/en/register?ref=KOLLSXK0)
 
