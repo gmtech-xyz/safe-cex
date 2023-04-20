@@ -2,7 +2,7 @@ import createHmac from 'create-hmac';
 import { sumBy } from 'lodash';
 
 import { roundUSD } from '../../utils/round-usd';
-import { subtract } from '../../utils/safe-math';
+import { multiply, subtract } from '../../utils/safe-math';
 import { virtualClock } from '../../utils/virtual-clock';
 import { BaseWebSocket } from '../base.ws';
 
@@ -132,12 +132,16 @@ export class OKXPrivateWebsocket extends BaseWebSocket<OKXExchange> {
         }
 
         if (o.state === 'filled' || o.state === 'partially_filled') {
-          this.emitter.emit('fill', {
-            side: orders[0].side,
-            symbol: orders[0].symbol,
-            price: orders[0].price,
-            amount: orders[0].amount,
-          });
+          const market = this.store.markets.find((m) => m.id === o.instId);
+
+          if (market) {
+            this.emitter.emit('fill', {
+              side: orders[0].side,
+              symbol: orders[0].symbol,
+              price: parseFloat(o.fillPx),
+              amount: multiply(parseFloat(o.fillSz), market.precision.amount),
+            });
+          }
         }
       }
     }
