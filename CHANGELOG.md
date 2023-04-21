@@ -1,4 +1,4 @@
-# [5.0.0-beta.0](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v5.0.0-beta.0) (2023-04-20)
+# [5.0.0-beta.1](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v5.0.0-beta.1) (2023-04-21)
 
 
 ### Bug Fixes
@@ -19,6 +19,7 @@
 * **okx:** balance total calc ([57f20b7](https://github.com/gmtech-xyz/safe-cex/commit/57f20b7e19bf0e9658fb16e9681eb527253119ca))
 * **okx:** clientOrderId max len ([fed346f](https://github.com/gmtech-xyz/safe-cex/commit/fed346f3f2ba2453ceecf731671c19dd36e7dbad))
 * **okx:** fetch leverage before positions ([185d6f5](https://github.com/gmtech-xyz/safe-cex/commit/185d6f5773400f7da44c26e84c11349aad40d399))
+* **okx:** fetch only linear markets ([de06e77](https://github.com/gmtech-xyz/safe-cex/commit/de06e77ed8591160cc035f721365efa051d9b4d1))
 * **okx:** need to use proxy ([93b31b1](https://github.com/gmtech-xyz/safe-cex/commit/93b31b13d7a919e686934920e2ee4912eb81ff62))
 * **okx:** ohlcv timestamp ([e8954cc](https://github.com/gmtech-xyz/safe-cex/commit/e8954ccf837af889c0cc13199ef5b5b1784b4c3d))
 * **okx:** place order adjust size ([1d13a4a](https://github.com/gmtech-xyz/safe-cex/commit/1d13a4a39ae03dc0db160f3dcbc8d7e328cc62ec))
