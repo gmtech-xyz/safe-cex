@@ -148,4 +148,8 @@ export class GateExchange extends BaseExchange {
 
     return candles;
   };
+
+  listenOHLCV = (opts: OHLCVOptions, callback: (candle: Candle) => void) => {
+    return this.publicWebsocket.listenOHLCV(opts, callback);
+  };
 }
