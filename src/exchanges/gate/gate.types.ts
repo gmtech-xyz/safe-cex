@@ -7,7 +7,7 @@ export const BASE_URL = {
 
 export const BASE_WS_URL = {
   livenet: 'wss://gate-wss.tuleep.trade/v4/ws/usdt',
-  testnet: 'wss://gate-testnet-wss.tuleep.trade/v4/ws/usdt',
+  testnet: 'wss://gate-wss-testnet.tuleep.trade/v4/ws/usdt',
 };
 
 export const ENDPOINTS = {

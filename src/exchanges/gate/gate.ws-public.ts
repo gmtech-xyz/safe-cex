@@ -66,7 +66,8 @@ export class GatePublicWebsocket extends BaseWebSocket<GateExchange> {
     }
   };
 
-  handleTickerEvents = (d: Data) => {
-    console.log(d);
+  handleTickerEvents = ({ result }: Data) => {
+    const tickers = this.parent.mapTickers(result);
+    this.store.addOrUpdateTickers(tickers);
   };
 }

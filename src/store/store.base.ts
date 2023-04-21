@@ -179,6 +179,18 @@ export class DefaultStore implements Store {
     }
   };
 
+  addOrUpdateTickers = (tickers: Ticker[]) => {
+    tickers.forEach((ticker) => {
+      const idx = this.state.tickers.findIndex((o) => o.id === ticker.id);
+      if (idx > -1) {
+        this.updateInArray('tickers', idx, ticker);
+      } else {
+        this.state.tickers.push(ticker);
+      }
+    });
+    this.notify();
+  };
+
   setSetting = (key: keyof StoreData['options'], value: boolean) => {
     if (this.state.options[key] !== value) {
       this.state.options[key] = value;

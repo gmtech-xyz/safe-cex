@@ -21,6 +21,10 @@ export class GateExchange extends BaseExchange {
     this.publicWebsocket = new GatePublicWebsocket(this);
   }
 
+  validateAccount = async () => {
+    return await Promise.resolve('');
+  };
+
   start = async () => {
     const markets = await this.fetchMarkets();
     if (this.isDisposed) return;
@@ -82,7 +86,11 @@ export class GateExchange extends BaseExchange {
       ENDPOINTS.TICKERS
     );
 
-    const tickers = data.reduce<Ticker[]>((acc, t) => {
+    return this.mapTickers(data);
+  };
+
+  mapTickers = (data: Array<Record<string, any>>) => {
+    return data.reduce<Ticker[]>((acc, t) => {
       const market = this.store.markets.find((m) => m.id === t.contract);
       if (!market) return acc;
 
@@ -103,7 +111,5 @@ export class GateExchange extends BaseExchange {
 
       return [...acc, ticker];
     }, []);
-
-    return tickers;
   };
 }
