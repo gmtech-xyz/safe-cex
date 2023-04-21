@@ -134,38 +134,40 @@ export class OKXExchange extends BaseExchange {
         { params: { instType: 'SWAP' } }
       );
 
-      const markets = data.map((m) => {
-        const maxAmount = Math.min(
-          parseFloat(m.maxIcebergSz),
-          parseFloat(m.maxLmtSz),
-          parseFloat(m.maxMktSz),
-          parseFloat(m.maxStopSz),
-          parseFloat(m.maxTriggerSz),
-          parseFloat(m.maxTwapSz)
-        );
+      const markets = data
+        .filter((m) => m.ctType === 'linear')
+        .map((m) => {
+          const maxAmount = Math.min(
+            parseFloat(m.maxIcebergSz),
+            parseFloat(m.maxLmtSz),
+            parseFloat(m.maxMktSz),
+            parseFloat(m.maxStopSz),
+            parseFloat(m.maxTriggerSz),
+            parseFloat(m.maxTwapSz)
+          );
 
-        return {
-          id: m.instId,
-          symbol: m.instId.replace(/-SWAP$/, '').replace(/-/g, ''),
-          base: m.ctValCcy,
-          quote: m.settleCcy,
-          active: m.state === 'live',
-          precision: {
-            amount: parseFloat(m.ctVal),
-            price: parseFloat(m.tickSz),
-          },
-          limits: {
-            amount: {
-              min: parseFloat(m.minSz) * parseFloat(m.ctVal),
-              max: maxAmount,
+          return {
+            id: m.instId,
+            symbol: m.instId.replace(/-SWAP$/, '').replace(/-/g, ''),
+            base: m.ctValCcy,
+            quote: m.settleCcy,
+            active: m.state === 'live',
+            precision: {
+              amount: parseFloat(m.ctVal),
+              price: parseFloat(m.tickSz),
             },
-            leverage: {
-              min: 1,
-              max: parseFloat(m.lever),
+            limits: {
+              amount: {
+                min: parseFloat(m.minSz) * parseFloat(m.ctVal),
+                max: maxAmount,
+              },
+              leverage: {
+                min: 1,
+                max: parseFloat(m.lever),
+              },
             },
-          },
-        };
-      });
+          };
+        });
 
       return markets;
     } catch (err: any) {
