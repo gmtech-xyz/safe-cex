@@ -3,12 +3,14 @@ import axiosRateLimit from 'axios-rate-limit';
 
 import type { Store } from '../../store/store.interface';
 import type {
+  Balance,
   Candle,
   ExchangeOptions,
   Market,
   OHLCVOptions,
   Ticker,
 } from '../../types';
+import { subtract } from '../../utils/safe-math';
 import { BaseExchange } from '../base';
 
 import { createAPI } from './gate.api';
@@ -50,7 +52,31 @@ export class GateExchange extends BaseExchange {
 
     this.log(`Loaded ${Math.min(tickers.length, markets.length)} markets`);
 
+    const balance = await this.fetchBalance();
+    if (this.isDisposed) return;
+
+    this.store.update({
+      balance,
+      loaded: { ...this.store.loaded, balance: true },
+    });
+
     this.publicWebsocket.connectAndSubscribe();
+  };
+
+  fetchBalance = async () => {
+    const { data } = await this.xhr.get(ENDPOINTS.BALANCE);
+
+    const total = parseFloat(data.total);
+    const free = parseFloat(data.available);
+
+    const balance: Balance = {
+      used: subtract(total, free),
+      free,
+      total,
+      upnl: parseFloat(data.unrealised_pnl),
+    };
+
+    return balance;
   };
 
   fetchMarkets = async () => {

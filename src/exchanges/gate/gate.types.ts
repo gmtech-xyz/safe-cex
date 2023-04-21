@@ -14,4 +14,5 @@ export const ENDPOINTS = {
   MARKETS: '/futures/usdt/contracts',
   TICKERS: '/futures/usdt/tickers',
   KLINE: '/futures/usdt/candlesticks',
+  BALANCE: '/futures/usdt/accounts',
 };
