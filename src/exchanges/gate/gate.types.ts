@@ -13,4 +13,5 @@ export const BASE_WS_URL = {
 export const ENDPOINTS = {
   MARKETS: '/futures/usdt/contracts',
   TICKERS: '/futures/usdt/tickers',
+  KLINE: '/futures/usdt/candlesticks',
 };

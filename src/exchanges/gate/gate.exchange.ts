@@ -2,7 +2,13 @@ import type { Axios } from 'axios';
 import axiosRateLimit from 'axios-rate-limit';
 
 import type { Store } from '../../store/store.interface';
-import type { ExchangeOptions, Market, Ticker } from '../../types';
+import type {
+  Candle,
+  ExchangeOptions,
+  Market,
+  OHLCVOptions,
+  Ticker,
+} from '../../types';
 import { BaseExchange } from '../base';
 
 import { createAPI } from './gate.api';
@@ -111,5 +117,35 @@ export class GateExchange extends BaseExchange {
 
       return [...acc, ticker];
     }, []);
+  };
+
+  fetchOHLCV = async (opts: OHLCVOptions) => {
+    const market = this.store.markets.find((m) => m.symbol === opts.symbol);
+
+    if (!market) {
+      this.emitter.emit('error', `Market ${opts.symbol} not found`);
+      return [];
+    }
+
+    const { data } = await this.xhr.get(ENDPOINTS.KLINE, {
+      params: {
+        contract: market.id,
+        interval: opts.interval,
+        limit: 500,
+      },
+    });
+
+    const candles: Candle[] = data.map((c: Record<string, any>) => {
+      return {
+        timestamp: c.t,
+        open: parseFloat(c.o),
+        high: parseFloat(c.h),
+        low: parseFloat(c.l),
+        close: parseFloat(c.c),
+        volume: parseFloat(c.v),
+      };
+    });
+
+    return candles;
   };
 }
