@@ -26,6 +26,7 @@ import type {
   PlaceOrderOpts,
   Position,
   Ticker,
+  UpdateOrderOpts,
 } from '../../types';
 import { inverseObj } from '../../utils/inverse-obj';
 import { loop } from '../../utils/loop';
@@ -547,6 +548,36 @@ export class GateExchange extends BaseExchange {
       ]);
     } catch (err: any) {
       this.emitter.emit('error', err?.response?.data?.label || err?.message);
+    }
+  };
+
+  updateOrder = async ({ order, update }: UpdateOrderOpts) => {
+    // if (order.type !== OrderType.Limit) {
+    //   return this.updateAlgoOrder({ order, update });
+    // }
+
+    const market = this.store.markets.find((m) => m.symbol === order.symbol);
+    if (!market) throw new Error(`Market ${order.symbol} not found`);
+
+    const pPrice = market.precision.price;
+    const pAmount = market.precision.amount;
+
+    const payload: Record<string, any> = {};
+    if ('price' in update) payload.price = `${adjust(update.price, pPrice)}`;
+    if ('amount' in update) {
+      const amount = adjust(divide(update.amount, pAmount), pAmount);
+      payload.size = amount;
+    }
+
+    try {
+      const { data } = await this.xhr.put(
+        `${ENDPOINTS.ORDERS}/${order.id}`,
+        payload
+      );
+      return [`${data.id}`];
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.label || err?.message);
+      return [];
     }
   };
 
