@@ -17,7 +17,8 @@ export const ENDPOINTS = {
   TICKERS: '/futures/usdt/tickers',
   KLINE: '/futures/usdt/candlesticks',
   BALANCE: '/futures/usdt/accounts',
-  PLACE_ORDERS: '/futures/usdt/batch_orders',
+  ORDERS: '/futures/usdt/orders',
+  BATCH_ORDERS: '/futures/usdt/batch_orders',
 };
 
 export const ORDER_TIME_IN_FORCE: Record<string, OrderTimeInForce> = {

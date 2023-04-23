@@ -1,24 +1,28 @@
 import type { Axios } from 'axios';
 import axiosRateLimit from 'axios-rate-limit';
 import { chunk, flatten, times } from 'lodash';
-import { mapSeries } from 'p-iteration';
+import { map, mapSeries } from 'p-iteration';
 
 import type { Store } from '../../store/store.interface';
 import {
   OrderType,
-  type Balance,
-  type Candle,
-  type ExchangeOptions,
-  type Market,
-  type OHLCVOptions,
-  type PlaceOrderOpts,
-  type Ticker,
   OrderTimeInForce,
   OrderSide,
+  OrderStatus,
+} from '../../types';
+import type {
+  Balance,
+  Candle,
+  ExchangeOptions,
+  Market,
+  OHLCVOptions,
+  Order,
+  PlaceOrderOpts,
+  Ticker,
 } from '../../types';
 import { inverseObj } from '../../utils/inverse-obj';
 import { omitUndefined } from '../../utils/omit-undefined';
-import { adjust, divide, subtract } from '../../utils/safe-math';
+import { adjust, divide, multiply, subtract } from '../../utils/safe-math';
 import { BaseExchange } from '../base';
 
 import { createAPI } from './gate.api';
@@ -33,7 +37,7 @@ export class GateExchange extends BaseExchange {
   constructor(opts: ExchangeOptions, store: Store) {
     super(opts, store);
 
-    this.xhr = axiosRateLimit(createAPI(opts), { maxRPS: 3 });
+    this.xhr = axiosRateLimit(createAPI(opts), { maxRPS: 100 });
     this.publicWebsocket = new GatePublicWebsocket(this);
   }
 
@@ -69,6 +73,16 @@ export class GateExchange extends BaseExchange {
     });
 
     this.publicWebsocket.connectAndSubscribe();
+
+    const orders = await this.fetchOrders();
+    if (this.isDisposed) return;
+
+    this.log(`Loaded ${orders.length} orders`);
+
+    this.store.update({
+      orders,
+      loaded: { ...this.store.loaded, orders: true },
+    });
   };
 
   fetchBalance = async () => {
@@ -150,6 +164,49 @@ export class GateExchange extends BaseExchange {
       };
 
       return [...acc, ticker];
+    }, []);
+  };
+
+  fetchOrders = async () => {
+    const rawOrders = flatten(
+      await map(this.store.markets, async (market) => {
+        const { data } = await this.xhr.get(ENDPOINTS.ORDERS, {
+          params: { status: 'open', contract: market.id },
+        });
+
+        return data;
+      })
+    );
+
+    return this.mapOrders(rawOrders);
+  };
+
+  mapOrders = (data: Array<Record<string, any>>) => {
+    return data.reduce((acc: Order[], o) => {
+      const market = this.store.markets.find((m) => m.id === o.contract);
+      if (!market) return acc;
+
+      const size = parseFloat(o.size);
+      const left = parseFloat(o.left);
+
+      const amount = multiply(Math.abs(size), market.precision.amount);
+      const remaining = multiply(Math.abs(left), market.precision.amount);
+      const filled = subtract(amount, remaining);
+
+      const order: Order = {
+        id: `${o.id}`,
+        status: OrderStatus.Open,
+        symbol: market.symbol,
+        type: OrderType.Limit,
+        side: size > 0 ? OrderSide.Buy : OrderSide.Sell,
+        price: parseFloat(o.price),
+        amount,
+        remaining,
+        filled,
+        reduceOnly: o.is_reduce_only,
+      };
+
+      return [...acc, order];
     }, []);
   };
 
@@ -246,7 +303,7 @@ export class GateExchange extends BaseExchange {
       const {
         data: { data },
       } = await this.xhr.post<{ data: Array<Record<string, any>> }>(
-        ENDPOINTS.PLACE_ORDERS,
+        ENDPOINTS.BATCH_ORDERS,
         batch
       );
 

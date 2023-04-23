@@ -9,10 +9,18 @@ import { virtualClock } from '../../utils/virtual-clock';
 
 import { BASE_URL, ENDPOINTS, RECV_WINDOW } from './gate.types';
 
-const AUTH_ENDPOINTS = [ENDPOINTS.BALANCE, ENDPOINTS.PLACE_ORDERS];
+const AUTH_ENDPOINTS = [
+  ENDPOINTS.BALANCE,
+  ENDPOINTS.ORDERS,
+  ENDPOINTS.BATCH_ORDERS,
+];
 
 export const createAPI = (options: ExchangeOptions) => {
   const BASE_API_URL = BASE_URL[options.testnet ? 'testnet' : 'livenet'];
+
+  if (typeof window !== 'undefined' && options.corsAnywhere === undefined) {
+    throw new Error('corsAnywhere option is required in browser for Gate.io');
+  }
 
   const xhr = axios.create({
     baseURL: options.corsAnywhere
