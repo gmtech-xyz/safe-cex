@@ -1,4 +1,4 @@
-# [5.0.0](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v5.0.0) (2023-04-21)
+# [6.0.0](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v6.0.0) (2023-04-23)
 
 
 ### Bug Fixes
