@@ -522,22 +522,22 @@ export class GateExchange extends BaseExchange {
 
     if (opts.type === OrderType.StopLoss && opts.side === OrderSide.Sell) {
       rule = 2;
-      orderType = 'plan-close-long-position';
+      orderType = 'close-long-position';
     }
 
     if (opts.type === OrderType.TakeProfit && opts.side === OrderSide.Buy) {
       rule = 2;
-      orderType = 'plan-close-short-position';
+      orderType = 'close-short-position';
     }
 
     if (opts.type === OrderType.StopLoss && opts.side === OrderSide.Buy) {
       rule = 1;
-      orderType = 'plan-close-short-position';
+      orderType = 'close-short-position';
     }
 
     if (opts.type === OrderType.TakeProfit && opts.side === OrderSide.Sell) {
       rule = 1;
-      orderType = 'plan-close-long-position';
+      orderType = 'close-long-position';
     }
 
     const req = omitUndefined({
@@ -546,10 +546,10 @@ export class GateExchange extends BaseExchange {
         contract: market.id,
         size: 0,
         price: '0',
-        close: true,
         tif: 'ioc',
         text: 'api',
         reduce_only: true,
+        auto_size: orderType.includes('long') ? 'close_long' : 'close_short',
       },
       trigger: {
         strategy_type: 0,
