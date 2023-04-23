@@ -1,6 +1,10 @@
 import type { Axios } from 'axios';
 import axiosRateLimit from 'axios-rate-limit';
-import { chunk, flatten, times, uniq } from 'lodash';
+import chunk from 'lodash/chunk';
+import flatten from 'lodash/flatten';
+import partition from 'lodash/partition';
+import times from 'lodash/times';
+import uniq from 'lodash/uniq';
 import { forEach, map, mapSeries } from 'p-iteration';
 
 import type { Store } from '../../store/store.interface';
@@ -82,13 +86,14 @@ export class GateExchange extends BaseExchange {
     this.publicWebsocket.connectAndSubscribe();
     this.privateWebsocket.connectAndSubscribe();
 
+    const algoOrders = await this.fetchAlgoOrders();
     const orders = await this.fetchOrders();
     if (this.isDisposed) return;
 
     this.log(`Loaded ${orders.length} orders`);
 
     this.store.update({
-      orders,
+      orders: [...algoOrders, ...orders],
       loaded: { ...this.store.loaded, orders: true },
     });
   };
@@ -248,6 +253,57 @@ export class GateExchange extends BaseExchange {
     return this.mapOrders(rawOrders);
   };
 
+  fetchAlgoOrders = async () => {
+    const { data } = await this.xhr.get(ENDPOINTS.ALGO_ORDERS, {
+      params: { status: 'open' },
+    });
+
+    return this.mapAlgoOrders(data);
+  };
+
+  mapAlgoOrders = (data: Array<Record<string, any>>) => {
+    return data.reduce((acc: Order[], o: Record<string, any>) => {
+      const market = this.store.markets.find(
+        (m) => m.id === o.initial.contract
+      );
+
+      if (!market) return acc;
+
+      const side = o.order_type.includes('long')
+        ? OrderSide.Sell
+        : OrderSide.Buy;
+
+      let type: OrderType = OrderType.StopLoss;
+      if (
+        (side === OrderSide.Buy && o.rule === 1) ||
+        (side === OrderSide.Sell && o.rule === 2)
+      ) {
+        type = OrderType.TakeProfit;
+      }
+      if (
+        (side === OrderSide.Buy && o.rule === 2) ||
+        (side === OrderSide.Sell && o.rule === 1)
+      ) {
+        type = OrderType.StopLoss;
+      }
+
+      const order: Order = {
+        id: `${o.id}`,
+        status: OrderStatus.Open,
+        symbol: market.symbol,
+        type,
+        side,
+        price: parseFloat(o.trigger.price),
+        amount: 0,
+        remaining: 0,
+        filled: 0,
+        reduceOnly: true,
+      };
+
+      return [...acc, order];
+    }, []);
+  };
+
   mapOrders = (data: Array<Record<string, any>>) => {
     return data.reduce((acc: Order[], o) => {
       const market = this.store.markets.find((m) => m.id === o.contract);
@@ -312,21 +368,112 @@ export class GateExchange extends BaseExchange {
   };
 
   placeOrder = async (opts: PlaceOrderOpts) => {
-    return await this.placeOrders([opts]);
+    try {
+      if (this.isAlgoOrder(opts)) {
+        return await this.placeAlgoOrder(opts);
+      }
+
+      return await this.placeOrders([opts]);
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.label || err?.message);
+      return [];
+    }
   };
 
   placeOrders = async (orders: PlaceOrderOpts[]) => {
-    const orderIds = await this.placeOrderBatch(
-      orders.flatMap((o) => this.formatCreateOrder(o))
+    const orderIds: string[] = [];
+
+    const [algoOrders, normalOrders] = partition(orders, (o) =>
+      this.isAlgoOrder(o)
     );
+
+    const derrivedAlgoOrders = normalOrders.reduce(
+      (acc: PlaceOrderOpts[], o) => {
+        if (o.stopLoss) {
+          const order: PlaceOrderOpts = {
+            symbol: o.symbol,
+            side: o.side === OrderSide.Buy ? OrderSide.Sell : OrderSide.Buy,
+            type: OrderType.StopLoss,
+            price: o.stopLoss,
+            amount: 0,
+          };
+
+          return [...acc, order];
+        }
+
+        if (o.takeProfit) {
+          const order: PlaceOrderOpts = {
+            symbol: o.symbol,
+            side: o.side === OrderSide.Buy ? OrderSide.Sell : OrderSide.Buy,
+            type: OrderType.TakeProfit,
+            price: o.stopLoss,
+            amount: 0,
+          };
+
+          return [...acc, order];
+        }
+
+        return acc;
+      },
+      []
+    );
+
+    if (normalOrders.length) {
+      try {
+        const ids = await this.placeOrderBatch(
+          flatten(normalOrders.map(this.formatCreateOrder))
+        );
+
+        if (ids?.length) {
+          orderIds.push(...ids);
+        }
+      } catch (err: any) {
+        this.emitter.emit('error', err?.response?.data?.label || err?.message);
+      }
+    }
+
+    const allAlgoOrders = [...algoOrders, ...derrivedAlgoOrders];
+
+    if (allAlgoOrders.length) {
+      try {
+        const ids = flatten(await map(allAlgoOrders, this.placeAlgoOrder));
+
+        if (ids?.length) {
+          orderIds.push(...ids);
+        }
+      } catch (err: any) {
+        this.emitter.emit('error', err?.response?.data?.label || err?.message);
+      }
+    }
 
     return orderIds;
   };
 
-  cancelOrders = async (orders: Array<Pick<Order, 'id'>>) => {
+  cancelOrders = async (orders: Order[]) => {
+    const [algoOrders, normalOrders] = partition(orders, (o) =>
+      this.isAlgoOrder(o)
+    );
+
+    await this.cancelAlgoOrders(algoOrders);
+    await this.cancelNormalOrders(normalOrders);
+  };
+
+  cancelNormalOrders = async (orders: Order[]) => {
     await forEach(orders, async (o) => {
       try {
         await this.xhr.delete(`${ENDPOINTS.ORDERS}/${o.id}`);
+      } catch (err: any) {
+        if (err?.response?.data?.label === 'ORDER_NOT_FOUND') {
+          this.store.removeOrder(o);
+        }
+      }
+    });
+  };
+
+  cancelAlgoOrders = async (orders: Order[]) => {
+    await forEach(orders, async (o) => {
+      try {
+        await this.xhr.delete(`${ENDPOINTS.ALGO_ORDERS}/${o.id}`);
       } catch (err: any) {
         if (err?.response?.data?.label === 'ORDER_NOT_FOUND') {
           this.store.removeOrder(o);
@@ -350,6 +497,69 @@ export class GateExchange extends BaseExchange {
         params: { contract: market.id },
       });
     });
+  };
+
+  private formatAlgoOrder = (opts: PlaceOrderOpts) => {
+    const market = this.store.markets.find((m) => m.symbol === opts.symbol);
+
+    if (!market) {
+      throw new Error(`Market ${opts.symbol} not found`);
+    }
+
+    if (!opts.price) {
+      throw new Error('Price is required for algo orders');
+    }
+
+    if (opts.type === OrderType.TrailingStopLoss) {
+      throw new Error('Trailing stop loss is not supported for Gate.io');
+    }
+
+    const pPrice = market.precision.price;
+    const price = adjust(opts.price, pPrice);
+
+    let rule: number = 0;
+    let orderType: string = '';
+
+    if (opts.type === OrderType.StopLoss && opts.side === OrderSide.Sell) {
+      rule = 2;
+      orderType = 'plan-close-long-position';
+    }
+
+    if (opts.type === OrderType.TakeProfit && opts.side === OrderSide.Buy) {
+      rule = 2;
+      orderType = 'plan-close-short-position';
+    }
+
+    if (opts.type === OrderType.StopLoss && opts.side === OrderSide.Buy) {
+      rule = 1;
+      orderType = 'plan-close-short-position';
+    }
+
+    if (opts.type === OrderType.TakeProfit && opts.side === OrderSide.Sell) {
+      rule = 1;
+      orderType = 'plan-close-long-position';
+    }
+
+    const req = omitUndefined({
+      order_type: orderType,
+      initial: {
+        contract: market.id,
+        size: 0,
+        price: '0',
+        close: true,
+        tif: 'ioc',
+        text: 'api',
+        reduce_only: true,
+      },
+      trigger: {
+        strategy_type: 0,
+        price_type: 1,
+        price: `${price}`,
+        rule,
+      },
+    });
+
+    return req;
   };
 
   private formatCreateOrder = (opts: PlaceOrderOpts) => {
@@ -378,7 +588,7 @@ export class GateExchange extends BaseExchange {
       contract: market.id,
       size: opts.side === OrderSide.Buy ? amount : -amount,
       price: opts.type === OrderType.Limit ? `${price}` : `0`,
-      reduce_only: opts.reduceOnly,
+      reduce_only: opts.reduceOnly ? true : undefined,
       tif: inverseObj(ORDER_TIME_IN_FORCE)[timeInForce],
     });
 
@@ -409,11 +619,28 @@ export class GateExchange extends BaseExchange {
 
       return data.reduce((acc: string[], o) => {
         if (o.id) return [...acc, `${o.id}`];
-        this.emitter.emit('error', o.detail);
+        this.emitter.emit('error', o.label);
         return acc;
       }, []);
     });
 
     return flatten(responses);
+  };
+
+  private placeAlgoOrder = async (opts: PlaceOrderOpts) => {
+    const { data } = await this.xhr.post(
+      ENDPOINTS.ALGO_ORDERS,
+      this.formatAlgoOrder(opts)
+    );
+
+    return [`${data.id}`];
+  };
+
+  private isAlgoOrder = (opts: Pick<PlaceOrderOpts, 'type'>) => {
+    return (
+      opts.type === OrderType.StopLoss ||
+      opts.type === OrderType.TakeProfit ||
+      opts.type === OrderType.TrailingStopLoss
+    );
   };
 }

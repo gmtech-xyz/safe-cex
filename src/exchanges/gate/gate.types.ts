@@ -21,6 +21,7 @@ export const ENDPOINTS = {
   BATCH_ORDERS: '/futures/usdt/batch_orders',
   CANCEL_ALL_ORDERS: '/futures/usdt/price_orders',
   POSITIONS: '/futures/usdt/positions',
+  ALGO_ORDERS: '/futures/usdt/price_orders',
 };
 
 export const ORDER_TIME_IN_FORCE: Record<string, OrderTimeInForce> = {

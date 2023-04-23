@@ -49,6 +49,10 @@ export class GatePrivateWebsocket extends BaseWebSocket<GateExchange> {
       if (data.includes('"event":"update"')) {
         if (data.includes('"channel":"futures.orders"')) {
           this.handleOrdersUpdate(JSON.parse(data));
+          return;
+        }
+        if (data.includes('"channel":"futures.autoorders"')) {
+          this.handleAlgoOrdersUpdate(JSON.parse(data));
         }
       }
     }
@@ -79,7 +83,7 @@ export class GatePrivateWebsocket extends BaseWebSocket<GateExchange> {
 
       if (order.finish_as === 'filled') {
         const market = this.parent.store.markets.find(
-          (m) => m.symbol === order.contract.replace('_', '')
+          (m) => m.id === order.contract
         );
 
         if (market) {
@@ -94,6 +98,20 @@ export class GatePrivateWebsocket extends BaseWebSocket<GateExchange> {
     });
   };
 
+  handleAlgoOrdersUpdate = ({ result }: Record<string, any>) => {
+    console.log(result);
+
+    result.forEach((order: Record<string, any>) => {
+      if (order.finish_as === 'cancelled' || order.finish_as === 'filled') {
+        this.store.removeOrder({ id: `${order.id}` });
+      }
+
+      if (order.finish_as === '') {
+        this.store.addOrUpdateOrders(this.parent.mapAlgoOrders([order]));
+      }
+    });
+  };
+
   subscribe = () => {
     const time = virtualClock.getCurrentTime().unix();
     this.ws?.send?.(
@@ -103,6 +121,15 @@ export class GatePrivateWebsocket extends BaseWebSocket<GateExchange> {
         event: 'subscribe',
         payload: [`${this.userId}`, '!all'],
         auth: this.generateSignature({ channel: 'futures.orders', time }),
+      })
+    );
+    this.ws?.send?.(
+      JSON.stringify({
+        time,
+        channel: 'futures.autoorders',
+        event: 'subscribe',
+        payload: [`${this.userId}`, '!all'],
+        auth: this.generateSignature({ channel: 'futures.autoorders', time }),
       })
     );
   };

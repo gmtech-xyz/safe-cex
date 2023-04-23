@@ -15,6 +15,7 @@ const AUTH_ENDPOINTS = [
   ENDPOINTS.BATCH_ORDERS,
   ENDPOINTS.CANCEL_ALL_ORDERS,
   ENDPOINTS.POSITIONS,
+  ENDPOINTS.ALGO_ORDERS,
 ];
 
 export const createAPI = (options: ExchangeOptions) => {
