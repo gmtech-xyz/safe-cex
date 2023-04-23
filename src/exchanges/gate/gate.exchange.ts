@@ -39,8 +39,6 @@ import { ENDPOINTS, ORDER_TIME_IN_FORCE } from './gate.types';
 import { GatePrivateWebsocket } from './gate.ws-private';
 import { GatePublicWebsocket } from './gate.ws-public';
 
-// TODO: update orders
-
 export class GateExchange extends BaseExchange {
   xhr: Axios;
 
@@ -273,22 +271,20 @@ export class GateExchange extends BaseExchange {
 
       if (!market) return acc;
 
-      const side = o.order_type.includes('long')
+      const side = o.initial.auto_size.includes('long')
         ? OrderSide.Sell
         : OrderSide.Buy;
 
       let type: OrderType = OrderType.StopLoss;
-      if (
-        (side === OrderSide.Buy && o.rule === 1) ||
-        (side === OrderSide.Sell && o.rule === 2)
-      ) {
-        type = OrderType.TakeProfit;
+
+      if (side === OrderSide.Sell) {
+        if (o.trigger.rule === 1) type = OrderType.TakeProfit;
+        if (o.trigger.rule === 2) type = OrderType.StopLoss;
       }
-      if (
-        (side === OrderSide.Buy && o.rule === 2) ||
-        (side === OrderSide.Sell && o.rule === 1)
-      ) {
-        type = OrderType.StopLoss;
+
+      if (side === OrderSide.Buy) {
+        if (o.trigger.rule === 1) type = OrderType.StopLoss;
+        if (o.trigger.rule === 2) type = OrderType.TakeProfit;
       }
 
       const order: Order = {
@@ -400,31 +396,29 @@ export class GateExchange extends BaseExchange {
 
     const derrivedAlgoOrders = normalOrders.reduce(
       (acc: PlaceOrderOpts[], o) => {
+        const newOrders: PlaceOrderOpts[] = [];
+
         if (o.stopLoss) {
-          const order: PlaceOrderOpts = {
+          newOrders.push({
             symbol: o.symbol,
             side: o.side === OrderSide.Buy ? OrderSide.Sell : OrderSide.Buy,
             type: OrderType.StopLoss,
             price: o.stopLoss,
             amount: 0,
-          };
-
-          return [...acc, order];
+          });
         }
 
         if (o.takeProfit) {
-          const order: PlaceOrderOpts = {
+          newOrders.push({
             symbol: o.symbol,
             side: o.side === OrderSide.Buy ? OrderSide.Sell : OrderSide.Buy,
             type: OrderType.TakeProfit,
-            price: o.stopLoss,
+            price: o.takeProfit,
             amount: 0,
-          };
-
-          return [...acc, order];
+          });
         }
 
-        return acc;
+        return [...acc, ...newOrders];
       },
       []
     );
@@ -552,9 +546,9 @@ export class GateExchange extends BaseExchange {
   };
 
   updateOrder = async ({ order, update }: UpdateOrderOpts) => {
-    // if (order.type !== OrderType.Limit) {
-    //   return this.updateAlgoOrder({ order, update });
-    // }
+    if (order.type !== OrderType.Limit) {
+      return this.updateAlgoOrder({ order, update });
+    }
 
     const market = this.store.markets.find((m) => m.symbol === order.symbol);
     if (!market) throw new Error(`Market ${order.symbol} not found`);
@@ -581,6 +575,23 @@ export class GateExchange extends BaseExchange {
     }
   };
 
+  updateAlgoOrder = async ({ order, update }: UpdateOrderOpts) => {
+    const newOrder = {
+      symbol: order.symbol,
+      type: order.type,
+      side: order.side,
+      price: order.price,
+      amount: order.amount,
+      reduceOnly: order.reduceOnly || false,
+    };
+
+    if ('price' in update) newOrder.price = update.price;
+    if ('amount' in update) newOrder.amount = update.amount;
+
+    await this.cancelAlgoOrders([order]);
+    return await this.placeAlgoOrder(newOrder);
+  };
+
   private formatAlgoOrder = (opts: PlaceOrderOpts) => {
     const market = this.store.markets.find((m) => m.symbol === opts.symbol);
 
@@ -600,39 +611,18 @@ export class GateExchange extends BaseExchange {
     const price = adjust(opts.price, pPrice);
 
     let rule: number = 0;
-    let orderType: string = '';
 
-    const pSide =
-      opts.side === OrderSide.Buy ? PositionSide.Short : PositionSide.Long;
-
-    const position = this.store.positions.find(
-      (p) => p.symbol === opts.symbol && p.side === pSide
-    );
-
-    const orderTypePrefix = position ? '' : 'plan-';
-
-    if (opts.type === OrderType.StopLoss && opts.side === OrderSide.Sell) {
-      rule = 2;
-      orderType = 'close-long-position';
+    if (opts.type === OrderType.StopLoss) {
+      if (opts.side === OrderSide.Buy) rule = 1;
+      if (opts.side === OrderSide.Sell) rule = 2;
     }
 
-    if (opts.type === OrderType.TakeProfit && opts.side === OrderSide.Buy) {
-      rule = 2;
-      orderType = 'close-short-position';
-    }
-
-    if (opts.type === OrderType.StopLoss && opts.side === OrderSide.Buy) {
-      rule = 1;
-      orderType = 'close-short-position';
-    }
-
-    if (opts.type === OrderType.TakeProfit && opts.side === OrderSide.Sell) {
-      rule = 1;
-      orderType = 'close-long-position';
+    if (opts.type === OrderType.TakeProfit) {
+      if (opts.side === OrderSide.Buy) rule = 2;
+      if (opts.side === OrderSide.Sell) rule = 1;
     }
 
     const req = omitUndefined({
-      order_type: `${orderTypePrefix}${orderType}`,
       initial: {
         contract: market.id,
         size: 0,
@@ -640,7 +630,7 @@ export class GateExchange extends BaseExchange {
         tif: 'ioc',
         text: 'api',
         reduce_only: true,
-        auto_size: orderType.includes('long') ? 'close_long' : 'close_short',
+        auto_size: opts.side === OrderSide.Buy ? 'close_short' : 'close_long',
       },
       trigger: {
         strategy_type: 0,
