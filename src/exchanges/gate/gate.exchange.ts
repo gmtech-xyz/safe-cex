@@ -22,6 +22,7 @@ import type {
   Market,
   OHLCVOptions,
   Order,
+  OrderBook,
   PlaceOrderOpts,
   Position,
   Ticker,
@@ -36,6 +37,11 @@ import { createAPI } from './gate.api';
 import { ENDPOINTS, ORDER_TIME_IN_FORCE } from './gate.types';
 import { GatePrivateWebsocket } from './gate.ws-private';
 import { GatePublicWebsocket } from './gate.ws-public';
+
+// TODO: update orders
+// TODO: cancel orders
+// TODO: test scaled with SL/TP
+// TODO: manage leverage
 
 export class GateExchange extends BaseExchange {
   xhr: Axios;
@@ -365,6 +371,13 @@ export class GateExchange extends BaseExchange {
 
   listenOHLCV = (opts: OHLCVOptions, callback: (candle: Candle) => void) => {
     return this.publicWebsocket.listenOHLCV(opts, callback);
+  };
+
+  listenOrderBook = (
+    symbol: string,
+    callback: (orderBook: OrderBook) => void
+  ) => {
+    return this.publicWebsocket.listenOrderBook(symbol, callback);
   };
 
   placeOrder = async (opts: PlaceOrderOpts) => {
