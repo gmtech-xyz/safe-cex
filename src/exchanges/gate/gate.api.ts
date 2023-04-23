@@ -13,6 +13,7 @@ const AUTH_ENDPOINTS = [
   ENDPOINTS.BALANCE,
   ENDPOINTS.ORDERS,
   ENDPOINTS.BATCH_ORDERS,
+  ENDPOINTS.CANCEL_ALL_ORDERS,
 ];
 
 export const createAPI = (options: ExchangeOptions) => {
@@ -32,7 +33,9 @@ export const createAPI = (options: ExchangeOptions) => {
   retry(xhr, { retries: 3, retryCondition: isNetworkError });
 
   xhr.interceptors.request.use((config) => {
-    if (!AUTH_ENDPOINTS.includes(config.url || '')) return config;
+    if (!AUTH_ENDPOINTS.some((str) => config?.url?.startsWith(str))) {
+      return config;
+    }
 
     const nextConfig = { ...config };
 

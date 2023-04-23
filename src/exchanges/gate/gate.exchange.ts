@@ -1,7 +1,7 @@
 import type { Axios } from 'axios';
 import axiosRateLimit from 'axios-rate-limit';
-import { chunk, flatten, times } from 'lodash';
-import { map, mapSeries } from 'p-iteration';
+import { chunk, flatten, times, uniq } from 'lodash';
+import { forEach, map, mapSeries } from 'p-iteration';
 
 import type { Store } from '../../store/store.interface';
 import {
@@ -27,19 +27,28 @@ import { BaseExchange } from '../base';
 
 import { createAPI } from './gate.api';
 import { ENDPOINTS, ORDER_TIME_IN_FORCE } from './gate.types';
+import { GatePrivateWebsocket } from './gate.ws-private';
 import { GatePublicWebsocket } from './gate.ws-public';
 
 export class GateExchange extends BaseExchange {
   xhr: Axios;
 
   publicWebsocket: GatePublicWebsocket;
+  privateWebsocket: GatePrivateWebsocket;
 
   constructor(opts: ExchangeOptions, store: Store) {
     super(opts, store);
 
     this.xhr = axiosRateLimit(createAPI(opts), { maxRPS: 100 });
     this.publicWebsocket = new GatePublicWebsocket(this);
+    this.privateWebsocket = new GatePrivateWebsocket(this);
   }
+
+  dispose = () => {
+    super.dispose();
+    this.publicWebsocket.dispose();
+    this.privateWebsocket.dispose();
+  };
 
   validateAccount = async () => {
     return await Promise.resolve('');
@@ -73,6 +82,7 @@ export class GateExchange extends BaseExchange {
     });
 
     this.publicWebsocket.connectAndSubscribe();
+    this.privateWebsocket.connectAndSubscribe();
 
     const orders = await this.fetchOrders();
     if (this.isDisposed) return;
@@ -87,6 +97,9 @@ export class GateExchange extends BaseExchange {
 
   fetchBalance = async () => {
     const { data } = await this.xhr.get(ENDPOINTS.BALANCE);
+
+    // we need this for fetching private channels
+    this.privateWebsocket.userId = data.user;
 
     const total = parseFloat(data.total);
     const free = parseFloat(data.available);
@@ -170,6 +183,8 @@ export class GateExchange extends BaseExchange {
   fetchOrders = async () => {
     const rawOrders = flatten(
       await map(this.store.markets, async (market) => {
+        if (this.isDisposed) return [];
+
         const { data } = await this.xhr.get(ENDPOINTS.ORDERS, {
           params: { status: 'open', contract: market.id },
         });
@@ -256,6 +271,35 @@ export class GateExchange extends BaseExchange {
     return orderIds;
   };
 
+  cancelOrders = async (orders: Array<Pick<Order, 'id'>>) => {
+    await forEach(orders, async (o) => {
+      try {
+        await this.xhr.delete(`${ENDPOINTS.ORDERS}/${o.id}`);
+      } catch (err: any) {
+        if (err?.response?.data?.label === 'ORDER_NOT_FOUND') {
+          this.store.removeOrder(o);
+        }
+      }
+    });
+  };
+
+  cancelAllOrders = async () => {
+    await this.xhr.delete(ENDPOINTS.CANCEL_ALL_ORDERS);
+  };
+
+  cancelSymbolOrders = async () => {
+    const symbols = uniq(this.store.orders.map((o) => o.symbol));
+    const markets = this.store.markets.filter((m) =>
+      symbols.includes(m.symbol)
+    );
+
+    await forEach(markets, async (market) => {
+      await this.xhr.delete(ENDPOINTS.ORDERS, {
+        params: { contract: market.id },
+      });
+    });
+  };
+
   private formatCreateOrder = (opts: PlaceOrderOpts) => {
     const market = this.store.markets.find((m) => m.symbol === opts.symbol);
 
@@ -300,9 +344,7 @@ export class GateExchange extends BaseExchange {
 
   private placeOrderBatch = async (payloads: Array<Record<string, any>>) => {
     const responses = await mapSeries(chunk(payloads, 20), async (batch) => {
-      const {
-        data: { data },
-      } = await this.xhr.post<{ data: Array<Record<string, any>> }>(
+      const { data } = await this.xhr.post<Array<Record<string, any>>>(
         ENDPOINTS.BATCH_ORDERS,
         batch
       );
