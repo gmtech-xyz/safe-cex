@@ -72,7 +72,7 @@ export class GatePrivateWebsocket extends BaseWebSocket<GateExchange> {
 
   handleOrdersUpdate = ({ result }: Record<string, any>) => {
     result.forEach((order: Record<string, any>) => {
-      if (order.finish_as === 'cancelled' || order.finish_as === 'filled') {
+      if (order.finish_as === 'cancelled' || order.finish_as === 'succeeded') {
         this.store.removeOrder({ id: `${order.id}` });
         return;
       }
@@ -99,15 +99,28 @@ export class GatePrivateWebsocket extends BaseWebSocket<GateExchange> {
   };
 
   handleAlgoOrdersUpdate = ({ result }: Record<string, any>) => {
-    console.log(result);
-
     result.forEach((order: Record<string, any>) => {
-      if (order.finish_as === 'cancelled' || order.finish_as === 'filled') {
+      if (order.finish_as === 'cancelled' || order.finish_as === 'succeeded') {
         this.store.removeOrder({ id: `${order.id}` });
       }
 
       if (order.finish_as === '') {
         this.store.addOrUpdateOrders(this.parent.mapAlgoOrders([order]));
+      }
+
+      if (order.finish_as === 'succeeded') {
+        const market = this.parent.store.markets.find(
+          (m) => m.id === order.contract
+        );
+
+        if (market) {
+          this.emitter.emit('fill', {
+            side: parseFloat(order.size) > 0 ? OrderSide.Buy : OrderSide.Sell,
+            symbol: order.contract.replace('_', ''),
+            price: 0,
+            amount: multiply(parseFloat(order.size), market.precision.amount),
+          });
+        }
       }
     });
   };
