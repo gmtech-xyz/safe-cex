@@ -91,7 +91,10 @@ export class GatePrivateWebsocket extends BaseWebSocket<GateExchange> {
             side: parseFloat(order.size) > 0 ? OrderSide.Buy : OrderSide.Sell,
             symbol: order.contract.replace('_', ''),
             price: parseFloat(order.fill_price),
-            amount: multiply(parseFloat(order.size), market.precision.amount),
+            amount: multiply(
+              Math.abs(parseFloat(order.size)),
+              market.precision.amount
+            ),
           });
         }
       }
@@ -118,7 +121,10 @@ export class GatePrivateWebsocket extends BaseWebSocket<GateExchange> {
             side: parseFloat(order.size) > 0 ? OrderSide.Buy : OrderSide.Sell,
             symbol: order.contract.replace('_', ''),
             price: 0,
-            amount: multiply(parseFloat(order.size), market.precision.amount),
+            amount: multiply(
+              Math.abs(parseFloat(order.size)),
+              market.precision.amount
+            ),
           });
         }
       }
