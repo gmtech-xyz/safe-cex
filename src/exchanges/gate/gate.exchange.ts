@@ -5,7 +5,7 @@ import flatten from 'lodash/flatten';
 import partition from 'lodash/partition';
 import times from 'lodash/times';
 import uniq from 'lodash/uniq';
-import { forEach, map, mapSeries } from 'p-iteration';
+import { forEach, forEachSeries, map, mapSeries } from 'p-iteration';
 
 import type { Store } from '../../store/store.interface';
 import {
@@ -39,9 +39,6 @@ import { GatePrivateWebsocket } from './gate.ws-private';
 import { GatePublicWebsocket } from './gate.ws-public';
 
 // TODO: update orders
-// TODO: cancel orders
-// TODO: test scaled with SL/TP
-// TODO: manage leverage
 
 export class GateExchange extends BaseExchange {
   xhr: Axios;
@@ -496,20 +493,61 @@ export class GateExchange extends BaseExchange {
   };
 
   cancelAllOrders = async () => {
-    await this.xhr.delete(ENDPOINTS.CANCEL_ALL_ORDERS);
+    const symbols = uniq(this.store.orders.map((o) => o.symbol));
+    await forEachSeries(symbols, this.cancelSymbolOrders);
+    await this.xhr.delete(ENDPOINTS.ALGO_ORDERS);
   };
 
-  cancelSymbolOrders = async () => {
-    const symbols = uniq(this.store.orders.map((o) => o.symbol));
-    const markets = this.store.markets.filter((m) =>
-      symbols.includes(m.symbol)
-    );
+  cancelSymbolOrders = async (symbol: string) => {
+    const market = this.store.markets.find((m) => m.symbol === symbol);
 
-    await forEach(markets, async (market) => {
+    if (market) {
       await this.xhr.delete(ENDPOINTS.ORDERS, {
         params: { contract: market.id },
       });
+    }
+  };
+
+  setAllLeverage = async (inputLeverage: number) => {
+    await forEachSeries(this.store.markets, async (market) => {
+      if (!this.isDisposed) {
+        const position = this.store.positions.find(
+          (p) => p.symbol === market.symbol
+        );
+
+        if (position?.leverage !== inputLeverage) {
+          await this.setLeverage(market.symbol, inputLeverage);
+        }
+      }
     });
+  };
+
+  setLeverage = async (symbol: string, inputLeverage: number) => {
+    const market = this.store.markets.find((m) => m.symbol === symbol);
+
+    if (!market) {
+      throw new Error(`Market ${symbol} not found`);
+    }
+
+    const leverage = Math.min(
+      Math.max(inputLeverage, market.limits.leverage.min),
+      market.limits.leverage.max
+    );
+
+    try {
+      await this.xhr.post(
+        `${ENDPOINTS.POSITIONS}/${market.id}/leverage`,
+        {},
+        { params: { leverage } }
+      );
+
+      this.store.updatePositions([
+        [{ symbol, side: PositionSide.Long }, { leverage }],
+        [{ symbol, side: PositionSide.Short }, { leverage }],
+      ]);
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.label || err?.message);
+    }
   };
 
   private formatAlgoOrder = (opts: PlaceOrderOpts) => {
@@ -533,6 +571,15 @@ export class GateExchange extends BaseExchange {
     let rule: number = 0;
     let orderType: string = '';
 
+    const pSide =
+      opts.side === OrderSide.Buy ? PositionSide.Short : PositionSide.Long;
+
+    const position = this.store.positions.find(
+      (p) => p.symbol === opts.symbol && p.side === pSide
+    );
+
+    const orderTypePrefix = position ? '' : 'plan-';
+
     if (opts.type === OrderType.StopLoss && opts.side === OrderSide.Sell) {
       rule = 2;
       orderType = 'close-long-position';
@@ -554,7 +601,7 @@ export class GateExchange extends BaseExchange {
     }
 
     const req = omitUndefined({
-      order_type: orderType,
+      order_type: `${orderTypePrefix}${orderType}`,
       initial: {
         contract: market.id,
         size: 0,

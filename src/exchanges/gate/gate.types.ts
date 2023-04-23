@@ -19,7 +19,6 @@ export const ENDPOINTS = {
   BALANCE: '/futures/usdt/accounts',
   ORDERS: '/futures/usdt/orders',
   BATCH_ORDERS: '/futures/usdt/batch_orders',
-  CANCEL_ALL_ORDERS: '/futures/usdt/price_orders',
   POSITIONS: '/futures/usdt/positions',
   ALGO_ORDERS: '/futures/usdt/price_orders',
 };
