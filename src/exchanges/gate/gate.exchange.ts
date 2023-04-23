@@ -142,6 +142,10 @@ export class GateExchange extends BaseExchange {
       upnl: parseFloat(data.unrealised_pnl),
     };
 
+    if (!this.store.loaded.balance) {
+      this.store.setSetting('isHedged', data.in_dual_mode);
+    }
+
     return balance;
   };
 
@@ -372,6 +376,23 @@ export class GateExchange extends BaseExchange {
     callback: (orderBook: OrderBook) => void
   ) => {
     return this.publicWebsocket.listenOrderBook(symbol, callback);
+  };
+
+  changePositionMode = async (hedged: boolean) => {
+    if (this.store.positions.some((p) => p.contracts > 0)) {
+      throw new Error('Close all positions before changing position mode');
+    }
+
+    try {
+      await this.xhr.post(
+        ENDPOINTS.DUAL_MODE,
+        {},
+        { params: { dual_mode: hedged } }
+      );
+      this.store.setSetting('isHedged', hedged);
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.label || err?.message);
+    }
   };
 
   placeOrder = async (opts: PlaceOrderOpts) => {
