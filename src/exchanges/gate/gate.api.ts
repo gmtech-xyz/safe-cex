@@ -20,14 +20,8 @@ const AUTH_ENDPOINTS = [
 export const createAPI = (options: ExchangeOptions) => {
   const BASE_API_URL = BASE_URL[options.testnet ? 'testnet' : 'livenet'];
 
-  if (typeof window !== 'undefined' && options.corsAnywhere === undefined) {
-    throw new Error('corsAnywhere option is required in browser for Gate.io');
-  }
-
   const xhr = axios.create({
-    baseURL: options.corsAnywhere
-      ? `${options.corsAnywhere}${BASE_API_URL}`
-      : BASE_API_URL,
+    baseURL: BASE_API_URL,
     timeout: RECV_WINDOW,
   });
 
