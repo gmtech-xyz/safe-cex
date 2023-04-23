@@ -36,6 +36,7 @@ Currently, the library supports Bybit and Binance Futures contracts, OKX Perpetu
 - [Binance](https://accounts.binance.com/en/register?ref=KOLLSXK0) USD-M futures (USDT & BUSD contracts)
 - [WOO X](https://x.woo.org/en/trade?ref=safecex) Futures USDT & futures unified margin
 - [OKX](https://www.okx.com/join/TULEEP) Perpetuals unified margin
+- [GateIO](https://www.gate.io/signup/13385879) Futures USDT contracts
 
 ---
 
@@ -60,7 +61,7 @@ To initialize the exchange library, you will need:
 import { createExchange } from "safe-cex";
 
 // Initialize exchange class object
-const exchange = createExchange("bybit" | "binance", {
+const exchange = createExchange("bybit" | "binance" | "okx" | "woo" | "gate", {
   key: API_KEY,
   secret: API_SECRET,
   applicationId: string, // FOR WOO X
@@ -440,6 +441,7 @@ If you found this project interesting or useful, create accounts with my referra
 - [OKX](https://www.okx.com/join/TULEEP) **20% less fees, up to $10,000 deposit bonus**
 - [WOO X](https://x.woo.org/en/trade?ref=safecex) **Deposit $100 and 0 fees for 14 days!**
 - [Binance](https://accounts.binance.com/en/register?ref=KOLLSXK0)
+- [GateIO](https://www.gate.io/signup/13385879)
 
 Or buy me a coffee with a crypto donation:
 
