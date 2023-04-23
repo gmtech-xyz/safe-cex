@@ -24,6 +24,7 @@ export interface Store {
   addOrUpdateOrders: (orders: Order[]) => void;
 
   updateTicker: (ticker: Pick<Ticker, 'id'>, changes: Partial<Ticker>) => void;
+  addOrUpdateTickers: (tickers: Ticker[]) => void;
 
   get latency(): StoreData['latency'];
   get balance(): StoreData['balance'];

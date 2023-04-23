@@ -1,5 +1,6 @@
 import { BinanceExchange } from './exchanges/binance/binance.exchange';
 import { BybitExchange } from './exchanges/bybit/bybit.exchange';
+import { GateExchange } from './exchanges/gate/gate.exchange';
 import { OKXExchange } from './exchanges/okx/okx.exchange';
 import { WOOXExchange } from './exchanges/woo/woo.exchange';
 import { DefaultStore } from './store/store.base';
@@ -12,6 +13,7 @@ const exchanges = {
   binance: BinanceExchange,
   woo: WOOXExchange,
   okx: OKXExchange,
+  gate: GateExchange,
 };
 
 export const createExchange = (
