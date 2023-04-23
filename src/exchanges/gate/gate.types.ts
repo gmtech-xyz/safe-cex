@@ -1,8 +1,10 @@
+import { OrderTimeInForce } from '../../types';
+
 export const RECV_WINDOW = 5000;
 
 export const BASE_URL = {
-  livenet: 'https://gate.tuleep.trade/api/v4',
-  testnet: 'https://gate-testnet.tuleep.trade/api/v4',
+  livenet: 'https://fx-api.gateio.ws/api/v4',
+  testnet: 'https://fx-api-testnet.gateio.ws/api/v4',
 };
 
 export const BASE_WS_URL = {
@@ -15,4 +17,12 @@ export const ENDPOINTS = {
   TICKERS: '/futures/usdt/tickers',
   KLINE: '/futures/usdt/candlesticks',
   BALANCE: '/futures/usdt/accounts',
+  PLACE_ORDERS: '/futures/usdt/batch_orders',
+};
+
+export const ORDER_TIME_IN_FORCE: Record<string, OrderTimeInForce> = {
+  gtc: OrderTimeInForce.GoodTillCancel,
+  ioc: OrderTimeInForce.ImmediateOrCancel,
+  poc: OrderTimeInForce.PostOnly,
+  fok: OrderTimeInForce.FillOrKill,
 };

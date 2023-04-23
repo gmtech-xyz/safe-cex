@@ -9,11 +9,15 @@ import { virtualClock } from '../../utils/virtual-clock';
 
 import { BASE_URL, ENDPOINTS, RECV_WINDOW } from './gate.types';
 
-const AUTH_ENDPOINTS: string[] = [ENDPOINTS.BALANCE];
+const AUTH_ENDPOINTS = [ENDPOINTS.BALANCE, ENDPOINTS.PLACE_ORDERS];
 
 export const createAPI = (options: ExchangeOptions) => {
+  const BASE_API_URL = BASE_URL[options.testnet ? 'testnet' : 'livenet'];
+
   const xhr = axios.create({
-    baseURL: BASE_URL[options.testnet ? 'testnet' : 'livenet'],
+    baseURL: options.corsAnywhere
+      ? `${options.corsAnywhere}${BASE_API_URL}`
+      : BASE_API_URL,
     timeout: RECV_WINDOW,
   });
 

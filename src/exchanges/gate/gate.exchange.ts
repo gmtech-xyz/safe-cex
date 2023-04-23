@@ -1,20 +1,28 @@
 import type { Axios } from 'axios';
 import axiosRateLimit from 'axios-rate-limit';
+import { chunk, flatten, times } from 'lodash';
+import { mapSeries } from 'p-iteration';
 
 import type { Store } from '../../store/store.interface';
-import type {
-  Balance,
-  Candle,
-  ExchangeOptions,
-  Market,
-  OHLCVOptions,
-  Ticker,
+import {
+  OrderType,
+  type Balance,
+  type Candle,
+  type ExchangeOptions,
+  type Market,
+  type OHLCVOptions,
+  type PlaceOrderOpts,
+  type Ticker,
+  OrderTimeInForce,
+  OrderSide,
 } from '../../types';
-import { subtract } from '../../utils/safe-math';
+import { inverseObj } from '../../utils/inverse-obj';
+import { omitUndefined } from '../../utils/omit-undefined';
+import { adjust, divide, subtract } from '../../utils/safe-math';
 import { BaseExchange } from '../base';
 
 import { createAPI } from './gate.api';
-import { ENDPOINTS } from './gate.types';
+import { ENDPOINTS, ORDER_TIME_IN_FORCE } from './gate.types';
 import { GatePublicWebsocket } from './gate.ws-public';
 
 export class GateExchange extends BaseExchange {
@@ -177,5 +185,78 @@ export class GateExchange extends BaseExchange {
 
   listenOHLCV = (opts: OHLCVOptions, callback: (candle: Candle) => void) => {
     return this.publicWebsocket.listenOHLCV(opts, callback);
+  };
+
+  placeOrder = async (opts: PlaceOrderOpts) => {
+    return await this.placeOrders([opts]);
+  };
+
+  placeOrders = async (orders: PlaceOrderOpts[]) => {
+    const orderIds = await this.placeOrderBatch(
+      orders.flatMap((o) => this.formatCreateOrder(o))
+    );
+
+    return orderIds;
+  };
+
+  private formatCreateOrder = (opts: PlaceOrderOpts) => {
+    const market = this.store.markets.find((m) => m.symbol === opts.symbol);
+
+    if (!market) {
+      throw new Error(`Market ${opts.symbol} not found`);
+    }
+
+    const maxSize = market.limits.amount.max;
+    const pPrice = market.precision.price;
+    const pAmount = market.precision.amount;
+
+    const amount = adjust(divide(opts.amount, pAmount), pAmount);
+    const price = opts.price ? adjust(opts.price, pPrice) : null;
+
+    const timeInForce = opts.timeInForce || OrderTimeInForce.GoodTillCancel;
+
+    const req = omitUndefined({
+      contract: market.id,
+      size: opts.side === OrderSide.Buy ? amount : -amount,
+      price: opts.type === OrderType.Limit ? `${price}` : undefined,
+      reduce_only: opts.reduceOnly,
+      tif: inverseObj(ORDER_TIME_IN_FORCE)[timeInForce],
+    });
+
+    const lots = amount > maxSize ? Math.ceil(amount / maxSize) : 1;
+    const rest = amount > maxSize ? adjust(amount % maxSize, pAmount) : 0;
+
+    const lotSize = adjust((amount - rest) / lots, pAmount);
+    const payloads: Array<Record<string, any>> = times(lots, () => {
+      return { ...req, size: opts.side === OrderSide.Buy ? lotSize : -lotSize };
+    });
+
+    if (rest) {
+      payloads.push({
+        ...req,
+        size: opts.side === OrderSide.Buy ? rest : -rest,
+      });
+    }
+
+    return payloads;
+  };
+
+  private placeOrderBatch = async (payloads: Array<Record<string, any>>) => {
+    const responses = await mapSeries(chunk(payloads, 20), async (batch) => {
+      const {
+        data: { data },
+      } = await this.xhr.post<{ data: Array<Record<string, any>> }>(
+        ENDPOINTS.PLACE_ORDERS,
+        batch
+      );
+
+      return data.reduce((acc: string[], o) => {
+        if (o.id) return [...acc, `${o.id}`];
+        this.emitter.emit('error', o.detail);
+        return acc;
+      }, []);
+    });
+
+    return flatten(responses);
   };
 }
