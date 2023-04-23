@@ -1,5 +1,7 @@
 import createHmac from 'create-hmac';
+import { multiply } from 'lodash';
 
+import { OrderSide } from '../../types';
 import { virtualClock } from '../../utils/virtual-clock';
 import { BaseWebSocket } from '../base.ws';
 
@@ -23,29 +25,71 @@ export class GatePrivateWebsocket extends BaseWebSocket<GateExchange> {
 
   onOpen = () => {
     if (!this.isDisposed) {
+      this.ping();
       this.subscribe();
     }
   };
 
+  ping = () => {
+    if (!this.isDisposed) {
+      const time = virtualClock.getCurrentTime().unix();
+      const payload = { time, channel: 'futures.ping' };
+      this.pingAt = performance.now();
+      this.ws?.send?.(JSON.stringify(payload));
+    }
+  };
+
   onMessage = ({ data }: MessageEvent) => {
-    if (data.includes('"event":"update"')) {
-      if (data.includes('"channel":"futures.orders"')) {
-        this.handleOrdersUpdate(JSON.parse(data));
+    if (!this.isDisposed) {
+      if (data.includes('futures.pong')) {
+        this.handlePongEvent();
+        return;
+      }
+
+      if (data.includes('"event":"update"')) {
+        if (data.includes('"channel":"futures.orders"')) {
+          this.handleOrdersUpdate(JSON.parse(data));
+        }
       }
     }
   };
 
-  handleOrdersUpdate = ({ result }: Record<string, any>) => {
-    console.log(result);
+  handlePongEvent = () => {
+    const diff = performance.now() - this.pingAt;
+    this.store.update({ latency: Math.round(diff / 2) });
 
+    if (this.pingTimeoutId) {
+      clearTimeout(this.pingTimeoutId);
+      this.pingTimeoutId = undefined;
+    }
+
+    this.pingTimeoutId = setTimeout(() => this.ping(), 10_000);
+  };
+
+  handleOrdersUpdate = ({ result }: Record<string, any>) => {
     result.forEach((order: Record<string, any>) => {
-      if (order.finish_as === 'cancelled') {
+      if (order.finish_as === 'cancelled' || order.finish_as === 'filled') {
         this.store.removeOrder({ id: `${order.id}` });
         return;
       }
 
       if (order.finish_as === '_new') {
         this.store.addOrUpdateOrders(this.parent.mapOrders([order]));
+      }
+
+      if (order.finish_as === 'filled') {
+        const market = this.parent.store.markets.find(
+          (m) => m.symbol === order.contract.replace('_', '')
+        );
+
+        if (market) {
+          this.emitter.emit('fill', {
+            side: parseFloat(order.size) > 0 ? OrderSide.Buy : OrderSide.Sell,
+            symbol: order.contract.replace('_', ''),
+            price: parseFloat(order.fill_price),
+            amount: multiply(parseFloat(order.size), market.precision.amount),
+          });
+        }
       }
     });
   };

@@ -43,7 +43,16 @@ export class GatePublicWebsocket extends BaseWebSocket<GateExchange> {
 
   onOpen = () => {
     if (!this.isDisposed) {
+      this.ping();
       this.subscribe();
+    }
+  };
+
+  ping = () => {
+    if (!this.isDisposed) {
+      const time = virtualClock.getCurrentTime().unix();
+      const payload = { time, channel: 'futures.ping' };
+      this.ws?.send?.(JSON.stringify(payload));
     }
   };
 
@@ -61,6 +70,11 @@ export class GatePublicWebsocket extends BaseWebSocket<GateExchange> {
 
   onMessage = ({ data }: MessageEvent) => {
     if (!this.isDisposed) {
+      if (data.includes('futures.pong')) {
+        this.handlePongEvent();
+        return;
+      }
+
       for (const [channel, handler] of Object.entries(this.messageHandlers)) {
         if (
           data.includes(`"channel":"futures.${channel}"`) &&
@@ -71,6 +85,15 @@ export class GatePublicWebsocket extends BaseWebSocket<GateExchange> {
         }
       }
     }
+  };
+
+  handlePongEvent = () => {
+    if (this.pingTimeoutId) {
+      clearTimeout(this.pingTimeoutId);
+      this.pingTimeoutId = undefined;
+    }
+
+    this.pingTimeoutId = setTimeout(() => this.ping(), 10_000);
   };
 
   handleTickerEvents = ({ result }: Data) => {

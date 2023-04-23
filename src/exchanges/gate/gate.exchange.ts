@@ -9,6 +9,7 @@ import {
   OrderTimeInForce,
   OrderSide,
   OrderStatus,
+  PositionSide,
 } from '../../types';
 import type {
   Balance,
@@ -18,9 +19,11 @@ import type {
   OHLCVOptions,
   Order,
   PlaceOrderOpts,
+  Position,
   Ticker,
 } from '../../types';
 import { inverseObj } from '../../utils/inverse-obj';
+import { loop } from '../../utils/loop';
 import { omitUndefined } from '../../utils/omit-undefined';
 import { adjust, divide, multiply, subtract } from '../../utils/safe-math';
 import { BaseExchange } from '../base';
@@ -73,13 +76,8 @@ export class GateExchange extends BaseExchange {
 
     this.log(`Loaded ${Math.min(tickers.length, markets.length)} markets`);
 
-    const balance = await this.fetchBalance();
+    await this.tick();
     if (this.isDisposed) return;
-
-    this.store.update({
-      balance,
-      loaded: { ...this.store.loaded, balance: true },
-    });
 
     this.publicWebsocket.connectAndSubscribe();
     this.privateWebsocket.connectAndSubscribe();
@@ -93,6 +91,32 @@ export class GateExchange extends BaseExchange {
       orders,
       loaded: { ...this.store.loaded, orders: true },
     });
+  };
+
+  tick = async () => {
+    if (!this.isDisposed) {
+      try {
+        const balance = await this.fetchBalance();
+        if (this.isDisposed) return;
+
+        const positions = await this.fetchPositions();
+        if (this.isDisposed) return;
+
+        this.store.update({
+          balance,
+          positions,
+          loaded: {
+            ...this.store.loaded,
+            balance: true,
+            positions: true,
+          },
+        });
+      } catch (err: any) {
+        this.emitter.emit('error', err?.message);
+      }
+
+      loop(() => this.tick());
+    }
   };
 
   fetchBalance = async () => {
@@ -112,6 +136,34 @@ export class GateExchange extends BaseExchange {
     };
 
     return balance;
+  };
+
+  fetchPositions = async () => {
+    const { data } = await this.xhr.get(ENDPOINTS.POSITIONS);
+    return this.mapPositions(data);
+  };
+
+  mapPositions = (data: Array<Record<string, any>>) => {
+    return data.reduce((acc: Position[], p) => {
+      const market = this.store.markets.find((m) => m.id === p.contract);
+      if (!market) return acc;
+
+      const position: Position = {
+        symbol: market.symbol,
+        side: p.size > 0 ? PositionSide.Long : PositionSide.Short,
+        entryPrice: parseFloat(p.entry_price),
+        notional: parseFloat(p.value),
+        leverage: parseFloat(p.leverage) || 1,
+        unrealizedPnl: parseFloat(p.unrealised_pnl),
+        contracts: multiply(
+          Math.abs(parseFloat(p.size)),
+          market.precision.amount
+        ),
+        liquidationPrice: parseFloat(p.liq_price),
+      };
+
+      return [...acc, position];
+    }, []);
   };
 
   fetchMarkets = async () => {
@@ -314,12 +366,18 @@ export class GateExchange extends BaseExchange {
     const amount = adjust(divide(opts.amount, pAmount), pAmount);
     const price = opts.price ? adjust(opts.price, pPrice) : null;
 
-    const timeInForce = opts.timeInForce || OrderTimeInForce.GoodTillCancel;
+    const defaultTimeInForce =
+      opts.timeInForce || OrderTimeInForce.GoodTillCancel;
+
+    const timeInForce =
+      opts.type === OrderType.Market
+        ? OrderTimeInForce.FillOrKill
+        : defaultTimeInForce;
 
     const req = omitUndefined({
       contract: market.id,
       size: opts.side === OrderSide.Buy ? amount : -amount,
-      price: opts.type === OrderType.Limit ? `${price}` : undefined,
+      price: opts.type === OrderType.Limit ? `${price}` : `0`,
       reduce_only: opts.reduceOnly,
       tif: inverseObj(ORDER_TIME_IN_FORCE)[timeInForce],
     });
