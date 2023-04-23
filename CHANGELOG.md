@@ -1,4 +1,4 @@
-## [6.0.1](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v6.0.1) (2023-04-23)
+## [6.0.2](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v6.0.2) (2023-04-23)
 
 
 ### Bug Fixes
@@ -51,6 +51,7 @@
 * **bybit:** emit error if any on update positional TP/SL ([5d5aba2](https://github.com/gmtech-xyz/safe-cex/commit/5d5aba2f9e7697186a628a60ddefd89a90bedbaa))
 * **bybit:** retry signature errors ([83d53ec](https://github.com/gmtech-xyz/safe-cex/commit/83d53ec5291d33b7440cebc6e4698d97dc25f6a6))
 * **exchange:** make store overridable ([ab23d2f](https://github.com/gmtech-xyz/safe-cex/commit/ab23d2f5c883d857650e61a9bd9bb44879a0419c))
+* **gate:** support hedge mode ([83a4bf5](https://github.com/gmtech-xyz/safe-cex/commit/83a4bf563b608bbe6aa2c66a590f03a77b459a44))
 * **okx.placeOrder:** add support position TP/SL ([b8e2c4f](https://github.com/gmtech-xyz/safe-cex/commit/b8e2c4f89c7a99468320cf0dfec4417b3be953ca))
 * **okx.ws-private:** listen balance ([0d34072](https://github.com/gmtech-xyz/safe-cex/commit/0d34072c611902bfc2709c97d9e2fe92732cd24d))
 * **okx.ws-private:** listen positions ([b29d856](https://github.com/gmtech-xyz/safe-cex/commit/b29d856079f50d0efd03005730b6c6bc532a2667))
