@@ -469,6 +469,12 @@ export class OKXExchange extends BaseExchange {
     if ('amount' in update) {
       const pAmount = market.precision.amount;
       const amount = adjust(divide(update.amount, pAmount), pAmount);
+
+      if (amount === 0) {
+        this.emitter.emit('error', 'Order amount is too small');
+        return [];
+      }
+
       payload.newSz = `${amount}`;
     }
 
@@ -578,6 +584,12 @@ export class OKXExchange extends BaseExchange {
     }
 
     const payloads = this.formatCreateOrder(opts);
+
+    if (payloads.some((o) => parseFloat(o.sz) === 0)) {
+      this.emitter.emit('error', `Oorder amount is too small`);
+      return [];
+    }
+
     return await this.placeOrderBatch(payloads);
   };
 
@@ -586,13 +598,19 @@ export class OKXExchange extends BaseExchange {
       this.isAlgoOrder(o.type)
     );
 
+    const algoOrderOpts = algoOrders.map((o) => this.formatAlgoOrder(o));
+    const normalOrdersOpts = normalOrders.flatMap((o) =>
+      this.formatCreateOrder(o)
+    );
+
+    if (normalOrdersOpts.some((o) => parseFloat(o.sz) === 0)) {
+      this.emitter.emit('error', `Total order amount is too small`);
+      return [];
+    }
+
     const orderIds = [
-      ...(await this.placeOrderBatch(
-        normalOrders.flatMap((o) => this.formatCreateOrder(o))
-      )),
-      ...(await this.placeAlgoOrderBatch(
-        algoOrders.map((o) => this.formatAlgoOrder(o))
-      )),
+      ...(await this.placeOrderBatch(normalOrdersOpts)),
+      ...(await this.placeAlgoOrderBatch(algoOrderOpts)),
     ];
 
     return orderIds;
