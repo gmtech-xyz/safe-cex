@@ -606,7 +606,7 @@ export class OKXExchange extends BaseExchange {
       if (o.ordType === 'oco' || o.ordType === 'conditional') {
         const newOrders: Order[] = [];
 
-        if (o.slTriggerPx) {
+        if (parseFloat(o.slTriggerPx)) {
           newOrders.push({
             id: `${o.algoId}_sl`,
             status: OrderStatus.Open,
@@ -621,7 +621,7 @@ export class OKXExchange extends BaseExchange {
           });
         }
 
-        if (o.tpTriggerPx) {
+        if (parseFloat(o.tpTriggerPx)) {
           newOrders.push({
             id: `${o.algoId}_tp`,
             status: OrderStatus.Open,
