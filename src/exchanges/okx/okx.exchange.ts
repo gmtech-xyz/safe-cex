@@ -739,6 +739,9 @@ export class OKXExchange extends BaseExchange {
       throw new Error(`Market ${opts.symbol} not found on OKX`);
     }
 
+    const pAmount = market.precision.amount;
+    const amount = adjust(divide(opts.amount, pAmount), pAmount);
+
     const pPrice = market.precision.price;
     const price = opts.price ? adjust(opts.price, pPrice) : null;
 
@@ -759,8 +762,13 @@ export class OKXExchange extends BaseExchange {
       opts.type === OrderType.StopLoss ||
       opts.type === OrderType.TakeProfit
     ) {
-      req.closeFraction = '1';
       req.reduceOnly = true;
+
+      if (this.store.options.isHedged) {
+        req.sz = `${amount}`;
+      } else {
+        req.closeFraction = '1';
+      }
     }
 
     if (opts.type === OrderType.StopLoss) {
@@ -776,9 +784,6 @@ export class OKXExchange extends BaseExchange {
     }
 
     if (opts.type === OrderType.TrailingStopLoss) {
-      const pAmount = market.precision.amount;
-      const amount = adjust(divide(opts.amount, pAmount), pAmount);
-
       req.activePx = '';
       req.callbackRatio = '';
       req.callbackSpread = `${price}`;
