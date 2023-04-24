@@ -1,4 +1,4 @@
-## [6.0.2](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v6.0.2) (2023-04-23)
+## [6.0.3](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v6.0.3) (2023-04-24)
 
 
 ### Bug Fixes
@@ -19,12 +19,16 @@
 * **okx/orderbook:** remove bids/asks out of reach ([8c54791](https://github.com/gmtech-xyz/safe-cex/commit/8c547911186b86f30fbc92a5f4ce16fe5ae6a124))
 * **okx:** balance total calc ([57f20b7](https://github.com/gmtech-xyz/safe-cex/commit/57f20b7e19bf0e9658fb16e9681eb527253119ca))
 * **okx:** clientOrderId max len ([fed346f](https://github.com/gmtech-xyz/safe-cex/commit/fed346f3f2ba2453ceecf731671c19dd36e7dbad))
+* **okx:** dont show algo order if triggerPrice is 0 ([040e35e](https://github.com/gmtech-xyz/safe-cex/commit/040e35e4fda6ae05ac7286c2fc71f17a1a94166c))
 * **okx:** fetch leverage before positions ([185d6f5](https://github.com/gmtech-xyz/safe-cex/commit/185d6f5773400f7da44c26e84c11349aad40d399))
 * **okx:** fetch only linear markets ([de06e77](https://github.com/gmtech-xyz/safe-cex/commit/de06e77ed8591160cc035f721365efa051d9b4d1))
 * **okx:** need to use proxy ([93b31b1](https://github.com/gmtech-xyz/safe-cex/commit/93b31b13d7a919e686934920e2ee4912eb81ff62))
 * **okx:** ohlcv timestamp ([e8954cc](https://github.com/gmtech-xyz/safe-cex/commit/e8954ccf837af889c0cc13199ef5b5b1784b4c3d))
 * **okx:** place order adjust size ([1d13a4a](https://github.com/gmtech-xyz/safe-cex/commit/1d13a4a39ae03dc0db160f3dcbc8d7e328cc62ec))
 * **okx:** place orders, display positions in hedge mode ([91a1dc4](https://github.com/gmtech-xyz/safe-cex/commit/91a1dc4094319a103e9abd2ff69316a84587ff00))
+* **okx:** place postional TP/SL as algo order ([32ad2fe](https://github.com/gmtech-xyz/safe-cex/commit/32ad2fe2d5ab0863a4c9ad0ae780f0cf2b985f7d))
+* **okx:** place SL/TP in hedge mode ([cb2f8d7](https://github.com/gmtech-xyz/safe-cex/commit/cb2f8d7219165b41969e6c94dda8eab7603164d5))
+* **okx:** prevent create order if size too small ([adc5c2b](https://github.com/gmtech-xyz/safe-cex/commit/adc5c2b3d6b35b2e381c7aa9b09c22c6cc6cd902))
 * **okx:** resubscribe kline/orderbook on close ([c46c121](https://github.com/gmtech-xyz/safe-cex/commit/c46c1219b31d8c47078fb4e933d0b11dc8dd3b97))
 * **okx:** set leverage ([d46711c](https://github.com/gmtech-xyz/safe-cex/commit/d46711c43458d93e357149e16b0295e68e7fa5c3))
 * **okx:** trailing stops ([cc9036a](https://github.com/gmtech-xyz/safe-cex/commit/cc9036adb401dace05ea5a0817ccea541380703f))
