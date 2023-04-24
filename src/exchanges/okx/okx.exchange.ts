@@ -593,12 +593,11 @@ export class OKXExchange extends BaseExchange {
     return await this.placeOrderBatch(payloads);
   };
 
-  placeOrders = async (orders: PlaceOrderOpts[]) => {
-    const [algoOrders, normalOrders] = partition(orders, (o) =>
+  placeOrders = async (opts: PlaceOrderOpts[]) => {
+    const [algoOrders, normalOrders] = partition(opts, (o) =>
       this.isAlgoOrder(o.type)
     );
 
-    const algoOrderOpts = algoOrders.map((o) => this.formatAlgoOrder(o));
     const normalOrdersOpts = normalOrders.flatMap((o) =>
       this.formatCreateOrder(o)
     );
@@ -608,9 +607,14 @@ export class OKXExchange extends BaseExchange {
       return [];
     }
 
+    const derivedAlogOrders = this.deriveAlgoOrdersFromNormalOrdersOpts(opts);
+    const algoOrdersOpts = [...algoOrders, ...derivedAlogOrders].map(
+      this.formatAlgoOrder
+    );
+
     const orderIds = [
       ...(await this.placeOrderBatch(normalOrdersOpts)),
-      ...(await this.placeAlgoOrderBatch(algoOrderOpts)),
+      ...(await this.placeAlgoOrderBatch(algoOrdersOpts)),
     ];
 
     return orderIds;
@@ -847,18 +851,6 @@ export class OKXExchange extends BaseExchange {
     });
 
     if (rest) payloads.push({ ...req, qty: rest });
-
-    if (opts.takeProfit) {
-      payloads[0].tpTriggerPx = `${adjust(opts.takeProfit, pPrice)}`;
-      payloads[0].tpOrdPx = '-1';
-      payloads[0].tpTriggerPxType = 'mark';
-    }
-
-    if (opts.stopLoss) {
-      payloads[0].slTriggerPx = `${adjust(opts.stopLoss, pPrice)}`;
-      payloads[0].slOrdPx = '-1';
-      payloads[0].slTriggerPxType = 'mark';
-    }
 
     return payloads;
   };

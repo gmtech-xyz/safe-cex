@@ -143,6 +143,34 @@ export class BaseExchange implements Exchange {
     return () => {};
   };
 
+  deriveAlgoOrdersFromNormalOrdersOpts = (opts: PlaceOrderOpts[]) => {
+    return opts.reduce<PlaceOrderOpts[]>((acc, o) => {
+      const newOrders: PlaceOrderOpts[] = [];
+
+      if (o.stopLoss) {
+        newOrders.push({
+          symbol: o.symbol,
+          side: o.side === OrderSide.Buy ? OrderSide.Sell : OrderSide.Buy,
+          type: OrderType.StopLoss,
+          price: o.stopLoss,
+          amount: o.amount,
+        });
+      }
+
+      if (o.takeProfit) {
+        newOrders.push({
+          symbol: o.symbol,
+          side: o.side === OrderSide.Buy ? OrderSide.Sell : OrderSide.Buy,
+          type: OrderType.TakeProfit,
+          price: o.takeProfit,
+          amount: o.amount,
+        });
+      }
+
+      return [...acc, ...newOrders];
+    }, []);
+  };
+
   nuke = async () => {
     if (!this.isDisposed && !this.isNuking) {
       // close all positions

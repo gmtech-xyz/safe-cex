@@ -408,40 +408,11 @@ export class GateExchange extends BaseExchange {
     }
   };
 
-  placeOrders = async (orders: PlaceOrderOpts[]) => {
+  placeOrders = async (opts: PlaceOrderOpts[]) => {
     const orderIds: string[] = [];
 
-    const [algoOrders, normalOrders] = partition(orders, (o) =>
+    const [algoOrders, normalOrders] = partition(opts, (o) =>
       this.isAlgoOrder(o)
-    );
-
-    const derrivedAlgoOrders = normalOrders.reduce(
-      (acc: PlaceOrderOpts[], o) => {
-        const newOrders: PlaceOrderOpts[] = [];
-
-        if (o.stopLoss) {
-          newOrders.push({
-            symbol: o.symbol,
-            side: o.side === OrderSide.Buy ? OrderSide.Sell : OrderSide.Buy,
-            type: OrderType.StopLoss,
-            price: o.stopLoss,
-            amount: 0,
-          });
-        }
-
-        if (o.takeProfit) {
-          newOrders.push({
-            symbol: o.symbol,
-            side: o.side === OrderSide.Buy ? OrderSide.Sell : OrderSide.Buy,
-            type: OrderType.TakeProfit,
-            price: o.takeProfit,
-            amount: 0,
-          });
-        }
-
-        return [...acc, ...newOrders];
-      },
-      []
     );
 
     if (normalOrders.length) {
@@ -458,7 +429,8 @@ export class GateExchange extends BaseExchange {
       }
     }
 
-    const allAlgoOrders = [...algoOrders, ...derrivedAlgoOrders];
+    const derivedAlogOrders = this.deriveAlgoOrdersFromNormalOrdersOpts(opts);
+    const allAlgoOrders = [...algoOrders, ...derivedAlogOrders];
 
     if (allAlgoOrders.length) {
       try {
