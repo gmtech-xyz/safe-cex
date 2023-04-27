@@ -1,4 +1,4 @@
-## [6.0.4](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v6.0.4) (2023-04-27)
+## [6.0.5](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v6.0.5) (2023-04-27)
 
 
 ### Bug Fixes
@@ -13,6 +13,7 @@
 * **exchanges:** revert latency calc to ping ([b19644c](https://github.com/gmtech-xyz/safe-cex/commit/b19644c8357f8323f8fdded2b31b80c84b12615c))
 * **gat.ws-private:** apply `math.abs` on fill size ([0f11485](https://github.com/gmtech-xyz/safe-cex/commit/0f1148562efe07f3080ddb6fe129c5c36441d874))
 * **gate:** better error emit ([1da2ff3](https://github.com/gmtech-xyz/safe-cex/commit/1da2ff3af34d9dbb4c1134fcdb6520cc24168053))
+* **gate:** emit better error on orders batch ([1bfd59b](https://github.com/gmtech-xyz/safe-cex/commit/1bfd59b21c513899fad1f29f1cc307fb5709f782))
 * **okx.ohlcv:** fix timeframes ([202e789](https://github.com/gmtech-xyz/safe-cex/commit/202e789d7abfcc9d4996f1ba8e831876bbc38cab))
 * **okx.ws-private:** fill event ([02f94f1](https://github.com/gmtech-xyz/safe-cex/commit/02f94f13cd7925acfe5cc020d55e4ffad267c780))
 * **okx.ws-private:** listen for TSL ([9f918ce](https://github.com/gmtech-xyz/safe-cex/commit/9f918ce46bd6fcd15f890f6292f2ea2d0b28db05))
