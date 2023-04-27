@@ -119,7 +119,7 @@ export class GateExchange extends BaseExchange {
           },
         });
       } catch (err: any) {
-        this.emitter.emit('error', err?.message);
+        this.emitError(err);
       }
 
       loop(() => this.tick());
@@ -391,7 +391,7 @@ export class GateExchange extends BaseExchange {
       );
       this.store.setSetting('isHedged', hedged);
     } catch (err: any) {
-      this.emitter.emit('error', err?.response?.data?.label || err?.message);
+      this.emitError(err);
     }
   };
 
@@ -403,7 +403,7 @@ export class GateExchange extends BaseExchange {
 
       return await this.placeOrders([opts]);
     } catch (err: any) {
-      this.emitter.emit('error', err?.response?.data?.label || err?.message);
+      this.emitError(err);
       return [];
     }
   };
@@ -425,7 +425,7 @@ export class GateExchange extends BaseExchange {
           orderIds.push(...ids);
         }
       } catch (err: any) {
-        this.emitter.emit('error', err?.response?.data?.label || err?.message);
+        this.emitError(err);
       }
     }
 
@@ -440,7 +440,7 @@ export class GateExchange extends BaseExchange {
           orderIds.push(...ids);
         }
       } catch (err: any) {
-        this.emitter.emit('error', err?.response?.data?.label || err?.message);
+        this.emitError(err);
       }
     }
 
@@ -563,7 +563,7 @@ export class GateExchange extends BaseExchange {
       );
       return [`${data.id}`];
     } catch (err: any) {
-      this.emitter.emit('error', err?.response?.data?.label || err?.message);
+      this.emitError(err);
       return [];
     }
   };
@@ -693,7 +693,7 @@ export class GateExchange extends BaseExchange {
 
       return data.reduce((acc: string[], o) => {
         if (o.id) return [...acc, `${o.id}`];
-        this.emitter.emit('error', o.label);
+        this.emitter.emit('error', o.message || o.label);
         return acc;
       }, []);
     });
@@ -715,6 +715,13 @@ export class GateExchange extends BaseExchange {
       opts.type === OrderType.StopLoss ||
       opts.type === OrderType.TakeProfit ||
       opts.type === OrderType.TrailingStopLoss
+    );
+  };
+
+  private emitError = (err: any) => {
+    this.emitter.emit(
+      'error',
+      err?.response?.data?.message || err?.response?.data?.label || err?.message
     );
   };
 }
