@@ -164,7 +164,7 @@ export class GateExchange extends BaseExchange {
         side: p.size > 0 ? PositionSide.Long : PositionSide.Short,
         entryPrice: parseFloat(p.entry_price),
         notional: parseFloat(p.value),
-        leverage: parseFloat(p.leverage) || 1,
+        leverage: parseFloat(p.cross_leverage_limit) || 1,
         unrealizedPnl: parseFloat(p.unrealised_pnl),
         contracts: multiply(
           Math.abs(parseFloat(p.size)),
@@ -514,7 +514,18 @@ export class GateExchange extends BaseExchange {
     const market = this.store.markets.find((m) => m.symbol === symbol);
 
     if (!market) {
-      throw new Error(`Market ${symbol} not found`);
+      this.emitter.emit('error', `Market ${symbol} not found`);
+      return;
+    }
+
+    if (
+      this.store.positions.some((p) => p.symbol === symbol && p.contracts > 0)
+    ) {
+      this.emitter.emit(
+        'error',
+        `Close ${symbol} position before updating leverage`
+      );
+      return;
     }
 
     const leverage = Math.min(
@@ -526,7 +537,7 @@ export class GateExchange extends BaseExchange {
       await this.xhr.post(
         `${ENDPOINTS.POSITIONS}/${market.id}/leverage`,
         {},
-        { params: { leverage } }
+        { params: { leverage: 0, cross_leverage_limit: leverage } }
       );
 
       this.store.updatePositions([
