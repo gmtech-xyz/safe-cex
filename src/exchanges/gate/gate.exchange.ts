@@ -693,7 +693,7 @@ export class GateExchange extends BaseExchange {
 
       return data.reduce((acc: string[], o) => {
         if (o.id) return [...acc, `${o.id}`];
-        this.emitter.emit('error', o.message || o.label);
+        this.emitter.emit('error', o.detail || o.message || o.label);
         return acc;
       }, []);
     });
