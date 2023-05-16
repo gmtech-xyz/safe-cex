@@ -587,10 +587,14 @@ export class OKXExchange extends BaseExchange {
     }
 
     try {
-      await this.xhr.post(ENDPOINTS.SET_POSITION_MODE, {
+      const { data } = await this.xhr.post(ENDPOINTS.SET_POSITION_MODE, {
         posMode: hedged ? 'long_short_mode' : 'net_mode',
       });
-      this.store.setSetting('isHedged', hedged);
+      if (data.msg === '') {
+        this.store.setSetting('isHedged', hedged);
+      } else {
+        this.emitter.emit('error', data.msg);
+      }
     } catch (err: any) {
       this.emitter.emit('error', err?.response?.data?.msg || err?.message);
     }
@@ -810,12 +814,11 @@ export class OKXExchange extends BaseExchange {
       opts.type === OrderType.StopLoss ||
       opts.type === OrderType.TakeProfit
     ) {
-      req.reduceOnly = true;
-
       if (this.store.options.isHedged) {
         req.sz = `${amount}`;
       } else {
         req.closeFraction = '1';
+        req.reduceOnly = true;
       }
     }
 
