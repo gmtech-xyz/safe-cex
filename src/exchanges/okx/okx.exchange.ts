@@ -506,6 +506,23 @@ export class OKXExchange extends BaseExchange {
     if ('price' in update) newOrder.price = update.price;
     if ('amount' in update) newOrder.amount = update.amount;
 
+    if (
+      newOrder.amount === 0 &&
+      (newOrder.type === OrderType.StopLoss ||
+        newOrder.type === OrderType.TakeProfit)
+    ) {
+      const position = this.store.positions.find(
+        (p) =>
+          p.symbol === order.symbol &&
+          p.side ===
+            (order.side === OrderSide.Buy
+              ? PositionSide.Short
+              : PositionSide.Long)
+      );
+
+      newOrder.amount = position ? position.contracts : 0;
+    }
+
     await this.cancelAlgoOrders(orders);
     return await this.placeOrder(newOrder);
   };
@@ -964,18 +981,21 @@ export class OKXExchange extends BaseExchange {
   };
 
   private getPositionSide = (
-    opts: Pick<PlaceOrderOpts, 'reduceOnly' | 'side'>
+    opts: Pick<PlaceOrderOpts, 'reduceOnly' | 'side' | 'type'>
   ) => {
     if (!this.store.options.isHedged) return undefined;
 
-    if (opts.reduceOnly) {
-      if (opts.side === OrderSide.Buy) return 'short';
-      if (opts.side === OrderSide.Sell) return 'long';
+    let side = opts.side === OrderSide.Buy ? 'long' : 'short';
+
+    if (
+      opts.type === OrderType.StopLoss ||
+      opts.type === OrderType.TakeProfit ||
+      opts.type === OrderType.TrailingStopLoss ||
+      opts.reduceOnly
+    ) {
+      side = side === 'long' ? 'short' : 'long';
     }
 
-    if (opts.side === OrderSide.Buy) return 'long';
-    if (opts.side === OrderSide.Sell) return 'short';
-
-    return undefined;
+    return side;
   };
 }
