@@ -271,10 +271,7 @@ export class OKXExchange extends BaseExchange {
               contracts: 0,
               liquidationPrice: 0,
             },
-          ];
-
-          if (this.store.options.isHedged) {
-            fakeMarketPositions.push({
+            {
               symbol: m.symbol,
               side: PositionSide.Short,
               entryPrice: 0,
@@ -283,8 +280,8 @@ export class OKXExchange extends BaseExchange {
               unrealizedPnl: 0,
               contracts: 0,
               liquidationPrice: 0,
-            });
-          }
+            },
+          ];
 
           return [...acc, ...fakeMarketPositions];
         },
@@ -740,8 +737,12 @@ export class OKXExchange extends BaseExchange {
 
       let side = POSITION_SIDE[p.posSide];
 
-      if (contracts > 0 && !side) side = PositionSide.Long;
-      if (contracts < 0 && !side) side = PositionSide.Short;
+      if (contracts > 0) side = PositionSide.Long;
+      if (contracts < 0) side = PositionSide.Short;
+
+      // FALLBACK TO LONG POSITION IF SENT FROM OKX
+      // THIS SHOULD NOT OVERRIDE THE "VIRTUAL SHORT" POSITION
+      if (!side) side = PositionSide.Long;
 
       const position: Position = {
         symbol: market.symbol,

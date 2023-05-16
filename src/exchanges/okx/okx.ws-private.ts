@@ -1,6 +1,8 @@
 import createHmac from 'create-hmac';
 import { sumBy } from 'lodash';
 
+import type { Position } from '../../types';
+import { PositionSide } from '../../types';
 import { roundUSD } from '../../utils/round-usd';
 import { multiply, subtract } from '../../utils/safe-math';
 import { virtualClock } from '../../utils/virtual-clock';
@@ -158,7 +160,31 @@ export class OKXPrivateWebsocket extends BaseWebSocket<OKXExchange> {
       const used = roundUSD(sumBy(okxPositions, (p) => parseFloat(p.mmr)));
       const upnl = roundUSD(sumBy(okxPositions, (p) => parseFloat(p.upl)));
 
-      this.store.updatePositions(positions.map((p) => [p, p]));
+      // OKX doesn't sends position side for net positions,
+      // so when we are closing a position and contracts become 0,
+      // we can't tell if it was from the long or short side.
+      //
+      // To fix this, we keep in store "virtual positions" for both sides,
+      // and when we receive a position update with 0 contracts, we update
+      // both virtual positions.
+      const updates: Array<
+        [Pick<Position, 'side' | 'symbol'>, Partial<Position>]
+      > = positions.flatMap((p) =>
+        p.contracts === 0 && !this.parent.store.options.isHedged
+          ? [
+              [
+                { symbol: p.symbol, side: PositionSide.Long },
+                { ...p, side: PositionSide.Long },
+              ],
+              [
+                { symbol: p.symbol, side: PositionSide.Short },
+                { ...p, side: PositionSide.Short },
+              ],
+            ]
+          : [[{ symbol: p.symbol, side: p.side }, p]]
+      );
+
+      this.store.updatePositions(updates);
       this.store.update({
         balance: { ...this.store.balance, used: used || 0, upnl: upnl || 0 },
       });
