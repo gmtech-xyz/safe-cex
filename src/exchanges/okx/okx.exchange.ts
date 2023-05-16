@@ -465,10 +465,15 @@ export class OKXExchange extends BaseExchange {
     if (!market) throw new Error(`Market ${order.symbol} not found on OKX`);
 
     const payload: Record<string, any> = { instId: market.id, ordId: order.id };
-    if ('price' in update) payload.newPx = `${update.price}`;
+
+    if ('price' in update) {
+      payload.newPx = `${update.price}`;
+    }
+
     if ('amount' in update) {
-      const pAmount = market.precision.amount;
-      const amount = adjust(divide(update.amount, pAmount), pAmount);
+      const pFactor = market.precision.amount;
+      const pAmount = divide(pFactor, pFactor);
+      const amount = adjust(divide(update.amount, pFactor), pAmount);
 
       if (amount === 0) {
         this.emitter.emit('error', 'Order amount is too small');
@@ -733,9 +738,10 @@ export class OKXExchange extends BaseExchange {
       const pos = parseFloat(p.pos);
       const contracts = pos ? multiply(pos, market.precision.amount) : 0;
 
-      const side =
-        POSITION_SIDE[p.posSide] ||
-        (contracts > 0 ? PositionSide.Long : PositionSide.Short);
+      let side = POSITION_SIDE[p.posSide];
+
+      if (contracts > 0 && !side) side = PositionSide.Long;
+      if (contracts < 0 && !side) side = PositionSide.Short;
 
       const position: Position = {
         symbol: market.symbol,
@@ -761,8 +767,10 @@ export class OKXExchange extends BaseExchange {
       throw new Error(`Market ${opts.symbol} not found on OKX`);
     }
 
-    const pAmount = market.precision.amount;
-    const amount = adjust(divide(opts.amount, pAmount), pAmount);
+    const pFactor = market.precision.amount;
+    const pAmount = divide(pFactor, pFactor);
+
+    const amount = adjust(divide(opts.amount, pFactor), pAmount);
 
     const pPrice = market.precision.price;
     const price = opts.price ? adjust(opts.price, pPrice) : null;
@@ -824,9 +832,11 @@ export class OKXExchange extends BaseExchange {
 
     const maxSize = market.limits.amount.max;
     const pPrice = market.precision.price;
-    const pAmount = market.precision.amount;
 
-    const amount = adjust(divide(opts.amount, pAmount), pAmount);
+    const pFactor = market.precision.amount;
+    const pAmount = divide(pFactor, pFactor);
+
+    const amount = adjust(divide(opts.amount, pFactor), pAmount);
     const price = opts.price ? adjust(opts.price, pPrice) : null;
 
     const req = omitUndefined({
