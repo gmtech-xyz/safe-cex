@@ -1,4 +1,4 @@
-## [6.0.6](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v6.0.6) (2023-04-27)
+## [6.0.7](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v6.0.7) (2023-05-16)
 
 
 ### Bug Fixes
@@ -20,12 +20,15 @@
 * **okx.ws-private:** listen for TSL ([9f918ce](https://github.com/gmtech-xyz/safe-cex/commit/9f918ce46bd6fcd15f890f6292f2ea2d0b28db05))
 * **okx.ws-public:** retry until markets are fetched ([35ea769](https://github.com/gmtech-xyz/safe-cex/commit/35ea7698597838bac31b8a990c5a7af862f624a4))
 * **okx/orderbook:** remove bids/asks out of reach ([8c54791](https://github.com/gmtech-xyz/safe-cex/commit/8c547911186b86f30fbc92a5f4ce16fe5ae6a124))
+* **okx:** adjust by lotsize ([0d99909](https://github.com/gmtech-xyz/safe-cex/commit/0d9990984474744ae7d034229df0d43e18b79074))
 * **okx:** balance total calc ([57f20b7](https://github.com/gmtech-xyz/safe-cex/commit/57f20b7e19bf0e9658fb16e9681eb527253119ca))
 * **okx:** clientOrderId max len ([fed346f](https://github.com/gmtech-xyz/safe-cex/commit/fed346f3f2ba2453ceecf731671c19dd36e7dbad))
 * **okx:** dont show algo order if triggerPrice is 0 ([040e35e](https://github.com/gmtech-xyz/safe-cex/commit/040e35e4fda6ae05ac7286c2fc71f17a1a94166c))
+* **okx:** error handling changePositionMode ([c562e53](https://github.com/gmtech-xyz/safe-cex/commit/c562e53482fb378d819846fc9e9a1a556aca14a5))
 * **okx:** fetch leverage before positions ([185d6f5](https://github.com/gmtech-xyz/safe-cex/commit/185d6f5773400f7da44c26e84c11349aad40d399))
 * **okx:** fetch only linear markets ([de06e77](https://github.com/gmtech-xyz/safe-cex/commit/de06e77ed8591160cc035f721365efa051d9b4d1))
 * **okx:** need to use proxy ([93b31b1](https://github.com/gmtech-xyz/safe-cex/commit/93b31b13d7a919e686934920e2ee4912eb81ff62))
+* **okx:** net mode long/short closes ([2061946](https://github.com/gmtech-xyz/safe-cex/commit/2061946b1104ee82a60f90b0dc3e6b7f579471fb))
 * **okx:** ohlcv timestamp ([e8954cc](https://github.com/gmtech-xyz/safe-cex/commit/e8954ccf837af889c0cc13199ef5b5b1784b4c3d))
 * **okx:** place order adjust size ([1d13a4a](https://github.com/gmtech-xyz/safe-cex/commit/1d13a4a39ae03dc0db160f3dcbc8d7e328cc62ec))
 * **okx:** place orders, display positions in hedge mode ([91a1dc4](https://github.com/gmtech-xyz/safe-cex/commit/91a1dc4094319a103e9abd2ff69316a84587ff00))
@@ -35,6 +38,7 @@
 * **okx:** resubscribe kline/orderbook on close ([c46c121](https://github.com/gmtech-xyz/safe-cex/commit/c46c1219b31d8c47078fb4e933d0b11dc8dd3b97))
 * **okx:** set leverage ([d46711c](https://github.com/gmtech-xyz/safe-cex/commit/d46711c43458d93e357149e16b0295e68e7fa5c3))
 * **okx:** trailing stops ([cc9036a](https://github.com/gmtech-xyz/safe-cex/commit/cc9036adb401dace05ea5a0817ccea541380703f))
+* **okx:** update SL/TP on hedge mode ([789b6d2](https://github.com/gmtech-xyz/safe-cex/commit/789b6d283d46b464c5a77dff81b11b1eaadde275))
 * **orderbook:** clear timeout, check if disposed after snapshot ([27dc929](https://github.com/gmtech-xyz/safe-cex/commit/27dc92914ead0496174604a3e8e34ff55b4fdc34))
 * **safe-math:** need to round with `adjust()` ([d5fc628](https://github.com/gmtech-xyz/safe-cex/commit/d5fc6284babed44231fe8febe0ef48cca2bbd4e5))
 * **safe-math:** remove memoize, its a memory leak ([9277dd2](https://github.com/gmtech-xyz/safe-cex/commit/9277dd2bdef0ac1b328367a5b36db1dcb4b9484f))
