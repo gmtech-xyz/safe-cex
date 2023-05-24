@@ -18,7 +18,7 @@ const exchanges = {
 
 export const createExchange = (
   exchangeName: keyof typeof exchanges,
-  options: ExchangeOptions & { key?: string; secret?: string },
+  options: ExchangeOptions,
   store?: Store
 ) => {
   // start the virtual clock to contact exchanges
@@ -26,8 +26,5 @@ export const createExchange = (
   virtualClock.start();
 
   const Exchange = exchanges[exchangeName];
-  return new Exchange(
-    { ...options, key: options.key || '', secret: options.secret || '' },
-    store || new DefaultStore()
-  );
+  return new Exchange(options, store || new DefaultStore());
 };
