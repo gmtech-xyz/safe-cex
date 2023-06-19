@@ -2,6 +2,7 @@ import type { Axios } from 'axios';
 import rateLimit from 'axios-rate-limit';
 import type { ManipulateType } from 'dayjs';
 import dayjs from 'dayjs';
+import groupBy from 'lodash/groupBy';
 
 import type { Store } from '../../store/store.interface';
 import type {
@@ -281,22 +282,7 @@ export class BitgetExchange extends BaseExchange {
       { params: { productType: this.apiProductType } }
     );
 
-    const orders: Order[] = data.map((o) => {
-      return {
-        id: o.orderId,
-        status: ORDER_STATUS[o.state],
-        symbol: o.symbol.replace(`_${this.apiProductType.toUpperCase()}`, ''),
-        type: ORDER_TYPE[o.orderType],
-        side: ORDER_SIDE[o.tradeSide],
-        price: o.price,
-        amount: o.size,
-        filled: o.filledQty,
-        reduceOnly: o.reduceOnly,
-        remaining: subtract(o.size, o.filledQty),
-      };
-    });
-
-    return orders;
+    return data.map(this.mapOrder);
   };
 
   fetchOHLCV = async (opts: OHLCVOptions) => {
@@ -340,5 +326,69 @@ export class BitgetExchange extends BaseExchange {
     callback: (orderBook: OrderBook) => void
   ) => {
     return this.publicWebsocket.listenOrderBook(symbol, callback);
+  };
+
+  cancelAllOrders = async () => {
+    try {
+      await this.xhr.post(ENDPOINTS.CANCEL_ALL_ORDERS, {
+        productType: this.apiProductType,
+        marginCoin: 'USDT',
+      });
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.msg || err?.message);
+    }
+  };
+
+  cancelOrders = async (orders: Order[]) => {
+    const grouped = groupBy(orders, 'symbol');
+
+    for (const [key, value] of Object.entries(grouped)) {
+      const symbol = `${key}_${this.apiProductType.toUpperCase()}`;
+      const orderIds = value.map((o) => o.id);
+
+      try {
+        await this.xhr.post(ENDPOINTS.CANCEL_ORDERS, {
+          symbol,
+          orderIds,
+          marginCoin: 'USDT',
+        });
+      } catch (err: any) {
+        this.emitter.emit('error', err?.response?.data?.msg || err?.message);
+      }
+    }
+  };
+
+  cancelSymbolOrders = async (symbol: string) => {
+    try {
+      await this.xhr.post(ENDPOINTS.CANCEL_SYMBOL_ORDERS, {
+        symbol: `${symbol}_${this.apiProductType.toUpperCase()}`,
+        marginCoin: 'USDT',
+      });
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.msg || err?.message);
+    }
+  };
+
+  mapOrder = (o: Record<string, any>) => {
+    const order: Order = {
+      id: o.orderId || o.ordId,
+      status: ORDER_STATUS[o.state || o.status],
+      symbol: (o.symbol || o.instId).replace(
+        `_${this.apiProductType.toUpperCase()}`,
+        ''
+      ),
+      type: ORDER_TYPE[o.orderType || o.ordType],
+      side: ORDER_SIDE[o.tradeSide || o.tS],
+      price: o.price || parseFloat(o.px),
+      amount: o.size || parseFloat(o.sz),
+      filled: o.filledQty || parseFloat(o.accFillSz),
+      reduceOnly: o.reduceOnly || o.low,
+      remaining: subtract(
+        o.size || parseFloat(o.px),
+        o.filledQty || parseFloat(o.accFillSz)
+      ),
+    };
+
+    return order;
   };
 }

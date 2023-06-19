@@ -44,7 +44,15 @@ export class BitgetPrivateWebsocket extends BaseWebSocket<BitgetExchange> {
     }
 
     const json = JSON.parse(data);
-    console.log(json);
+
+    if (json.arg.channel === 'orders' && json.event !== 'subscribe') {
+      this.handleOrderTopic(json);
+      return;
+    }
+
+    if (json.arg.channel === 'positions' && json.event !== 'subscribe') {
+      //
+    }
   };
 
   handlePongEvent = () => {
@@ -57,6 +65,26 @@ export class BitgetPrivateWebsocket extends BaseWebSocket<BitgetExchange> {
     }
 
     this.pingTimeoutId = setTimeout(() => this.ping(), 10_000);
+  };
+
+  handleOrderTopic = (data: Record<string, any>) => {
+    const [order] = data.data;
+
+    if (order.status === 'cancelled') {
+      this.store.removeOrder({ id: order.ordId });
+      return;
+    }
+
+    if (order.status === 'new') {
+      console.log(order);
+
+      this.store.addOrUpdateOrder(this.parent.mapOrder(order));
+      return;
+    }
+
+    if (order.status === 'filled') {
+      //
+    }
   };
 
   private auth = () => {
