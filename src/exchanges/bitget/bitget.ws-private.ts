@@ -68,22 +68,24 @@ export class BitgetPrivateWebsocket extends BaseWebSocket<BitgetExchange> {
   };
 
   handleOrderTopic = (data: Record<string, any>) => {
-    const [order] = data.data;
+    const [rawOrder] = data.data;
+    const order = this.parent.mapOrder(rawOrder);
 
-    if (order.status === 'cancelled') {
-      this.store.removeOrder({ id: order.ordId });
-      return;
+    if (rawOrder.status === 'full-fill' || rawOrder.status === 'partial-fill') {
+      this.emitter.emit('fill', {
+        side: order.side,
+        symbol: order.symbol,
+        price: order.price,
+        amount: parseFloat(rawOrder.fillSz),
+      });
     }
 
-    if (order.status === 'new') {
-      console.log(order);
-
-      this.store.addOrUpdateOrder(this.parent.mapOrder(order));
-      return;
+    if (rawOrder.status === 'cancelled' || rawOrder.status === 'full-fill') {
+      this.store.removeOrder(order);
     }
 
-    if (order.status === 'filled') {
-      //
+    if (rawOrder.status === 'new' || rawOrder.status === 'partial-fill') {
+      this.store.addOrUpdateOrder(order);
     }
   };
 
