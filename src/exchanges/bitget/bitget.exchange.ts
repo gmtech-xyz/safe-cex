@@ -289,9 +289,9 @@ export class BitgetExchange extends BaseExchange {
 
   fetchOrders = async () => {
     const normalOrders = await this.fetchNormalOrders();
-    const planOrders = await this.fetchPlanOrders();
+    const algoOrders = await this.fetchAlgoOrders();
 
-    return [...normalOrders, ...planOrders];
+    return [...normalOrders, ...algoOrders];
   };
 
   fetchNormalOrders = async () => {
@@ -305,11 +305,11 @@ export class BitgetExchange extends BaseExchange {
     return data.map(this.mapOrder);
   };
 
-  fetchPlanOrders = async () => {
+  fetchAlgoOrders = async () => {
     const {
       data: { data },
     } = await this.xhr.get<{ data: Array<Record<string, any>> }>(
-      ENDPOINTS.PLAN_ORDERS,
+      ENDPOINTS.ALGO_ORDERS,
       { params: { productType: this.apiProductType, isPlan: 'profit_loss' } }
     );
 

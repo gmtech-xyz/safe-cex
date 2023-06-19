@@ -23,8 +23,9 @@ export const ENDPOINTS = {
   CANCEL_ORDERS: '/api/mix/v1/order/cancel-batch-orders',
   CANCEL_ALL_ORDERS: '/api/mix/v1/order/cancel-all-orders',
   CANCEL_SYMBOL_ORDERS: '/api/mix/v1/order/cancel-symbol-orders',
+  PLACE_ORDER: '/api/mix/v1/order/placeOrder',
   BATCH_ORDERS: '/api/mix/v1/order/batch-orders',
-  PLAN_ORDERS: '/api/mix/v1/plan/currentPlan',
+  ALGO_ORDERS: '/api/mix/v1/plan/currentPlan',
 };
 
 export const INTERVAL: Record<Timeframe, string> = {
