@@ -123,7 +123,7 @@ export class BitgetPublicWebsocket extends BaseWebSocket<BitgetExchange> {
         last: parseFloat(data.last),
         index: parseFloat(data.indexPrice),
         percentage: parseFloat(data.chgUTC) * 100,
-        fundingRate: parseFloat(data.fundingRate),
+        fundingRate: parseFloat(data.capitalRate),
         volume: parseFloat(data.baseVolume),
         quoteVolume: parseFloat(data.quoteVolume),
       };
@@ -141,7 +141,7 @@ export class BitgetPublicWebsocket extends BaseWebSocket<BitgetExchange> {
         if (!this.isDisposed) {
           this.messageHandlers[topic] = ({ data: [c] }: Data) => {
             const candle: Candle = {
-              timestamp: c[0],
+              timestamp: parseInt(c[0], 10) / 1000,
               open: parseFloat(c[1]),
               high: parseFloat(c[2]),
               low: parseFloat(c[3]),

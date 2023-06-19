@@ -10,6 +10,7 @@ import type {
   ExchangeOptions,
   Market,
   OHLCVOptions,
+  Order,
   OrderBook,
   Position,
   Ticker,
@@ -19,7 +20,15 @@ import { multiply, subtract } from '../../utils/safe-math';
 import { BaseExchange } from '../base';
 
 import { createAPI } from './bitget.api';
-import { ENDPOINTS, INTERVAL, POSITION_SIDE } from './bitget.types';
+import {
+  ENDPOINTS,
+  INTERVAL,
+  ORDER_SIDE,
+  ORDER_STATUS,
+  ORDER_TYPE,
+  POSITION_SIDE,
+} from './bitget.types';
+import { BitgetPrivateWebsocket } from './bitget.ws-private';
 import { BitgetPublicWebsocket } from './bitget.ws-public';
 
 export class BitgetExchange extends BaseExchange {
@@ -27,14 +36,16 @@ export class BitgetExchange extends BaseExchange {
   unlimitedXHR: Axios;
 
   publicWebsocket: BitgetPublicWebsocket;
+  privateWebsocket: BitgetPrivateWebsocket;
 
   constructor(opts: ExchangeOptions, store: Store) {
     super(opts, store);
 
-    this.xhr = rateLimit(createAPI(opts), { maxRPS: 10 });
+    this.xhr = rateLimit(createAPI(opts), { maxRPS: 3 });
     this.unlimitedXHR = createAPI(opts);
 
     this.publicWebsocket = new BitgetPublicWebsocket(this);
+    this.privateWebsocket = new BitgetPrivateWebsocket(this);
   }
 
   get apiProductType() {
@@ -56,6 +67,7 @@ export class BitgetExchange extends BaseExchange {
   dispose = () => {
     super.dispose();
     this.publicWebsocket.dispose();
+    this.privateWebsocket.dispose();
   };
 
   start = async () => {
@@ -79,11 +91,24 @@ export class BitgetExchange extends BaseExchange {
       loaded: { ...this.store.loaded, tickers: true },
     });
 
+    // start websocket streams
+    this.publicWebsocket.connectAndSubscribe();
+    this.privateWebsocket.connectAndSubscribe();
+
     await this.tick();
     if (this.isDisposed) return;
 
-    // start websocket streams
-    this.publicWebsocket.connectAndSubscribe();
+    this.log(`Ready to trade on Bitget`);
+
+    const orders = await this.fetchOrders();
+    if (this.isDisposed) return;
+
+    this.log(`Loaded Bitget orders`);
+
+    this.store.update({
+      orders,
+      loaded: { ...this.store.loaded, orders: true },
+    });
   };
 
   tick = async () => {
@@ -248,6 +273,32 @@ export class BitgetExchange extends BaseExchange {
     return tickers;
   };
 
+  fetchOrders = async () => {
+    const {
+      data: { data },
+    } = await this.xhr.get<{ data: Array<Record<string, any>> }>(
+      ENDPOINTS.ORDERS,
+      { params: { productType: this.apiProductType } }
+    );
+
+    const orders: Order[] = data.map((o) => {
+      return {
+        id: o.orderId,
+        status: ORDER_STATUS[o.state],
+        symbol: o.symbol.replace(`_${this.apiProductType.toUpperCase()}`, ''),
+        type: ORDER_TYPE[o.orderType],
+        side: ORDER_SIDE[o.tradeSide],
+        price: o.price,
+        amount: o.size,
+        filled: o.filledQty,
+        reduceOnly: o.reduceOnly,
+        remaining: subtract(o.size, o.filledQty),
+      };
+    });
+
+    return orders;
+  };
+
   fetchOHLCV = async (opts: OHLCVOptions) => {
     const interval = INTERVAL[opts.interval];
     const [, amount, unit] = opts.interval.split(/(\d+)/);
@@ -268,7 +319,7 @@ export class BitgetExchange extends BaseExchange {
 
     const candles: Candle[] = data.map((c: string[]) => {
       return {
-        timestamp: c[0],
+        timestamp: parseInt(c[0], 10) / 1000,
         open: parseFloat(c[1]),
         high: parseFloat(c[2]),
         low: parseFloat(c[3]),
