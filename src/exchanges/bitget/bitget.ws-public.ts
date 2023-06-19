@@ -1,4 +1,11 @@
-import type { Candle, OHLCVOptions, Ticker, Writable } from '../../types';
+import type {
+  Candle,
+  OHLCVOptions,
+  OrderBook,
+  Ticker,
+  Writable,
+} from '../../types';
+import { calcOrderBookTotal, sortOrderBook } from '../../utils/orderbook';
 import { BaseWebSocket } from '../base.ws';
 
 import type { BitgetExchange } from './bitget.exchange';
@@ -31,6 +38,14 @@ export class BitgetPublicWebsocket extends BaseWebSocket<BitgetExchange> {
   onOpen = () => {
     if (!this.isDisposed) {
       this.subscribe();
+      this.ping();
+    }
+  };
+
+  ping = () => {
+    if (!this.isDisposed) {
+      this.pingAt = performance.now();
+      this.ws?.send?.('ping');
     }
   };
 
@@ -44,11 +59,17 @@ export class BitgetPublicWebsocket extends BaseWebSocket<BitgetExchange> {
 
   onMessage = ({ data }: MessageEvent) => {
     if (!this.isDisposed) {
+      if (data === 'pong') {
+        this.handlePongEvent();
+        return;
+      }
+
       if (
         data.includes('"action":"snapshot"') &&
         data.includes('"channel":"ticker"')
       ) {
         this.handleTickerSnapshot(JSON.parse(data));
+        return;
       }
 
       if (
@@ -62,9 +83,31 @@ export class BitgetPublicWebsocket extends BaseWebSocket<BitgetExchange> {
 
         if (this.messageHandlers[topic]) {
           this.messageHandlers[topic](json);
+          return;
+        }
+      }
+
+      if (data.includes('"channel":"books"')) {
+        const json = JSON.parse(data);
+        const topic = `orderBook_${json.arg.instId}`;
+
+        if (this.messageHandlers[topic]) {
+          this.messageHandlers[topic](json);
         }
       }
     }
+  };
+
+  handlePongEvent = () => {
+    const diff = performance.now() - this.pingAt;
+    this.store.update({ latency: Math.round(diff / 2) });
+
+    if (this.pingTimeoutId) {
+      clearTimeout(this.pingTimeoutId);
+      this.pingTimeoutId = undefined;
+    }
+
+    this.pingTimeoutId = setTimeout(() => this.ping(), 10_000);
   };
 
   handleTickerSnapshot = (json: Record<string, any>) => {
@@ -145,6 +188,117 @@ export class BitgetPublicWebsocket extends BaseWebSocket<BitgetExchange> {
             ],
           })
         );
+      }
+    };
+  };
+
+  listenOrderBook = (
+    symbol: string,
+    callback: (orderBook: OrderBook) => void
+  ) => {
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    const keys = ['bids', 'asks'] as const;
+    const orderBook: OrderBook = { bids: [], asks: [] };
+
+    const topic = `orderBook_${symbol}`;
+
+    const waitForConnectedAndSubscribe = () => {
+      if (this.isConnected) {
+        if (!this.isDisposed) {
+          this.messageHandlers[topic] = (data: Data) => {
+            if (data.action === 'snapshot') {
+              orderBook.bids = [];
+              orderBook.asks = [];
+
+              keys.forEach((key) => {
+                data.data[0][key].forEach((o: string[]) => {
+                  orderBook[key].push({
+                    price: parseFloat(o[0]),
+                    amount: parseFloat(o[1]),
+                    total: 0,
+                  });
+                });
+              });
+            }
+
+            if (data.action === 'update') {
+              keys.forEach((key) => {
+                data.data[0][key].forEach((o: string[]) => {
+                  const price = parseFloat(o[0]);
+                  const amount = parseFloat(o[1]);
+
+                  const index = orderBook[key].findIndex(
+                    (b) => b.price === price
+                  );
+
+                  if (amount === 0 && index !== -1) {
+                    orderBook[key].splice(index, 1);
+                    return;
+                  }
+
+                  if (amount !== 0) {
+                    if (index === -1) {
+                      orderBook[key].push({ price, amount, total: 0 });
+                      return;
+                    }
+
+                    orderBook[key][index].amount = amount;
+                  }
+                });
+              });
+            }
+
+            sortOrderBook(orderBook);
+            calcOrderBookTotal(orderBook);
+
+            callback(orderBook);
+          };
+
+          const payload = {
+            op: 'subscribe',
+            args: [
+              {
+                instType: 'mc',
+                channel: 'books',
+                instId: symbol,
+              },
+            ],
+          };
+
+          this.ws?.send?.(JSON.stringify(payload));
+        }
+      } else {
+        timeoutId = setTimeout(() => waitForConnectedAndSubscribe(), 100);
+      }
+    };
+
+    waitForConnectedAndSubscribe();
+
+    return () => {
+      delete this.messageHandlers[topic];
+
+      orderBook.asks = [];
+      orderBook.bids = [];
+
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+
+      if (this.isConnected) {
+        const payload = {
+          op: 'unsubscribe',
+          args: [
+            {
+              instType: 'mc',
+              channel: 'books',
+              instId: symbol,
+            },
+          ],
+        };
+
+        this.ws?.send?.(JSON.stringify(payload));
       }
     };
   };

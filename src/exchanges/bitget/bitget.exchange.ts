@@ -10,6 +10,7 @@ import type {
   ExchangeOptions,
   Market,
   OHLCVOptions,
+  OrderBook,
   Position,
   Ticker,
 } from '../../types';
@@ -281,5 +282,12 @@ export class BitgetExchange extends BaseExchange {
 
   listenOHLCV = (opts: OHLCVOptions, callback: (candle: Candle) => void) => {
     return this.publicWebsocket.listenOHLCV(opts, callback);
+  };
+
+  listenOrderBook = (
+    symbol: string,
+    callback: (orderBook: OrderBook) => void
+  ) => {
+    return this.publicWebsocket.listenOrderBook(symbol, callback);
   };
 }
