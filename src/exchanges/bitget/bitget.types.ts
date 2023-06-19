@@ -24,6 +24,7 @@ export const ENDPOINTS = {
   CANCEL_ALL_ORDERS: '/api/mix/v1/order/cancel-all-orders',
   CANCEL_SYMBOL_ORDERS: '/api/mix/v1/order/cancel-symbol-orders',
   BATCH_ORDERS: '/api/mix/v1/order/batch-orders',
+  PLAN_ORDERS: '/api/mix/v1/plan/currentPlan',
 };
 
 export const INTERVAL: Record<Timeframe, string> = {
@@ -49,6 +50,7 @@ export const POSITION_SIDE: Record<string, PositionSide> = {
 export const ORDER_STATUS: Record<string, OrderStatus> = {
   init: OrderStatus.Open,
   new: OrderStatus.Open,
+  not_trigger: OrderStatus.Open,
   partially_filled: OrderStatus.Open,
   filled: OrderStatus.Closed,
   canceled: OrderStatus.Canceled,
@@ -57,6 +59,8 @@ export const ORDER_STATUS: Record<string, OrderStatus> = {
 export const ORDER_TYPE: Record<string, OrderType> = {
   limit: OrderType.Limit,
   market: OrderType.Market,
+  pos_profit: OrderType.TakeProfit,
+  pos_loss: OrderType.StopLoss,
 };
 
 export const ORDER_SIDE: Record<string, OrderSide> = {

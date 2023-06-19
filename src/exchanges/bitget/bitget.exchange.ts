@@ -7,20 +7,19 @@ import omit from 'lodash/omit';
 import times from 'lodash/times';
 
 import type { Store } from '../../store/store.interface';
-import {
-  OrderSide,
-  type Balance,
-  type Candle,
-  type ExchangeOptions,
-  type Market,
-  type OHLCVOptions,
-  type Order,
-  type OrderBook,
-  type PlaceOrderOpts,
-  type Position,
-  type Ticker,
-  OrderType,
-  OrderTimeInForce,
+import { OrderSide, OrderType, OrderTimeInForce } from '../../types';
+import type {
+  Writable,
+  Balance,
+  Candle,
+  ExchangeOptions,
+  Market,
+  OHLCVOptions,
+  Order,
+  OrderBook,
+  PlaceOrderOpts,
+  Position,
+  Ticker,
 } from '../../types';
 import { inverseObj } from '../../utils/inverse-obj';
 import { loop } from '../../utils/loop';
@@ -165,11 +164,11 @@ export class BitgetExchange extends BaseExchange {
 
     const balance: Balance = {
       used: subtract(
-        parseFloat(usdt.equity),
+        parseFloat(usdt.available),
         parseFloat(usdt.crossMaxAvailable)
       ),
       free: parseFloat(usdt.crossMaxAvailable),
-      total: parseFloat(usdt.equity),
+      total: parseFloat(usdt.available),
       upnl: parseFloat(usdt.unrealizedPL),
     };
 
@@ -289,11 +288,29 @@ export class BitgetExchange extends BaseExchange {
   };
 
   fetchOrders = async () => {
+    const normalOrders = await this.fetchNormalOrders();
+    const planOrders = await this.fetchPlanOrders();
+
+    return [...normalOrders, ...planOrders];
+  };
+
+  fetchNormalOrders = async () => {
     const {
       data: { data },
     } = await this.xhr.get<{ data: Array<Record<string, any>> }>(
       ENDPOINTS.ORDERS,
       { params: { productType: this.apiProductType } }
+    );
+
+    return data.map(this.mapOrder);
+  };
+
+  fetchPlanOrders = async () => {
+    const {
+      data: { data },
+    } = await this.xhr.get<{ data: Array<Record<string, any>> }>(
+      ENDPOINTS.PLAN_ORDERS,
+      { params: { productType: this.apiProductType, isPlan: 'profit_loss' } }
     );
 
     return data.map(this.mapOrder);
@@ -468,6 +485,10 @@ export class BitgetExchange extends BaseExchange {
 
         const oIds = data?.orderInfo?.map?.((obj: any) => obj.orderId);
         if (oIds) newOrderIds.push(...oIds);
+
+        data?.failure?.forEach?.((obj: any) => {
+          this.emitter.emit('error', obj.errorMsg);
+        });
       } catch (err: any) {
         this.emitter.emit('error', err?.response?.data?.msg || err?.message);
       }
@@ -489,7 +510,7 @@ export class BitgetExchange extends BaseExchange {
   };
 
   mapOrder = (o: Record<string, any>) => {
-    const order: Order = {
+    const order: Writable<Order> = {
       id: o.orderId || o.ordId,
       status: ORDER_STATUS[o.state || o.status],
       symbol: (o.symbol || o.instId).replace(
@@ -507,6 +528,12 @@ export class BitgetExchange extends BaseExchange {
         o.filledQty || parseFloat(o.accFillSz)
       ),
     };
+
+    if (o.planType?.startsWith?.('pos_')) {
+      order.type = ORDER_TYPE[o.planType];
+      order.price = parseFloat(o.triggerPrice);
+      order.reduceOnly = true;
+    }
 
     return order;
   };
