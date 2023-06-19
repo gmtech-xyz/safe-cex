@@ -1,5 +1,11 @@
 import type { Timeframe } from '../../types';
-import { OrderSide, OrderType, OrderStatus, PositionSide } from '../../types';
+import {
+  OrderTimeInForce,
+  OrderSide,
+  OrderType,
+  OrderStatus,
+  PositionSide,
+} from '../../types';
 
 export const RECV_WINDOW = 5000;
 
@@ -17,6 +23,7 @@ export const ENDPOINTS = {
   CANCEL_ORDERS: '/api/mix/v1/order/cancel-batch-orders',
   CANCEL_ALL_ORDERS: '/api/mix/v1/order/cancel-all-orders',
   CANCEL_SYMBOL_ORDERS: '/api/mix/v1/order/cancel-symbol-orders',
+  BATCH_ORDERS: '/api/mix/v1/order/batch-orders',
 };
 
 export const INTERVAL: Record<Timeframe, string> = {
@@ -65,4 +72,11 @@ export const ORDER_SIDE: Record<string, OrderSide> = {
   burst_close_short: OrderSide.Buy,
   delivery_close_long: OrderSide.Sell,
   delivery_close_short: OrderSide.Buy,
+};
+
+export const TIME_IN_FORCE: Record<string, OrderTimeInForce> = {
+  normal: OrderTimeInForce.GoodTillCancel,
+  post_only: OrderTimeInForce.PostOnly,
+  fok: OrderTimeInForce.FillOrKill,
+  ioc: OrderTimeInForce.ImmediateOrCancel,
 };

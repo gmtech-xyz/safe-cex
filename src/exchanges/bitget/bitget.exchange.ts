@@ -3,21 +3,30 @@ import rateLimit from 'axios-rate-limit';
 import type { ManipulateType } from 'dayjs';
 import dayjs from 'dayjs';
 import groupBy from 'lodash/groupBy';
+import omit from 'lodash/omit';
+import times from 'lodash/times';
 
 import type { Store } from '../../store/store.interface';
-import type {
-  Balance,
-  Candle,
-  ExchangeOptions,
-  Market,
-  OHLCVOptions,
-  Order,
-  OrderBook,
-  Position,
-  Ticker,
+import {
+  OrderSide,
+  type Balance,
+  type Candle,
+  type ExchangeOptions,
+  type Market,
+  type OHLCVOptions,
+  type Order,
+  type OrderBook,
+  type PlaceOrderOpts,
+  type Position,
+  type Ticker,
+  OrderType,
+  OrderTimeInForce,
 } from '../../types';
+import { inverseObj } from '../../utils/inverse-obj';
 import { loop } from '../../utils/loop';
-import { multiply, subtract } from '../../utils/safe-math';
+import { omitUndefined } from '../../utils/omit-undefined';
+import { adjust, multiply, subtract } from '../../utils/safe-math';
+import { uuid } from '../../utils/uuid';
 import { BaseExchange } from '../base';
 
 import { createAPI } from './bitget.api';
@@ -28,6 +37,7 @@ import {
   ORDER_STATUS,
   ORDER_TYPE,
   POSITION_SIDE,
+  TIME_IN_FORCE,
 } from './bitget.types';
 import { BitgetPrivateWebsocket } from './bitget.ws-private';
 import { BitgetPublicWebsocket } from './bitget.ws-public';
@@ -51,6 +61,10 @@ export class BitgetExchange extends BaseExchange {
 
   get apiProductType() {
     return this.options.testnet ? 'sumcbl' : 'umcbl';
+  }
+
+  get apiMarginCoin() {
+    return this.options.testnet ? 'SUSDT' : 'USDT';
   }
 
   validateAccount = async () => {
@@ -146,7 +160,7 @@ export class BitgetExchange extends BaseExchange {
       { params: { productType: this.apiProductType } }
     );
 
-    const usdt = data.find((b) => b.marginCoin === 'USDT');
+    const usdt = data.find((b) => b.marginCoin === this.apiMarginCoin);
     if (!usdt) return this.store.balance;
 
     const balance: Balance = {
@@ -170,7 +184,7 @@ export class BitgetExchange extends BaseExchange {
       {
         params: {
           productType: this.apiProductType,
-          marginCoin: 'USDT',
+          marginCoin: this.apiMarginCoin,
         },
       }
     );
@@ -205,7 +219,7 @@ export class BitgetExchange extends BaseExchange {
     );
 
     const markets: Market[] = data
-      .filter((m) => m.quoteCoin === 'USDT')
+      .filter((m) => m.quoteCoin === this.apiMarginCoin)
       .map((m) => {
         const priceDecimals = 10 / 10 ** (parseFloat(m.pricePlace) + 1);
         const pricePrecision = priceDecimals * parseFloat(m.priceEndStep);
@@ -332,8 +346,9 @@ export class BitgetExchange extends BaseExchange {
     try {
       await this.xhr.post(ENDPOINTS.CANCEL_ALL_ORDERS, {
         productType: this.apiProductType,
-        marginCoin: 'USDT',
+        marginCoin: this.apiMarginCoin,
       });
+      this.store.update({ orders: [] });
     } catch (err: any) {
       this.emitter.emit('error', err?.response?.data?.msg || err?.message);
     }
@@ -342,16 +357,17 @@ export class BitgetExchange extends BaseExchange {
   cancelOrders = async (orders: Order[]) => {
     const grouped = groupBy(orders, 'symbol');
 
-    for (const [key, value] of Object.entries(grouped)) {
+    for (const [key, symbolOrders] of Object.entries(grouped)) {
       const symbol = `${key}_${this.apiProductType.toUpperCase()}`;
-      const orderIds = value.map((o) => o.id);
+      const orderIds = symbolOrders.map((o) => o.id);
 
       try {
         await this.xhr.post(ENDPOINTS.CANCEL_ORDERS, {
           symbol,
           orderIds,
-          marginCoin: 'USDT',
+          marginCoin: this.apiMarginCoin,
         });
+        this.store.removeOrders(symbolOrders);
       } catch (err: any) {
         this.emitter.emit('error', err?.response?.data?.msg || err?.message);
       }
@@ -362,11 +378,114 @@ export class BitgetExchange extends BaseExchange {
     try {
       await this.xhr.post(ENDPOINTS.CANCEL_SYMBOL_ORDERS, {
         symbol: `${symbol}_${this.apiProductType.toUpperCase()}`,
-        marginCoin: 'USDT',
+        marginCoin: this.apiMarginCoin,
       });
+      this.store.removeOrders(
+        this.store.orders.filter((o) => o.symbol === symbol)
+      );
     } catch (err: any) {
       this.emitter.emit('error', err?.response?.data?.msg || err?.message);
     }
+  };
+
+  placeOrder = async (opts: PlaceOrderOpts) => {
+    const payloads = this.formatCreateOrder(opts);
+    return await this.placeOrderBatch(payloads);
+  };
+
+  placeOrders = async (orders: PlaceOrderOpts[]) => {
+    const requests = orders.flatMap((o) => this.formatCreateOrder(o));
+    return await this.placeOrderBatch(requests);
+  };
+
+  formatCreateOrder = (opts: PlaceOrderOpts) => {
+    const market = this.store.markets.find((m) => m.symbol === opts.symbol);
+
+    if (!market) {
+      throw new Error(`Market ${opts.symbol} not found`);
+    }
+
+    const side = this.getOrderSide(opts);
+
+    const maxSize = market.limits.amount.max;
+    const pPrice = market.precision.price;
+
+    const pAmount = market.precision.amount;
+    const amount = adjust(opts.amount, pAmount);
+
+    const price =
+      opts.price && opts.type !== OrderType.Market
+        ? adjust(opts.price, pPrice)
+        : undefined;
+
+    const timeInForce = opts.timeInForce
+      ? inverseObj(TIME_IN_FORCE)[opts.timeInForce]
+      : inverseObj(TIME_IN_FORCE)[OrderTimeInForce.GoodTillCancel];
+
+    const req = omitUndefined({
+      symbol: market.id,
+      size: amount ? `${amount}` : undefined,
+      price: price ? `${price}` : undefined,
+      side,
+      orderType: inverseObj(ORDER_TYPE)[opts.type],
+      timeInForce,
+    });
+
+    const lots = amount > maxSize ? Math.ceil(amount / maxSize) : 1;
+    const rest = amount > maxSize ? adjust(amount % maxSize, pAmount) : 0;
+
+    const lotSize = adjust((amount - rest) / lots, pAmount);
+
+    const payloads: Array<Record<string, any>> = times(lots, () => ({
+      ...req,
+      size: `${lotSize}`,
+    }));
+
+    if (rest) {
+      payloads.push({ ...req, quantity: `${rest}` });
+    }
+
+    for (const payload of payloads) {
+      payload.clientOid = uuid();
+    }
+
+    return payloads;
+  };
+
+  placeOrderBatch = async (payloads: Array<Record<string, any>>) => {
+    const newOrderIds: string[] = [];
+    const grouped = groupBy(payloads, 'symbol');
+
+    for (const [symbol, orders] of Object.entries(grouped)) {
+      try {
+        const {
+          data: { data },
+        } = await this.xhr.post(ENDPOINTS.BATCH_ORDERS, {
+          symbol,
+          marginCoin: this.apiMarginCoin,
+          orderDataList: orders.map((o) => omit(o, 'symbol')),
+        });
+
+        const oIds = data?.orderInfo?.map?.((obj: any) => obj.orderId);
+        if (oIds) newOrderIds.push(...oIds);
+      } catch (err: any) {
+        this.emitter.emit('error', err?.response?.data?.msg || err?.message);
+      }
+    }
+
+    return newOrderIds;
+  };
+
+  getOrderSide = (opts: PlaceOrderOpts) => {
+    if (opts.reduceOnly) {
+      if (opts.side === OrderSide.Buy) return 'close_short';
+      if (opts.side === OrderSide.Sell) return 'close_long';
+    }
+
+    if (opts.side === OrderSide.Buy) return 'open_long';
+    if (opts.side === OrderSide.Sell) return 'open_short';
+
+    throw new Error(`Unknown order side: ${opts.side}`);
   };
 
   mapOrder = (o: Record<string, any>) => {
