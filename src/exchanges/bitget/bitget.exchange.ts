@@ -4,6 +4,7 @@ import type { ManipulateType } from 'dayjs';
 import dayjs from 'dayjs';
 import groupBy from 'lodash/groupBy';
 import omit from 'lodash/omit';
+import partition from 'lodash/partition';
 import times from 'lodash/times';
 
 import type { Store } from '../../store/store.interface';
@@ -406,13 +407,33 @@ export class BitgetExchange extends BaseExchange {
   };
 
   placeOrder = async (opts: PlaceOrderOpts) => {
+    if (this.isAlgoOrder(opts)) {
+      const payload = this.formatAlgoOrder(opts);
+      return await this.placeAlgoOrders([payload]);
+    }
+
     const payloads = this.formatCreateOrder(opts);
     return await this.placeOrderBatch(payloads);
   };
 
   placeOrders = async (orders: PlaceOrderOpts[]) => {
-    const requests = orders.flatMap((o) => this.formatCreateOrder(o));
-    return await this.placeOrderBatch(requests);
+    const [algoOrders, normalOrders] = partition(orders, this.isAlgoOrder);
+
+    const normalOrdersOpts = normalOrders
+      .flatMap((o) => this.formatCreateOrder(o))
+      .filter((o) => parseFloat(o.size) > 0);
+
+    const derivedAlgoOrders = this.deriveAlgoOrdersFromNormalOrdersOpts(orders);
+    const algoOrdersOpts = [...algoOrders, ...derivedAlgoOrders].map(
+      this.formatAlgoOrder
+    );
+
+    const orderIds = [
+      ...(await this.placeOrderBatch(normalOrdersOpts)),
+      ...(await this.placeAlgoOrders(algoOrdersOpts)),
+    ];
+
+    return orderIds;
   };
 
   formatCreateOrder = (opts: PlaceOrderOpts) => {
@@ -450,7 +471,6 @@ export class BitgetExchange extends BaseExchange {
 
     const lots = amount > maxSize ? Math.ceil(amount / maxSize) : 1;
     const rest = amount > maxSize ? adjust(amount % maxSize, pAmount) : 0;
-
     const lotSize = adjust((amount - rest) / lots, pAmount);
 
     const payloads: Array<Record<string, any>> = times(lots, () => ({
@@ -467,6 +487,36 @@ export class BitgetExchange extends BaseExchange {
     }
 
     return payloads;
+  };
+
+  formatAlgoOrder = (opts: PlaceOrderOpts) => {
+    const market = this.store.markets.find((m) => m.symbol === opts.symbol);
+
+    if (!market) {
+      throw new Error(`Market ${opts.symbol} not found`);
+    }
+
+    const payload: Record<string, any> = {
+      marginCoin: this.apiMarginCoin,
+      symbol: market.id,
+      clientOid: uuid(),
+    };
+
+    if (opts.type === OrderType.TakeProfit && opts.price) {
+      const price = adjust(opts.price, market.precision.price);
+      payload.planType = 'profit_plan';
+      payload.triggerPrice = `${price}`;
+      payload.holdSide = this.getAlgoOrderSide(opts);
+    }
+
+    if (opts.type === OrderType.StopLoss && opts.price) {
+      const price = adjust(opts.price, market.precision.price);
+      payload.planType = 'loss_plan';
+      payload.triggerPrice = `${price}`;
+      payload.holdSide = this.getAlgoOrderSide(opts);
+    }
+
+    return payload;
   };
 
   placeOrderBatch = async (payloads: Array<Record<string, any>>) => {
@@ -497,7 +547,56 @@ export class BitgetExchange extends BaseExchange {
     return newOrderIds;
   };
 
-  getOrderSide = (opts: PlaceOrderOpts) => {
+  placeAlgoOrders = async (payloads: Array<Record<string, any>>) => {
+    const newOrderIds: string[] = [];
+
+    for (const payload of payloads) {
+      try {
+        const {
+          data: { data },
+        } = await this.xhr.post(ENDPOINTS.PLACE_ALGO_ORDER, payload);
+
+        if (data?.orderId) {
+          newOrderIds.push(data.orderId);
+        }
+      } catch (err: any) {
+        this.emitter.emit('error', err?.response?.data?.msg || err?.message);
+      }
+    }
+
+    return newOrderIds;
+  };
+
+  mapOrder = (o: Record<string, any>) => {
+    const order: Writable<Order> = {
+      id: o.orderId || o.ordId || o.id,
+      status: ORDER_STATUS[o.state || o.status],
+      symbol: (o.symbol || o.instId).replace(
+        `_${this.apiProductType.toUpperCase()}`,
+        ''
+      ),
+      type: ORDER_TYPE[o.orderType || o.ordType],
+      side: ORDER_SIDE[o.tradeSide || o.tS],
+      price: o.price || parseFloat(o.px),
+      amount: o.size || parseFloat(o.sz) || 0,
+      filled: o.filledQty || parseFloat(o.accFillSz) || 0,
+      reduceOnly: o.reduceOnly || o.low,
+      remaining: subtract(
+        o.size || parseFloat(o.sz) || 0,
+        o.filledQty || parseFloat(o.accFillSz) || 0
+      ),
+    };
+
+    if (o.planType) {
+      order.type = ORDER_TYPE[o.planType];
+      order.price = parseFloat(o.triggerPrice) || parseFloat(o.triggerPx);
+      order.reduceOnly = true;
+    }
+
+    return order;
+  };
+
+  private getOrderSide = (opts: PlaceOrderOpts) => {
     if (opts.reduceOnly) {
       if (opts.side === OrderSide.Buy) return 'close_short';
       if (opts.side === OrderSide.Sell) return 'close_long';
@@ -509,32 +608,25 @@ export class BitgetExchange extends BaseExchange {
     throw new Error(`Unknown order side: ${opts.side}`);
   };
 
-  mapOrder = (o: Record<string, any>) => {
-    const order: Writable<Order> = {
-      id: o.orderId || o.ordId,
-      status: ORDER_STATUS[o.state || o.status],
-      symbol: (o.symbol || o.instId).replace(
-        `_${this.apiProductType.toUpperCase()}`,
-        ''
-      ),
-      type: ORDER_TYPE[o.orderType || o.ordType],
-      side: ORDER_SIDE[o.tradeSide || o.tS],
-      price: o.price || parseFloat(o.px),
-      amount: o.size || parseFloat(o.sz),
-      filled: o.filledQty || parseFloat(o.accFillSz),
-      reduceOnly: o.reduceOnly || o.low,
-      remaining: subtract(
-        o.size || parseFloat(o.px),
-        o.filledQty || parseFloat(o.accFillSz)
-      ),
-    };
-
-    if (o.planType?.startsWith?.('pos_')) {
-      order.type = ORDER_TYPE[o.planType];
-      order.price = parseFloat(o.triggerPrice);
-      order.reduceOnly = true;
+  private getAlgoOrderSide = (opts: PlaceOrderOpts) => {
+    if (opts.type === OrderType.TakeProfit) {
+      if (opts.side === OrderSide.Buy) return 'short';
+      if (opts.side === OrderSide.Sell) return 'long';
     }
 
-    return order;
+    if (opts.type === OrderType.StopLoss) {
+      if (opts.side === OrderSide.Buy) return 'short';
+      if (opts.side === OrderSide.Sell) return 'long';
+    }
+
+    throw new Error(`Unknown algo order side: ${opts.type} - ${opts.side}`);
+  };
+
+  private isAlgoOrder = (opts: PlaceOrderOpts) => {
+    return (
+      opts.type === OrderType.StopLoss ||
+      opts.type === OrderType.TakeProfit ||
+      opts.type === OrderType.TrailingStopLoss
+    );
   };
 }

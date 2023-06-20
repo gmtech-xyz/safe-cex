@@ -50,8 +50,8 @@ export class BitgetPrivateWebsocket extends BaseWebSocket<BitgetExchange> {
       return;
     }
 
-    if (json.arg.channel === 'positions' && json.event !== 'subscribe') {
-      //
+    if (json.arg.channel === 'ordersAlgo' && json.event !== 'subscribe') {
+      this.handleAlgoOrdersTopic(json);
     }
   };
 
@@ -89,6 +89,19 @@ export class BitgetPrivateWebsocket extends BaseWebSocket<BitgetExchange> {
     }
   };
 
+  handleAlgoOrdersTopic = (data: Record<string, any>) => {
+    const [rawOrder] = data.data;
+    const order = this.parent.mapOrder(rawOrder);
+
+    if (rawOrder.state === 'cancel') {
+      this.store.removeOrder(order);
+    }
+
+    if (rawOrder.state === 'not_trigger') {
+      this.store.addOrUpdateOrder(order);
+    }
+  };
+
   private auth = () => {
     const timestamp = virtualClock.getCurrentTime().unix();
     const sign = createHmac('sha256', this.parent.options.secret)
@@ -114,19 +127,24 @@ export class BitgetPrivateWebsocket extends BaseWebSocket<BitgetExchange> {
     const payload = {
       op: 'subscribe',
       args: [
-        {
-          instType: this.parent.apiProductType.toUpperCase(),
-          channel: 'account',
-          instId: 'default',
-        },
-        {
-          instType: this.parent.apiProductType.toUpperCase(),
-          channel: 'positions',
-          instId: 'default',
-        },
+        // {
+        //   instType: this.parent.apiProductType.toUpperCase(),
+        //   channel: 'account',
+        //   instId: 'default',
+        // },
+        // {
+        //   instType: this.parent.apiProductType.toUpperCase(),
+        //   channel: 'positions',
+        //   instId: 'default',
+        // },
         {
           instType: this.parent.apiProductType.toUpperCase(),
           channel: 'orders',
+          instId: 'default',
+        },
+        {
+          instType: this.parent.apiProductType.toUpperCase(),
+          channel: 'ordersAlgo',
           instId: 'default',
         },
       ],

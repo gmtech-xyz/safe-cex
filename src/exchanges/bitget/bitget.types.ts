@@ -26,6 +26,7 @@ export const ENDPOINTS = {
   PLACE_ORDER: '/api/mix/v1/order/placeOrder',
   BATCH_ORDERS: '/api/mix/v1/order/batch-orders',
   ALGO_ORDERS: '/api/mix/v1/plan/currentPlan',
+  PLACE_ALGO_ORDER: '/api/mix/v1/plan/placeTPSL',
 };
 
 export const INTERVAL: Record<Timeframe, string> = {
@@ -62,6 +63,10 @@ export const ORDER_TYPE: Record<string, OrderType> = {
   market: OrderType.Market,
   pos_profit: OrderType.TakeProfit,
   pos_loss: OrderType.StopLoss,
+  loss_plan: OrderType.StopLoss,
+  profit_plan: OrderType.TakeProfit,
+  tp: OrderType.TakeProfit,
+  sl: OrderType.StopLoss,
 };
 
 export const ORDER_SIDE: Record<string, OrderSide> = {
