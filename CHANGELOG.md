@@ -1,4 +1,4 @@
-# [7.0.0-beta.2](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v7.0.0-beta.2) (2023-06-20)
+# [7.0.0](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v7.0.0) (2023-06-20)
 
 
 ### Bug Fixes
@@ -6,7 +6,6 @@
 * **afterDecimals:** support exponential ([3331f8e](https://github.com/gmtech-xyz/safe-cex/commit/3331f8e4e0b4f0fa0c093989c5925af4cb150c65))
 * **baseStore:** wrong idx check ([8951b30](https://github.com/gmtech-xyz/safe-cex/commit/8951b306180150519ec0f965b3ec1b784704d3ae))
 * **binance:** remove cancelled orders ([811e0c0](https://github.com/gmtech-xyz/safe-cex/commit/811e0c0f5f0de61c0a81f82141ec74c81626e321))
-* **bybit:** dispose private ws ([eafb095](https://github.com/gmtech-xyz/safe-cex/commit/eafb09562eb357c4ff0baa5b23d3c32e3f4552f0))
 * **bybit:** dont remove orders from store manually ([ec5082c](https://github.com/gmtech-xyz/safe-cex/commit/ec5082c1f6320a11a024955b294e382d59214d33))
 * **bybit:** positionIdx for one-way positional SL/TP ([7c5efad](https://github.com/gmtech-xyz/safe-cex/commit/7c5efad72183a4c10c684d0f3c9c9e9506c893b4))
 * **bybit:** timestamp closer to xhr ([de1e9f7](https://github.com/gmtech-xyz/safe-cex/commit/de1e9f72f03621322e2a8b49ba1edf5456a3bbc0))
@@ -40,10 +39,8 @@
 * **okx:** resubscribe kline/orderbook on close ([c46c121](https://github.com/gmtech-xyz/safe-cex/commit/c46c1219b31d8c47078fb4e933d0b11dc8dd3b97))
 * **okx:** set leverage ([d46711c](https://github.com/gmtech-xyz/safe-cex/commit/d46711c43458d93e357149e16b0295e68e7fa5c3))
 * **okx:** trailing stops ([cc9036a](https://github.com/gmtech-xyz/safe-cex/commit/cc9036adb401dace05ea5a0817ccea541380703f))
-* **okx:** typo ([d131dcc](https://github.com/gmtech-xyz/safe-cex/commit/d131dcc50911aa54d9280176d931b5b65b797d2f))
 * **okx:** update SL/TP on hedge mode ([789b6d2](https://github.com/gmtech-xyz/safe-cex/commit/789b6d283d46b464c5a77dff81b11b1eaadde275))
 * **orderbook:** clear timeout, check if disposed after snapshot ([27dc929](https://github.com/gmtech-xyz/safe-cex/commit/27dc92914ead0496174604a3e8e34ff55b4fdc34))
-* **readme:** typo ([e0fa7dc](https://github.com/gmtech-xyz/safe-cex/commit/e0fa7dcbaccc89eec7af530be0d9c48c5141ce8e))
 * **safe-math:** need to round with `adjust()` ([d5fc628](https://github.com/gmtech-xyz/safe-cex/commit/d5fc6284babed44231fe8febe0ef48cca2bbd4e5))
 * **safe-math:** remove memoize, its a memory leak ([9277dd2](https://github.com/gmtech-xyz/safe-cex/commit/9277dd2bdef0ac1b328367a5b36db1dcb4b9484f))
 * **store:** updatePositions ([dcd701d](https://github.com/gmtech-xyz/safe-cex/commit/dcd701de2e7b18852226c9f35fc4f08e5339592d))
@@ -60,22 +57,8 @@
 
 ### Features
 
+* **biget:** add `BROKER_ID` ([02cebee](https://github.com/gmtech-xyz/safe-cex/commit/02cebeef4d68484f8796d39d61aef9aaf21c7fb5))
 * **binance:** add `listenOrderBook` ([1779ae9](https://github.com/gmtech-xyz/safe-cex/commit/1779ae917e46cf5a72194cca4ff8cbbae3867943))
-* **bitget:** add `setPositionMode` ([8567e2e](https://github.com/gmtech-xyz/safe-cex/commit/8567e2ebc021af12ad50468fe2026fed34993e1e))
-* **bitget:** add ping and order book ([1c6b333](https://github.com/gmtech-xyz/safe-cex/commit/1c6b333fde1f8fbdc54ce816a0e7d2dd0a866757))
-* **bitget:** bootstrap integration ([0c15776](https://github.com/gmtech-xyz/safe-cex/commit/0c1577690a67f3f7f550e03a7352befd04466224))
-* **bitget:** bootstrap place order ([73dce09](https://github.com/gmtech-xyz/safe-cex/commit/73dce092709e5a348597fb3bebeefdf983597ad5))
-* **bitget:** cancel algo orders ([f65c578](https://github.com/gmtech-xyz/safe-cex/commit/f65c578b4e9b72a4739f5337d2a2d40727a139b4))
-* **bitget:** cancel orders ([39681e4](https://github.com/gmtech-xyz/safe-cex/commit/39681e4bd8dc11def9df694411276a0b15b0ada2))
-* **bitget:** fetch and update leverage ([f10e927](https://github.com/gmtech-xyz/safe-cex/commit/f10e927d0e6a7f0cd33f994648a887143a3d227c))
-* **bitget:** fetch leverage ([283a02c](https://github.com/gmtech-xyz/safe-cex/commit/283a02ceb0251390af34beeaefb1826da66b7302))
-* **bitget:** fetch normal orders ([520630d](https://github.com/gmtech-xyz/safe-cex/commit/520630d4098ac4b69bd4088afd046c018f069e90))
-* **bitget:** fetch TP/SL orders, fix balance ([0f7a643](https://github.com/gmtech-xyz/safe-cex/commit/0f7a64387e8dee8e5eec79f799302ecdb34fd70a))
-* **bitget:** set `isHedged` ([eba858b](https://github.com/gmtech-xyz/safe-cex/commit/eba858ba19a75c9cd064f0debd1a9f56db6a00f5))
-* **bitget:** support algo orders ([6b60512](https://github.com/gmtech-xyz/safe-cex/commit/6b60512262f916c64a86081cb9af377b64d0b28b))
-* **bitget:** support fill event ([1653da3](https://github.com/gmtech-xyz/safe-cex/commit/1653da322414daa72a4d6cba23aa0d02e1a2cc9a))
-* **bitget:** update orders ([13b7752](https://github.com/gmtech-xyz/safe-cex/commit/13b7752f5742b08872474fafd65d4ac451fdf9a3))
-* **bitget:** use unlimited xhr ([463b3f0](https://github.com/gmtech-xyz/safe-cex/commit/463b3f0bffbf8ece867812b1c8d95a33a3a19396))
 * **bybit-ws-public:** re-subscribe topics on disconnect ([e56a138](https://github.com/gmtech-xyz/safe-cex/commit/e56a1389bd4d5ffe749cdb6555962cdbd769bb12))
 * **bybit:** add `listenOrderBook` ([db314bf](https://github.com/gmtech-xyz/safe-cex/commit/db314bf0bc0ca2c735acc874cee48295dfe6bc65))
 * **bybit:** emit error if any on update positional TP/SL ([5d5aba2](https://github.com/gmtech-xyz/safe-cex/commit/5d5aba2f9e7697186a628a60ddefd89a90bedbaa))

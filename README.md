@@ -34,6 +34,7 @@ Currently, the library supports Bybit and Binance Futures contracts, OKX Perpetu
 
 - [Bybit](https://partner.bybit.com/b/safecex) Futures USDT contracts (not the unified margin)
 - [Binance](https://accounts.binance.com/en/register?ref=KOLLSXK0) USD-M futures (USDT & BUSD contracts)
+- [Bitget](https://bonus.bitget.com/jkfg77891687268457537) USDT-M Futures (USDT contracts)
 - [WOO X](https://x.woo.org/en/trade?ref=safecex) Futures USDT & futures unified margin
 - [OKX](https://www.okx.com/join/TULEEP) Perpetuals unified margin
 - [GateIO](https://www.gate.io/signup/13385879) Futures USDT contracts
@@ -61,14 +62,17 @@ To initialize the exchange library, you will need:
 import { createExchange } from "safe-cex";
 
 // Initialize exchange class object
-const exchange = createExchange("bybit" | "binance" | "okx" | "woo" | "gate", {
-  key: API_KEY,
-  secret: API_SECRET,
-  applicationId: string, // FOR WOO X
-  passphrase: string, // FOR OKX
-  testnet: boolean,
-  corsAnywhere: "https://cors-anywhere.example.com",
-});
+const exchange = createExchange(
+  "bybit" | "binance" | "okx" | "woo" | "gate" | "bitget",
+  {
+    key: API_KEY,
+    secret: API_SECRET,
+    applicationId: string, // FOR WOO X
+    passphrase: string, // FOR OKX & BITGET
+    testnet: boolean,
+    corsAnywhere: "https://cors-anywhere.example.com",
+  }
+);
 
 // Start the exchange syncronization
 // - will fetch markets, tickers, orders, positions, balance...
@@ -440,6 +444,7 @@ If you found this project interesting or useful, create accounts with my referra
 - [Bybit](https://partner.bybit.com/b/safecex) **Up to $30,000 deposit bonus**
 - [OKX](https://www.okx.com/join/TULEEP) **20% less fees, up to $10,000 deposit bonus**
 - [WOO X](https://x.woo.org/en/trade?ref=safecex) **Deposit $100 and 0 fees for 14 days!**
+- [Bitget](https://bonus.bitget.com/jkfg77891687268457537) **20% less fees**
 - [Binance](https://accounts.binance.com/en/register?ref=KOLLSXK0)
 - [GateIO](https://www.gate.io/signup/13385879)
 
