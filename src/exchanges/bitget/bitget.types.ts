@@ -8,6 +8,7 @@ import {
 } from '../../types';
 
 export const RECV_WINDOW = 5000;
+export const BROKER_ID = 'p8p23';
 
 export const BASE_URL = 'https://api.bitget.com';
 export const BASE_WS_URL = 'wss://ws.bitget.com/mix/v1/stream';

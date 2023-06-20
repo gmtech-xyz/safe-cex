@@ -6,7 +6,7 @@ import qs from 'qs';
 import type { ExchangeOptions } from '../../types';
 import { virtualClock } from '../../utils/virtual-clock';
 
-import { BASE_URL, RECV_WINDOW } from './bitget.types';
+import { BASE_URL, BROKER_ID, RECV_WINDOW } from './bitget.types';
 
 export const createAPI = (options: ExchangeOptions) => {
   const baseURL = options.corsAnywhere
@@ -22,6 +22,7 @@ export const createAPI = (options: ExchangeOptions) => {
     headers: {
       'ACCESS-KEY': options.key,
       'ACCESS-PASSPHRASE': options.passphrase,
+      'X-CHANNEL-API-CODE': BROKER_ID,
       'Content-Type': 'application/json',
     },
   });
