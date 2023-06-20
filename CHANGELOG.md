@@ -1,4 +1,4 @@
-## [7.1.3](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v7.1.3) (2023-06-20)
+## [7.1.4](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v7.1.4) (2023-06-20)
 
 
 ### Bug Fixes
@@ -9,6 +9,7 @@
 * **bybit:** dont remove orders from store manually ([ec5082c](https://github.com/gmtech-xyz/safe-cex/commit/ec5082c1f6320a11a024955b294e382d59214d33))
 * **bybit:** positionIdx for one-way positional SL/TP ([7c5efad](https://github.com/gmtech-xyz/safe-cex/commit/7c5efad72183a4c10c684d0f3c9c9e9506c893b4))
 * **bybit:** timestamp closer to xhr ([de1e9f7](https://github.com/gmtech-xyz/safe-cex/commit/de1e9f72f03621322e2a8b49ba1edf5456a3bbc0))
+* **bybit:** try/catch requests ([b5d8c7c](https://github.com/gmtech-xyz/safe-cex/commit/b5d8c7ca5638a892b2a3b74aa6184600a406f3ac))
 * **createExchange:** revert ([38bf5fd](https://github.com/gmtech-xyz/safe-cex/commit/38bf5fd347162b4a5088297e72bf1d00a8e6a5b7))
 * **defaultStore:** reset use a new object ([2fe682e](https://github.com/gmtech-xyz/safe-cex/commit/2fe682e8acd50cc1686591a40debf9f2d7b32116))
 * **exchanges:** revert latency calc to ping ([b19644c](https://github.com/gmtech-xyz/safe-cex/commit/b19644c8357f8323f8fdded2b31b80c84b12615c))
