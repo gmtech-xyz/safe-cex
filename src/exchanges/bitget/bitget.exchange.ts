@@ -299,6 +299,8 @@ export class BitgetExchange extends BaseExchange {
   };
 
   fetchCurrentLeverage = async () => {
+    // 1. fetch all existing positions with v1 endpoint
+    // this will tell us the current leverage for symbols where we had a position
     const {
       data: { data: allPositions },
     } = await this.xhr.get<{ data: Array<Record<string, any>> }>(
@@ -320,6 +322,14 @@ export class BitgetExchange extends BaseExchange {
       this.leverageHash[d.symbol] = d.leverage;
     });
 
+    // use allPositions opportunity to set if we are in hedge mode
+    if (allPositions.length > 0) {
+      const isHedged = allPositions.some((p) => p.holdMode === 'double_hold');
+      this.store.setSetting('isHedged', isHedged);
+    }
+
+    // 2. fetch all the remaining markets on account endpoint
+    // this will tell us the current leverage for symbols where we never had a position
     const remainingMarkets = this.store.markets.filter(
       (m) => !symbolLeverage.find((d) => d.symbol === m.symbol)
     );
