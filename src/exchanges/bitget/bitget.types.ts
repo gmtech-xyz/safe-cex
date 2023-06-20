@@ -13,9 +13,10 @@ export const BASE_URL = 'https://api.bitget.com';
 export const BASE_WS_URL = 'wss://ws.bitget.com/mix/v1/stream';
 
 export const ENDPOINTS = {
+  ACCOUNT: '/api/mix/v1/account/account',
   BALANCE: '/api/mix/v1/account/accounts',
   MARKETS: '/api/mix/v1/market/contracts',
-  LEVERAGE: '/api/mix/v1/market/symbol-leverage',
+  SYMBOL_LEVERAGE: '/api/mix/v1/market/symbol-leverage',
   TICKERS: '/api/mix/v1/market/tickers',
   POSITIONS: '/api/mix/v1/position/allPosition',
   POSITIONS_V2: '/api/mix/v1/position/allPosition-v2',
@@ -31,6 +32,8 @@ export const ENDPOINTS = {
   PLACE_ALGO_ORDER: '/api/mix/v1/plan/placeTPSL',
   UPDATE_ORDER: '/api/mix/v1/order/modifyOrder',
   UPDATE_ALGO_ORDER: '/api/mix/v1/plan/modifyTPSLPlan',
+  SET_LEVERAGE: '/api/mix/v1/account/setLeverage',
+  POSITION_LEVERAGE: '/api/mix/v1/position/singlePosition-v2',
 };
 
 export const INTERVAL: Record<Timeframe, string> = {

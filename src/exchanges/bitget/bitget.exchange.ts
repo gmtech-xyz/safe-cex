@@ -6,6 +6,7 @@ import groupBy from 'lodash/groupBy';
 import omit from 'lodash/omit';
 import partition from 'lodash/partition';
 import times from 'lodash/times';
+import uniqBy from 'lodash/uniqBy';
 
 import type { Store } from '../../store/store.interface';
 import {
@@ -55,6 +56,8 @@ export class BitgetExchange extends BaseExchange {
   publicWebsocket: BitgetPublicWebsocket;
   privateWebsocket: BitgetPrivateWebsocket;
 
+  private leverageHash: Record<string, number> = {};
+
   constructor(opts: ExchangeOptions, store: Store) {
     super(opts, store);
 
@@ -102,6 +105,9 @@ export class BitgetExchange extends BaseExchange {
 
     // loop fetch leverage brackets
     this.fetchLeverageBrackets();
+
+    // loop fetch positions leverage
+    this.fetchCurrentLeverage();
 
     const tickers = await this.fetchTickers();
     if (this.isDisposed) return;
@@ -187,19 +193,7 @@ export class BitgetExchange extends BaseExchange {
 
   fetchPositions = async () => {
     const {
-      data: { data: rawPositions },
-    } = await this.xhr.get<{ data: Array<Record<string, any>> }>(
-      ENDPOINTS.POSITIONS,
-      {
-        params: {
-          productType: this.apiProductType,
-          marginCoin: this.apiMarginCoin,
-        },
-      }
-    );
-
-    const {
-      data: { data: rawPositionsV2 },
+      data: { data },
     } = await this.xhr.get<{ data: Array<Record<string, any>> }>(
       ENDPOINTS.POSITIONS_V2,
       {
@@ -210,7 +204,7 @@ export class BitgetExchange extends BaseExchange {
       }
     );
 
-    const positions: Position[] = rawPositionsV2.map((p) => {
+    const positions: Position[] = data.map((p) => {
       const contracts = parseFloat(p.total);
       const price = parseFloat(p.marketPrice);
 
@@ -239,7 +233,7 @@ export class BitgetExchange extends BaseExchange {
             side: PositionSide.Long,
             entryPrice: 0,
             notional: 0,
-            leverage: 20,
+            leverage: this.leverageHash[m.id] || 20,
             unrealizedPnl: 0,
             contracts: 0,
             liquidationPrice: 0,
@@ -249,7 +243,7 @@ export class BitgetExchange extends BaseExchange {
             side: PositionSide.Short,
             entryPrice: 0,
             notional: 0,
-            leverage: 20,
+            leverage: this.leverageHash[m.id] || 20,
             unrealizedPnl: 0,
             contracts: 0,
             liquidationPrice: 0,
@@ -261,17 +255,7 @@ export class BitgetExchange extends BaseExchange {
       []
     );
 
-    const allPositions = [...positions, ...fakePositions].map((p) => {
-      const p1 = rawPositions.find(
-        (rp) =>
-          rp.symbol === `${p.symbol}_${this.apiProductType.toUpperCase()}` &&
-          p.side === POSITION_SIDE[rp.holdSide]
-      );
-
-      return p1 ? { ...p, leverage: p1.leverage } : p;
-    });
-
-    return allPositions;
+    return [...positions, ...fakePositions];
   };
 
   fetchMarkets = async () => {
@@ -314,13 +298,59 @@ export class BitgetExchange extends BaseExchange {
     return markets;
   };
 
+  fetchCurrentLeverage = async () => {
+    const {
+      data: { data: allPositions },
+    } = await this.xhr.get<{ data: Array<Record<string, any>> }>(
+      ENDPOINTS.POSITIONS,
+      {
+        params: {
+          productType: this.apiProductType,
+          marginCoin: this.apiMarginCoin,
+        },
+      }
+    );
+
+    const symbolLeverage = uniqBy(
+      allPositions.map((d) => ({ symbol: d.symbol, leverage: d.leverage })),
+      'symbol'
+    );
+
+    symbolLeverage.forEach((d) => {
+      this.leverageHash[d.symbol] = d.leverage;
+    });
+
+    const remainingMarkets = this.store.markets.filter(
+      (m) => !symbolLeverage.find((d) => d.symbol === m.symbol)
+    );
+
+    for (const market of remainingMarkets) {
+      if (!this.isDisposed) {
+        try {
+          const {
+            data: { data },
+          } = await this.xhr.get(ENDPOINTS.ACCOUNT, {
+            params: {
+              symbol: market.id,
+              marginCoin: this.apiMarginCoin,
+            },
+          });
+
+          this.leverageHash[market.id] = data.crossMarginLeverage;
+        } catch (err: any) {
+          this.emitter.emit('error', err?.response?.data?.msg || err?.message);
+        }
+      }
+    }
+  };
+
   fetchLeverageBrackets = async () => {
     for (const market of this.store.markets) {
       if (!this.isDisposed) {
         try {
           const {
             data: { data },
-          } = await this.xhr.get(ENDPOINTS.LEVERAGE, {
+          } = await this.xhr.get(ENDPOINTS.SYMBOL_LEVERAGE, {
             params: { symbol: market.id },
           });
           this.store.updateMarket(market, {
@@ -738,6 +768,37 @@ export class BitgetExchange extends BaseExchange {
     } catch (err: any) {
       this.emitter.emit('error', err?.response?.data?.msg || err?.message);
       return [];
+    }
+  };
+
+  setLeverage = async (symbol: string, inputLeverage: number) => {
+    const market = this.store.markets.find((m) => m.symbol === symbol);
+    const position = this.store.positions.find((p) => p.symbol === symbol);
+
+    if (!market) throw new Error(`Market ${symbol} not found`);
+    if (!position) throw new Error(`Position ${symbol} not found`);
+
+    const leverage = Math.min(
+      Math.max(inputLeverage, market.limits.leverage.min),
+      market.limits.leverage.max
+    );
+
+    if (position.leverage !== leverage) {
+      try {
+        await this.xhr.post(ENDPOINTS.SET_LEVERAGE, {
+          symbol: market.id,
+          marginCoin: this.apiMarginCoin,
+          leverage,
+        });
+
+        this.leverageHash[market.id] = leverage;
+        this.store.updatePositions([
+          [{ symbol, side: PositionSide.Long }, { leverage }],
+          [{ symbol, side: PositionSide.Short }, { leverage }],
+        ]);
+      } catch (err: any) {
+        this.emitter.emit('error', err?.response?.data?.msg || err?.message);
+      }
     }
   };
 
