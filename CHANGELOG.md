@@ -1,4 +1,4 @@
-## [7.1.2](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v7.1.2) (2023-06-20)
+## [7.1.3](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v7.1.3) (2023-06-20)
 
 
 ### Bug Fixes
@@ -46,6 +46,7 @@
 * **safe-math:** remove memoize, its a memory leak ([9277dd2](https://github.com/gmtech-xyz/safe-cex/commit/9277dd2bdef0ac1b328367a5b36db1dcb4b9484f))
 * **store:** updatePositions ([dcd701d](https://github.com/gmtech-xyz/safe-cex/commit/dcd701de2e7b18852226c9f35fc4f08e5339592d))
 * **store:** use proxy from valtio ([998b3ee](https://github.com/gmtech-xyz/safe-cex/commit/998b3ee50574c9a4bb3baa8e1f66ee82be332d14))
+* **types:** extra is not required ([5599c85](https://github.com/gmtech-xyz/safe-cex/commit/5599c859be88143630bf7c142c79d1c1a7e312ab))
 * **virtual-clock:** enforce smaller timediff ([226123e](https://github.com/gmtech-xyz/safe-cex/commit/226123eb7f068675473405143a091bb3b32c6f5c))
 * **virtual-clock:** return dayjs obj ([563eab4](https://github.com/gmtech-xyz/safe-cex/commit/563eab4176fb4766020c7994b321b70ae9164003))
 * **woo:** apply rate limitter on every calls ([70095bd](https://github.com/gmtech-xyz/safe-cex/commit/70095bd2900a7f2e91b509acca39d7bd2d2e6f5f))
