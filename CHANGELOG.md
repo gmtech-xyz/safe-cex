@@ -1,4 +1,4 @@
-## [7.1.1](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v7.1.1) (2023-06-20)
+## [7.1.2](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v7.1.2) (2023-06-20)
 
 
 ### Bug Fixes
@@ -67,6 +67,7 @@
 * **createExchange:** make key/secret optional ([ad598de](https://github.com/gmtech-xyz/safe-cex/commit/ad598de18619f309066a6f4e7b66bfed15c47d39))
 * **exchange:** make store overridable ([ab23d2f](https://github.com/gmtech-xyz/safe-cex/commit/ab23d2f5c883d857650e61a9bd9bb44879a0419c))
 * **exchanges:** reset normal API urls, enforce CORS Anywhgere ([522136d](https://github.com/gmtech-xyz/safe-cex/commit/522136d35f37f802d5f9e9ba5ed430086fb8b7f6))
+* **extra:** add `tickInterval` option ([bf5af40](https://github.com/gmtech-xyz/safe-cex/commit/bf5af4020898b810e7d5170d41a748743944ca13))
 * **gate:** support hedge mode ([83a4bf5](https://github.com/gmtech-xyz/safe-cex/commit/83a4bf563b608bbe6aa2c66a590f03a77b459a44))
 * **okx.placeOrder:** add support position TP/SL ([b8e2c4f](https://github.com/gmtech-xyz/safe-cex/commit/b8e2c4f89c7a99468320cf0dfec4417b3be953ca))
 * **okx.ws-private:** listen balance ([0d34072](https://github.com/gmtech-xyz/safe-cex/commit/0d34072c611902bfc2709c97d9e2fe92732cd24d))
