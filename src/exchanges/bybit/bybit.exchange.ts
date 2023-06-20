@@ -161,7 +161,7 @@ export class BybitExchange extends BaseExchange {
         this.emitter.emit('error', err?.message);
       }
 
-      loop(() => this.tick());
+      loop(() => this.tick(), this.options.extra?.tickInterval);
     }
   };
 

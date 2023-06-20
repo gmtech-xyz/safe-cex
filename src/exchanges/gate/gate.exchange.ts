@@ -122,7 +122,7 @@ export class GateExchange extends BaseExchange {
         this.emitError(err);
       }
 
-      loop(() => this.tick());
+      loop(() => this.tick(), this.options.extra?.tickInterval);
     }
   };
 

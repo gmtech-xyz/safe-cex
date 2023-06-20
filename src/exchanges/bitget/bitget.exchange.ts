@@ -163,7 +163,7 @@ export class BitgetExchange extends BaseExchange {
         this.emitter.emit('error', err?.response?.data?.msg || err?.message);
       }
 
-      loop(() => this.tick());
+      loop(() => this.tick(), this.options.extra?.tickInterval);
     }
   };
 

@@ -1,3 +1,26 @@
+export type ExchangeName =
+  | 'binance'
+  | 'bitget'
+  | 'bybit'
+  | 'gate'
+  | 'okx'
+  | 'woo';
+
+export type ExtraExchangeOptions = {
+  [key in ExchangeName]: {
+    ws?: {
+      public?: {
+        testnet: string;
+        livenet: string;
+      };
+      private?: {
+        testnet: string;
+        livenet: string;
+      };
+    };
+  };
+};
+
 export type ExchangeOptions = {
   readonly key: string;
   readonly secret: string;
@@ -5,7 +28,9 @@ export type ExchangeOptions = {
   readonly applicationId?: string;
   readonly testnet?: boolean;
   readonly corsAnywhere?: string;
-  readonly extra?: Record<string, any>;
+  readonly extra?: ExtraExchangeOptions & {
+    tickInterval?: number;
+  };
 };
 
 export type Balance = {
