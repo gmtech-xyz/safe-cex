@@ -5,6 +5,7 @@ export type ExchangeOptions = {
   readonly applicationId?: string;
   readonly testnet?: boolean;
   readonly corsAnywhere?: string;
+  readonly extra?: Record<string, any>;
 };
 
 export type Balance = {

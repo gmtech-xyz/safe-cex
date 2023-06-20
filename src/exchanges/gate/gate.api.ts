@@ -20,9 +20,12 @@ const AUTH_ENDPOINTS = [
 
 export const createAPI = (options: ExchangeOptions) => {
   const BASE_API_URL = BASE_URL[options.testnet ? 'testnet' : 'livenet'];
+  const baseURL = options.corsAnywhere
+    ? `${options.corsAnywhere}/${BASE_API_URL}`
+    : BASE_API_URL;
 
   const xhr = axios.create({
-    baseURL: BASE_API_URL,
+    baseURL,
     timeout: RECV_WINDOW,
   });
 

@@ -3,13 +3,13 @@ import { OrderTimeInForce } from '../../types';
 export const RECV_WINDOW = 5000;
 
 export const BASE_URL = {
-  livenet: 'https://gate.tuleep.trade/api/v4',
-  testnet: 'https://gate-testnet.tuleep.trade/api/v4',
+  livenet: 'https://api.gateio.ws/api/v4',
+  testnet: 'https://fx-api-testnet.gateio.ws/api/v4',
 };
 
 export const BASE_WS_URL = {
-  livenet: 'wss://gate-wss.tuleep.trade/v4/ws/usdt',
-  testnet: 'wss://gate-wss-testnet.tuleep.trade/v4/ws/usdt',
+  livenet: 'wss://fx-ws.gateio.ws/v4/ws/usdt',
+  testnet: 'wss://fx-ws-testnet.gateio.ws/v4/ws/usdt',
 };
 
 export const ENDPOINTS = {

@@ -9,14 +9,18 @@ import { virtualClock } from '../../utils/virtual-clock';
 import { BASE_URL, RECV_WINDOW } from './okx.types';
 
 export const createAPI = (options: ExchangeOptions) => {
-  const { corsAnywhere, passphrase } = options;
+  const { passphrase } = options;
 
   if (!passphrase) {
     throw new Error('OKX requires a passphrase');
   }
 
+  const baseURL = options.corsAnywhere
+    ? `${options.corsAnywhere}/${BASE_URL}`
+    : BASE_URL;
+
   const xhr = axios.create({
-    baseURL: corsAnywhere ? `${corsAnywhere}${BASE_URL}` : BASE_URL,
+    baseURL,
     timeout: RECV_WINDOW,
     headers: options.testnet ? { 'x-simulated-trading': 1 } : {},
   });

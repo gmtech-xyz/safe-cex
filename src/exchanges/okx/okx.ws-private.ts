@@ -12,12 +12,21 @@ import type { OKXExchange } from './okx.exchange';
 import { BASE_WS_URL } from './okx.types';
 
 export class OKXPrivateWebsocket extends BaseWebSocket<OKXExchange> {
+  get endpoint() {
+    if (this.parent.options.extra?.okx?.ws?.private) {
+      return this.parent.options.extra.okx.ws.private[
+        this.parent.options.testnet ? 'testnet' : 'livenet'
+      ];
+    }
+
+    return BASE_WS_URL.public[
+      this.parent.options.testnet ? 'testnet' : 'livenet'
+    ];
+  }
+
   connectAndSubscribe = () => {
     if (!this.isDisposed) {
-      this.ws = new WebSocket(
-        BASE_WS_URL.private[this.parent.options.testnet ? 'testnet' : 'livenet']
-      );
-
+      this.ws = new WebSocket(this.endpoint);
       this.ws.addEventListener('open', this.onOpen);
       this.ws.addEventListener('message', this.onMessage);
       this.ws.addEventListener('close', this.onClose);
