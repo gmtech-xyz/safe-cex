@@ -1,4 +1,4 @@
-# [7.1.0](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v7.1.0) (2023-06-20)
+## [7.1.1](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v7.1.1) (2023-06-20)
 
 
 ### Bug Fixes
@@ -39,6 +39,7 @@
 * **okx:** resubscribe kline/orderbook on close ([c46c121](https://github.com/gmtech-xyz/safe-cex/commit/c46c1219b31d8c47078fb4e933d0b11dc8dd3b97))
 * **okx:** set leverage ([d46711c](https://github.com/gmtech-xyz/safe-cex/commit/d46711c43458d93e357149e16b0295e68e7fa5c3))
 * **okx:** trailing stops ([cc9036a](https://github.com/gmtech-xyz/safe-cex/commit/cc9036adb401dace05ea5a0817ccea541380703f))
+* **okx:** typo in url ([d59c575](https://github.com/gmtech-xyz/safe-cex/commit/d59c575e66cacb3c263cc6516a9d3b66e43e66ca))
 * **okx:** update SL/TP on hedge mode ([789b6d2](https://github.com/gmtech-xyz/safe-cex/commit/789b6d283d46b464c5a77dff81b11b1eaadde275))
 * **orderbook:** clear timeout, check if disposed after snapshot ([27dc929](https://github.com/gmtech-xyz/safe-cex/commit/27dc92914ead0496174604a3e8e34ff55b4fdc34))
 * **safe-math:** need to round with `adjust()` ([d5fc628](https://github.com/gmtech-xyz/safe-cex/commit/d5fc6284babed44231fe8febe0ef48cca2bbd4e5))
