@@ -491,7 +491,7 @@ export class BitgetExchange extends BaseExchange {
 
   cancelAllOrders = async () => {
     try {
-      await this.xhr.post(ENDPOINTS.CANCEL_ALL_ORDERS, {
+      await this.unlimitedXHR.post(ENDPOINTS.CANCEL_ALL_ORDERS, {
         productType: this.apiProductType,
         marginCoin: this.apiMarginCoin,
       });
@@ -518,7 +518,7 @@ export class BitgetExchange extends BaseExchange {
       const orderIds = symbolOrders.map((o) => o.id);
 
       try {
-        await this.xhr.post(ENDPOINTS.CANCEL_ORDERS, {
+        await this.unlimitedXHR.post(ENDPOINTS.CANCEL_ORDERS, {
           symbol,
           orderIds,
           marginCoin: this.apiMarginCoin,
@@ -532,7 +532,7 @@ export class BitgetExchange extends BaseExchange {
   cancelAlgoOrders = async (orders: Order[]) => {
     for (const order of orders) {
       try {
-        await this.xhr.post(ENDPOINTS.CANCEL_ALGO_ORDER, {
+        await this.unlimitedXHR.post(ENDPOINTS.CANCEL_ALGO_ORDER, {
           orderId: order.id,
           symbol: `${order.symbol}_${this.apiProductType.toUpperCase()}`,
           marginCoin: this.apiMarginCoin,
@@ -546,7 +546,7 @@ export class BitgetExchange extends BaseExchange {
 
   cancelSymbolOrders = async (symbol: string) => {
     try {
-      await this.xhr.post(ENDPOINTS.CANCEL_SYMBOL_ORDERS, {
+      await this.unlimitedXHR.post(ENDPOINTS.CANCEL_SYMBOL_ORDERS, {
         symbol: `${symbol}_${this.apiProductType.toUpperCase()}`,
         marginCoin: this.apiMarginCoin,
       });
@@ -677,7 +677,7 @@ export class BitgetExchange extends BaseExchange {
       try {
         const {
           data: { data },
-        } = await this.xhr.post(ENDPOINTS.BATCH_ORDERS, {
+        } = await this.unlimitedXHR.post(ENDPOINTS.BATCH_ORDERS, {
           symbol,
           marginCoin: this.apiMarginCoin,
           orderDataList: orders.map((o) => omit(o, 'symbol')),
@@ -704,7 +704,7 @@ export class BitgetExchange extends BaseExchange {
       try {
         const {
           data: { data },
-        } = await this.xhr.post(ENDPOINTS.PLACE_ALGO_ORDER, payload);
+        } = await this.unlimitedXHR.post(ENDPOINTS.PLACE_ALGO_ORDER, payload);
 
         if (data?.orderId) {
           newOrderIds.push(data.orderId);
@@ -746,7 +746,7 @@ export class BitgetExchange extends BaseExchange {
     try {
       const {
         data: { data },
-      } = await this.xhr.post(ENDPOINTS.UPDATE_ORDER, payload);
+      } = await this.unlimitedXHR.post(ENDPOINTS.UPDATE_ORDER, payload);
       return data?.orderId ? [data.orderId] : [];
     } catch (err: any) {
       this.emitter.emit('error', err?.response?.data?.msg || err?.message);
@@ -773,7 +773,7 @@ export class BitgetExchange extends BaseExchange {
     try {
       const {
         data: { data },
-      } = await this.xhr.post(ENDPOINTS.UPDATE_ALGO_ORDER, payload);
+      } = await this.unlimitedXHR.post(ENDPOINTS.UPDATE_ALGO_ORDER, payload);
       return data?.orderId ? [data.orderId] : [];
     } catch (err: any) {
       this.emitter.emit('error', err?.response?.data?.msg || err?.message);
