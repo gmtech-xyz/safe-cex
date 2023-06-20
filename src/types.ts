@@ -7,7 +7,7 @@ export type ExchangeName =
   | 'woo';
 
 export type ExtraExchangeOptions = {
-  [key in ExchangeName]: {
+  [key in ExchangeName]?: {
     ws?: {
       public?: {
         testnet: string;
