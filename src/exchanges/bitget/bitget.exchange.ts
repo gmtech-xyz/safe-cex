@@ -802,6 +802,28 @@ export class BitgetExchange extends BaseExchange {
     }
   };
 
+  changePositionMode = async (hedged: boolean) => {
+    if (
+      this.store.positions.filter((p) => p.contracts > 0).length > 0 ||
+      this.store.orders.length > 0
+    ) {
+      this.emitter.emit(
+        'error',
+        'Please close all positions and orders before switching position mode'
+      );
+    }
+
+    try {
+      await this.xhr.post(ENDPOINTS.SET_POSITION_MODE, {
+        productType: this.apiProductType,
+        holdMode: hedged ? 'double_hold' : 'single_hold',
+      });
+      this.store.setSetting('isHedged', hedged);
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.msg || err?.message);
+    }
+  };
+
   mapOrder = (o: Record<string, any>) => {
     const order: Writable<Order> = {
       id: o.orderId || o.ordId || o.id,

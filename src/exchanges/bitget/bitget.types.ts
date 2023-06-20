@@ -34,6 +34,7 @@ export const ENDPOINTS = {
   UPDATE_ALGO_ORDER: '/api/mix/v1/plan/modifyTPSLPlan',
   SET_LEVERAGE: '/api/mix/v1/account/setLeverage',
   POSITION_LEVERAGE: '/api/mix/v1/position/singlePosition-v2',
+  SET_POSITION_MODE: '/api/mix/v1/account/setPositionMode',
 };
 
 export const INTERVAL: Record<Timeframe, string> = {
