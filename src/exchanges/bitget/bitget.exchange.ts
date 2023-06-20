@@ -366,13 +366,22 @@ export class BitgetExchange extends BaseExchange {
         productType: this.apiProductType,
         marginCoin: this.apiMarginCoin,
       });
-      this.store.update({ orders: [] });
     } catch (err: any) {
       this.emitter.emit('error', err?.response?.data?.msg || err?.message);
     }
   };
 
   cancelOrders = async (orders: Order[]) => {
+    const [algoOrders, normalOrders] = partition<Order>(
+      orders,
+      this.isAlgoOrder
+    );
+
+    if (normalOrders.length) await this.cancelNormalOrders(normalOrders);
+    if (algoOrders.length) await this.cancelAlgoOrders(algoOrders);
+  };
+
+  cancelNormalOrders = async (orders: Order[]) => {
     const grouped = groupBy(orders, 'symbol');
 
     for (const [key, symbolOrders] of Object.entries(grouped)) {
@@ -385,7 +394,21 @@ export class BitgetExchange extends BaseExchange {
           orderIds,
           marginCoin: this.apiMarginCoin,
         });
-        this.store.removeOrders(symbolOrders);
+      } catch (err: any) {
+        this.emitter.emit('error', err?.response?.data?.msg || err?.message);
+      }
+    }
+  };
+
+  cancelAlgoOrders = async (orders: Order[]) => {
+    for (const order of orders) {
+      try {
+        await this.xhr.post(ENDPOINTS.CANCEL_ALGO_ORDER, {
+          orderId: order.id,
+          symbol: `${order.symbol}_${this.apiProductType.toUpperCase()}`,
+          marginCoin: this.apiMarginCoin,
+          planType: this.getOrderPlanType(order),
+        });
       } catch (err: any) {
         this.emitter.emit('error', err?.response?.data?.msg || err?.message);
       }
@@ -398,9 +421,6 @@ export class BitgetExchange extends BaseExchange {
         symbol: `${symbol}_${this.apiProductType.toUpperCase()}`,
         marginCoin: this.apiMarginCoin,
       });
-      this.store.removeOrders(
-        this.store.orders.filter((o) => o.symbol === symbol)
-      );
     } catch (err: any) {
       this.emitter.emit('error', err?.response?.data?.msg || err?.message);
     }
@@ -628,5 +648,12 @@ export class BitgetExchange extends BaseExchange {
       opts.type === OrderType.TakeProfit ||
       opts.type === OrderType.TrailingStopLoss
     );
+  };
+
+  private getOrderPlanType = (order: Order) => {
+    if (order.type === OrderType.StopLoss) return 'loss_plan';
+    if (order.type === OrderType.TakeProfit) return 'profit_plan';
+
+    throw new Error(`Unknown order type: ${order.type}`);
   };
 }
