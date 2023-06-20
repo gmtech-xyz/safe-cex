@@ -460,17 +460,27 @@ export class BybitExchange extends BaseExchange {
     if (rest) payloads.push({ ...req, qty: `${rest}` });
 
     const responses = await mapSeries(payloads, async (p) => {
-      const { data } = await this.unlimitedXHR.post(ENDPOINTS.CREATE_ORDER, p);
-      return data;
+      try {
+        const { data } = await this.unlimitedXHR.post(
+          ENDPOINTS.CREATE_ORDER,
+          p
+        );
+        return data;
+      } catch (err: any) {
+        this.emitter.emit('error', err?.response?.data?.retMsg || err.message);
+        return undefined;
+      }
     });
 
-    responses.forEach((resp) => {
+    const fullfilled = responses.filter((r) => r !== undefined);
+
+    fullfilled.forEach((resp) => {
       if (v(resp, 'retMsg') !== 'OK') {
         this.emitter.emit('error', v(resp, 'retMsg'));
       }
     });
 
-    return responses.map((resp) => resp.result.orderId);
+    return fullfilled.map((resp) => resp.result.orderId);
   };
 
   placeStopLossOrTakeProfit = async (opts: PlaceOrderOpts) => {
@@ -526,6 +536,7 @@ export class BybitExchange extends BaseExchange {
     return [data.result.orderId];
   };
 
+  // eslint-disable-next-line complexity
   updateOrder = async ({ order, update }: UpdateOrderOpts) => {
     const updatedOrderIds = [] as string[];
 
@@ -553,12 +564,22 @@ export class BybitExchange extends BaseExchange {
           [key]: `${update.price}`,
         };
 
-        const { data } = await this.xhr.post(ENDPOINTS.REPLACE_ORDER, payload);
+        try {
+          const { data } = await this.xhr.post(
+            ENDPOINTS.REPLACE_ORDER,
+            payload
+          );
 
-        if (data.retMsg === 'OK') {
-          updatedOrderIds.push(data.result.orderId);
-        } else {
-          this.emitter.emit('error', data.retMsg);
+          if (data.retMsg === 'OK') {
+            updatedOrderIds.push(data.result.orderId);
+          } else {
+            this.emitter.emit('error', data.retMsg);
+          }
+        } catch (err: any) {
+          this.emitter.emit(
+            'error',
+            err?.response?.data?.retMsg || err.message
+          );
         }
       }
     }
