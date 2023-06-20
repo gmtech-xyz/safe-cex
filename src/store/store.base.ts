@@ -1,4 +1,11 @@
-import type { Order, Position, StoreData, Ticker, Writable } from '../types';
+import type {
+  Market,
+  Order,
+  Position,
+  StoreData,
+  Ticker,
+  Writable,
+} from '../types';
 import { clone } from '../utils/clone';
 
 import type { Store } from './store.interface';
@@ -189,6 +196,15 @@ export class DefaultStore implements Store {
       }
     });
     this.notify();
+  };
+
+  updateMarket = (market: Pick<Market, 'id'>, changes: Partial<Market>) => {
+    const idx = this.state.markets.findIndex((m) => m.id === market.id);
+
+    if (idx > -1) {
+      this.updateInArray('markets', idx, changes);
+      this.notify();
+    }
   };
 
   setSetting = (key: keyof StoreData['options'], value: boolean) => {

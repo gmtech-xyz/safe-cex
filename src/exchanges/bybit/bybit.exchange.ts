@@ -72,6 +72,7 @@ export class BybitExchange extends BaseExchange {
   dispose = () => {
     super.dispose();
     this.publicWebsocket.dispose();
+    this.privateWebsocket.dispose();
   };
 
   validateAccount = async () => {

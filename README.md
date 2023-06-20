@@ -138,7 +138,7 @@ exchange.on("fill", (event: FillEvent) => {
 This event is called when an error has occured or the exchange API responded with an error status.
 
 ```ts
-exchange.on("error", (event: string) => {
+exchange.on("error", (error: string) => {
   window.alert(error);
 });
 ```
