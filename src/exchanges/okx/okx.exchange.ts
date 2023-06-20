@@ -609,7 +609,7 @@ export class OKXExchange extends BaseExchange {
     const payloads = this.formatCreateOrder(opts);
 
     if (payloads.some((o) => parseFloat(o.sz) === 0)) {
-      this.emitter.emit('error', `Oorder amount is too small`);
+      this.emitter.emit('error', `Order amount is too small`);
       return [];
     }
 
