@@ -71,6 +71,12 @@ const exchange = createExchange(
     passphrase: string, // FOR OKX & BITGET
     testnet: boolean,
     corsAnywhere: "https://cors-anywhere.example.com",
+    extra?:{
+      // polling rate of balance and positions, defaults to API request rate limit
+      // usefull if you are running a TWAP bot and you don't care about having positions & balance up to the ms updates
+      // ex: 5000 (poll every 5s)
+      tickInterval?: number;
+    }
   }
 );
 
