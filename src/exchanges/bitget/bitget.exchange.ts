@@ -21,6 +21,7 @@ import type {
   PlaceOrderOpts,
   Position,
   Ticker,
+  UpdateOrderOpts,
 } from '../../types';
 import { inverseObj } from '../../utils/inverse-obj';
 import { loop } from '../../utils/loop';
@@ -520,18 +521,19 @@ export class BitgetExchange extends BaseExchange {
       marginCoin: this.apiMarginCoin,
       symbol: market.id,
       clientOid: uuid(),
+      planType: this.getOrderPlanType(opts),
     };
 
     if (opts.type === OrderType.TakeProfit && opts.price) {
       const price = adjust(opts.price, market.precision.price);
-      payload.planType = 'profit_plan';
+      payload.planType = 'pos_profit';
       payload.triggerPrice = `${price}`;
       payload.holdSide = this.getAlgoOrderSide(opts);
     }
 
     if (opts.type === OrderType.StopLoss && opts.price) {
       const price = adjust(opts.price, market.precision.price);
-      payload.planType = 'loss_plan';
+      payload.planType = 'pos_loss';
       payload.triggerPrice = `${price}`;
       payload.holdSide = this.getAlgoOrderSide(opts);
     }
@@ -585,6 +587,70 @@ export class BitgetExchange extends BaseExchange {
     }
 
     return newOrderIds;
+  };
+
+  updateOrder = async ({ order, update }: UpdateOrderOpts) => {
+    if (this.isAlgoOrder(order)) {
+      return this.updateAlgoOrder({ order, update });
+    }
+
+    const market = this.store.markets.find((m) => m.symbol === order.symbol);
+    if (!market) throw new Error(`Market ${order.symbol} not found`);
+
+    const payload: Record<string, any> = {
+      newClientOid: uuid(),
+      orderId: order.id,
+      symbol: market.id,
+      price: `${order.price}`,
+      size: `${order.amount}`,
+    };
+
+    if ('price' in update) {
+      const price = adjust(update.price, market.precision.price);
+      payload.price = `${price}`;
+    }
+
+    if ('amount' in update) {
+      const amount = adjust(update.amount, market.precision.amount);
+      payload.size = `${amount}`;
+    }
+
+    try {
+      const {
+        data: { data },
+      } = await this.xhr.post(ENDPOINTS.UPDATE_ORDER, payload);
+      return data?.orderId ? [data.orderId] : [];
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.msg || err?.message);
+      return [];
+    }
+  };
+
+  updateAlgoOrder = async ({ order, update }: UpdateOrderOpts) => {
+    const market = this.store.markets.find((m) => m.symbol === order.symbol);
+    if (!market) throw new Error(`Market ${order.symbol} not found`);
+
+    const payload: Record<string, any> = {
+      orderId: order.id,
+      marginCoin: this.apiMarginCoin,
+      symbol: market.id,
+      planType: this.getOrderPlanType(order),
+    };
+
+    if ('price' in update) {
+      const price = adjust(update.price, market.precision.price);
+      payload.triggerPrice = `${price}`;
+    }
+
+    try {
+      const {
+        data: { data },
+      } = await this.xhr.post(ENDPOINTS.UPDATE_ALGO_ORDER, payload);
+      return data?.orderId ? [data.orderId] : [];
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.msg || err?.message);
+      return [];
+    }
   };
 
   mapOrder = (o: Record<string, any>) => {
@@ -650,10 +716,10 @@ export class BitgetExchange extends BaseExchange {
     );
   };
 
-  private getOrderPlanType = (order: Order) => {
-    if (order.type === OrderType.StopLoss) return 'loss_plan';
-    if (order.type === OrderType.TakeProfit) return 'profit_plan';
+  private getOrderPlanType = (opts: { type: OrderType }) => {
+    if (opts.type === OrderType.StopLoss) return 'pos_loss';
+    if (opts.type === OrderType.TakeProfit) return 'pos_profit';
 
-    throw new Error(`Unknown order type: ${order.type}`);
+    throw new Error(`Unknown order type: ${opts.type}`);
   };
 }
