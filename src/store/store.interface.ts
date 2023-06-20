@@ -1,4 +1,4 @@
-import type { Order, Position, StoreData, Ticker } from '../types';
+import type { Market, Order, Position, StoreData, Ticker } from '../types';
 
 export interface Store {
   update: (changes: Partial<StoreData>) => void;
@@ -25,6 +25,8 @@ export interface Store {
 
   updateTicker: (ticker: Pick<Ticker, 'id'>, changes: Partial<Ticker>) => void;
   addOrUpdateTickers: (tickers: Ticker[]) => void;
+
+  updateMarket: (market: Pick<Market, 'id'>, changes: Partial<Market>) => void;
 
   get latency(): StoreData['latency'];
   get balance(): StoreData['balance'];
