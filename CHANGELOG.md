@@ -1,4 +1,4 @@
-## [7.1.4](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v7.1.4) (2023-06-20)
+# [7.2.0](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v7.2.0) (2023-06-21)
 
 
 ### Bug Fixes
@@ -62,6 +62,7 @@
 
 * **biget:** add `BROKER_ID` ([02cebee](https://github.com/gmtech-xyz/safe-cex/commit/02cebeef4d68484f8796d39d61aef9aaf21c7fb5))
 * **binance:** add `listenOrderBook` ([1779ae9](https://github.com/gmtech-xyz/safe-cex/commit/1779ae917e46cf5a72194cca4ff8cbbae3867943))
+* **bitget:** add trailing stop orders ([d533509](https://github.com/gmtech-xyz/safe-cex/commit/d533509c97e3d9cd924e6aff492892429022f9e5))
 * **bybit-ws-public:** re-subscribe topics on disconnect ([e56a138](https://github.com/gmtech-xyz/safe-cex/commit/e56a1389bd4d5ffe749cdb6555962cdbd769bb12))
 * **bybit:** add `listenOrderBook` ([db314bf](https://github.com/gmtech-xyz/safe-cex/commit/db314bf0bc0ca2c735acc874cee48295dfe6bc65))
 * **bybit:** emit error if any on update positional TP/SL ([5d5aba2](https://github.com/gmtech-xyz/safe-cex/commit/5d5aba2f9e7697186a628a60ddefd89a90bedbaa))
