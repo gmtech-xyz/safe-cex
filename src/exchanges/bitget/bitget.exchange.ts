@@ -420,8 +420,9 @@ export class BitgetExchange extends BaseExchange {
   fetchOrders = async () => {
     const normalOrders = await this.fetchNormalOrders();
     const algoOrders = await this.fetchAlgoOrders();
+    const tslOrders = await this.fetchTrailingStopOrders();
 
-    return [...normalOrders, ...algoOrders];
+    return [...normalOrders, ...algoOrders, ...tslOrders];
   };
 
   fetchNormalOrders = async () => {
@@ -441,6 +442,17 @@ export class BitgetExchange extends BaseExchange {
     } = await this.xhr.get<{ data: Array<Record<string, any>> }>(
       ENDPOINTS.ALGO_ORDERS,
       { params: { productType: this.apiProductType, isPlan: 'profit_loss' } }
+    );
+
+    return data.map(this.mapOrder);
+  };
+
+  fetchTrailingStopOrders = async () => {
+    const {
+      data: { data },
+    } = await this.xhr.get<{ data: Array<Record<string, any>> }>(
+      ENDPOINTS.ALGO_ORDERS,
+      { params: { productType: this.apiProductType, isPlan: 'plan' } }
     );
 
     return data.map(this.mapOrder);
@@ -640,16 +652,12 @@ export class BitgetExchange extends BaseExchange {
 
   formatAlgoOrder = (opts: PlaceOrderOpts) => {
     const market = this.store.markets.find((m) => m.symbol === opts.symbol);
-
-    if (!market) {
-      throw new Error(`Market ${opts.symbol} not found`);
-    }
+    if (!market) throw new Error(`Market ${opts.symbol} not found`);
 
     const payload: Record<string, any> = {
       marginCoin: this.apiMarginCoin,
       symbol: market.id,
       clientOid: uuid(),
-      planType: this.getOrderPlanType(opts),
     };
 
     if (opts.type === OrderType.TakeProfit && opts.price) {
@@ -657,6 +665,7 @@ export class BitgetExchange extends BaseExchange {
       payload.planType = 'pos_profit';
       payload.triggerPrice = `${price}`;
       payload.holdSide = this.getAlgoOrderSide(opts);
+      payload.planType = this.getOrderPlanType(opts);
     }
 
     if (opts.type === OrderType.StopLoss && opts.price) {
@@ -664,6 +673,28 @@ export class BitgetExchange extends BaseExchange {
       payload.planType = 'pos_loss';
       payload.triggerPrice = `${price}`;
       payload.holdSide = this.getAlgoOrderSide(opts);
+      payload.planType = this.getOrderPlanType(opts);
+    }
+
+    if (opts.type === OrderType.TrailingStopLoss && opts.price) {
+      const price = adjust(opts.price, market.precision.price);
+      const amount = adjust(opts.amount, market.precision.amount);
+
+      const ticker = this.store.tickers.find((t) => t.symbol === opts.symbol);
+      if (!ticker) throw new Error(`Ticker ${opts.symbol} not found`);
+
+      const priceDistance = adjust(
+        Math.max(ticker.last, opts.price!) - Math.min(ticker.last, opts.price!),
+        market.precision.price
+      );
+
+      const distancePercentage =
+        Math.round(((priceDistance * 100) / ticker.last) * 10) / 10;
+
+      payload.triggerPrice = `${price}`;
+      payload.size = `${amount}`;
+      payload.side = this.getAlgoOrderSide(opts);
+      payload.rangeRate = `${distancePercentage}`;
     }
 
     return payload;
@@ -702,9 +733,13 @@ export class BitgetExchange extends BaseExchange {
 
     for (const payload of payloads) {
       try {
+        const endpoint = payload.rangeRate
+          ? ENDPOINTS.PLACE_TRAILING_STOP_ORDER
+          : ENDPOINTS.PLACE_ALGO_ORDER;
+
         const {
           data: { data },
-        } = await this.unlimitedXHR.post(ENDPOINTS.PLACE_ALGO_ORDER, payload);
+        } = await this.unlimitedXHR.post(endpoint, payload);
 
         if (data?.orderId) {
           newOrderIds.push(data.orderId);
@@ -886,6 +921,11 @@ export class BitgetExchange extends BaseExchange {
       if (opts.side === OrderSide.Sell) return 'long';
     }
 
+    if (opts.type === OrderType.TrailingStopLoss) {
+      if (opts.side === OrderSide.Buy) return 'close_short';
+      if (opts.side === OrderSide.Sell) return 'close_long';
+    }
+
     throw new Error(`Unknown algo order side: ${opts.type} - ${opts.side}`);
   };
 
@@ -900,6 +940,7 @@ export class BitgetExchange extends BaseExchange {
   private getOrderPlanType = (opts: { type: OrderType }) => {
     if (opts.type === OrderType.StopLoss) return 'pos_loss';
     if (opts.type === OrderType.TakeProfit) return 'pos_profit';
+    if (opts.type === OrderType.TrailingStopLoss) return 'track_plan';
 
     throw new Error(`Unknown order type: ${opts.type}`);
   };

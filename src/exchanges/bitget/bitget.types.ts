@@ -36,6 +36,7 @@ export const ENDPOINTS = {
   SET_LEVERAGE: '/api/mix/v1/account/setLeverage',
   POSITION_LEVERAGE: '/api/mix/v1/position/singlePosition-v2',
   SET_POSITION_MODE: '/api/mix/v1/account/setPositionMode',
+  PLACE_TRAILING_STOP_ORDER: '/api/mix/v1/plan/placeTrailStop',
 };
 
 export const INTERVAL: Record<Timeframe, string> = {
@@ -74,10 +75,12 @@ export const ORDER_TYPE: Record<string, OrderType> = {
   pos_loss: OrderType.StopLoss,
   loss_plan: OrderType.StopLoss,
   profit_plan: OrderType.TakeProfit,
+  track_plan: OrderType.TrailingStopLoss,
   tp: OrderType.TakeProfit,
   sl: OrderType.StopLoss,
   psl: OrderType.StopLoss,
   ptp: OrderType.TakeProfit,
+  track: OrderType.TrailingStopLoss,
 };
 
 export const ORDER_SIDE: Record<string, OrderSide> = {
