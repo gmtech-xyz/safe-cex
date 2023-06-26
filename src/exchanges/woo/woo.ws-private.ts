@@ -26,7 +26,7 @@ export class WooPrivateWebscoket extends BaseWebSocket<WOOXExchange> {
 
   onOpen = () => {
     if (!this.isDisposed) {
-      const timestamp = virtualClock.getCurrentTime();
+      const timestamp = virtualClock.getCurrentTime().valueOf();
       const signature = createHmac('sha256', this.parent.options.secret)
         .update(`|${timestamp}`)
         .digest('hex');
