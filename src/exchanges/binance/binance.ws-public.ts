@@ -109,14 +109,16 @@ export class BinancePublicWebsocket extends BaseWebSocket<BinanceExchange> {
     const waitForConnectedAndSubscribe = () => {
       if (this.isConnected) {
         this.messageHandlers.kline = ([json]: Data) => {
-          callback({
-            timestamp: json.k.t / 1000,
-            open: parseFloat(json.k.o),
-            high: parseFloat(json.k.h),
-            low: parseFloat(json.k.l),
-            close: parseFloat(json.k.c),
-            volume: parseFloat(json.k.v),
-          });
+          if (opts.symbol === json.k.s) {
+            callback({
+              timestamp: json.k.t / 1000,
+              open: parseFloat(json.k.o),
+              high: parseFloat(json.k.h),
+              low: parseFloat(json.k.l),
+              close: parseFloat(json.k.c),
+              volume: parseFloat(json.k.v),
+            });
+          }
         };
 
         const payload = { method: 'SUBSCRIBE', params: [topic], id: 1 };
