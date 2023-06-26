@@ -1,10 +1,11 @@
-# [7.2.0](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v7.2.0) (2023-06-21)
+## [7.2.1](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v7.2.1) (2023-06-26)
 
 
 ### Bug Fixes
 
 * **afterDecimals:** support exponential ([3331f8e](https://github.com/gmtech-xyz/safe-cex/commit/3331f8e4e0b4f0fa0c093989c5925af4cb150c65))
 * **baseStore:** wrong idx check ([8951b30](https://github.com/gmtech-xyz/safe-cex/commit/8951b306180150519ec0f965b3ec1b784704d3ae))
+* **binance.listenOHLCV:** check if right symbol ([683d97f](https://github.com/gmtech-xyz/safe-cex/commit/683d97f36fd79fbee8b6e3e50ae9d3b8d508ae86))
 * **binance:** remove cancelled orders ([811e0c0](https://github.com/gmtech-xyz/safe-cex/commit/811e0c0f5f0de61c0a81f82141ec74c81626e321))
 * **bybit:** dont remove orders from store manually ([ec5082c](https://github.com/gmtech-xyz/safe-cex/commit/ec5082c1f6320a11a024955b294e382d59214d33))
 * **bybit:** positionIdx for one-way positional SL/TP ([7c5efad](https://github.com/gmtech-xyz/safe-cex/commit/7c5efad72183a4c10c684d0f3c9c9e9506c893b4))
