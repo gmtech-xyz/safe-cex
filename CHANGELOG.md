@@ -1,4 +1,4 @@
-## [7.2.1](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v7.2.1) (2023-06-26)
+## [7.2.2](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v7.2.2) (2023-06-26)
 
 
 ### Bug Fixes
@@ -52,6 +52,7 @@
 * **virtual-clock:** enforce smaller timediff ([226123e](https://github.com/gmtech-xyz/safe-cex/commit/226123eb7f068675473405143a091bb3b32c6f5c))
 * **virtual-clock:** return dayjs obj ([563eab4](https://github.com/gmtech-xyz/safe-cex/commit/563eab4176fb4766020c7994b321b70ae9164003))
 * **woo:** apply rate limitter on every calls ([70095bd](https://github.com/gmtech-xyz/safe-cex/commit/70095bd2900a7f2e91b509acca39d7bd2d2e6f5f))
+* **woo:** auth private ws ([b4d544e](https://github.com/gmtech-xyz/safe-cex/commit/b4d544e708ff6dfc94e8ae73e4bb335788224948))
 * **woo:** balance calculation ([897891c](https://github.com/gmtech-xyz/safe-cex/commit/897891cf7cc35de21de66b2a3828b3c82cbad360))
 * **woo:** dont crash when couldnt find market of filled order ([fa0c3c3](https://github.com/gmtech-xyz/safe-cex/commit/fa0c3c3001012076f89759ed2a8b421fa99bd628))
 * **woo:** incorrect total balance calc ([1a86b33](https://github.com/gmtech-xyz/safe-cex/commit/1a86b33c0240acc3cc49fe3a958c7cb3458a7ce5))
