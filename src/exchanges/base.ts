@@ -13,6 +13,7 @@ import type {
   UpdateOrderOpts,
 } from '../types';
 import { LogSeverity, OrderSide, OrderType } from '../types';
+import { sleep } from '../utils/sleep';
 
 export interface Exchange {
   store: Store;
@@ -25,7 +26,7 @@ export interface Exchange {
   dispose: () => void;
   validateAccount: () => Promise<string>;
   start: () => Promise<void>;
-  nuke: () => Promise<void>;
+  nuke: (tries?: number) => Promise<void>;
   changePositionMode: (hedged: boolean) => Promise<void>;
   setLeverage: (symbol: string, leverage: number) => Promise<void>;
   setAllLeverage: (leverage: number) => Promise<void>;
@@ -171,8 +172,10 @@ export class BaseExchange implements Exchange {
     }, []);
   };
 
-  nuke = async () => {
+  nuke = async (tries = 0) => {
     if (!this.isDisposed && !this.isNuking) {
+      this.isNuking = true;
+
       // close all positions
       const openPositions = this.store.positions.filter(
         (position) => position.contracts > 0
@@ -190,6 +193,16 @@ export class BaseExchange implements Exchange {
 
       // cancel all orders
       await this.cancelAllOrders();
+      this.isNuking = false;
+    }
+
+    const openPositions = this.store.positions.filter(
+      (position) => position.contracts > 0
+    );
+
+    if (tries + 1 <= 3 && openPositions.length > 0) {
+      await sleep(100);
+      await this.nuke(tries + 1);
     }
   };
 
