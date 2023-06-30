@@ -1,4 +1,4 @@
-## [7.2.3](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v7.2.3) (2023-06-28)
+# [7.3.0](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v7.3.0) (2023-06-30)
 
 
 ### Bug Fixes
@@ -71,6 +71,7 @@
 * **bybit:** emit error if any on update positional TP/SL ([5d5aba2](https://github.com/gmtech-xyz/safe-cex/commit/5d5aba2f9e7697186a628a60ddefd89a90bedbaa))
 * **bybit:** retry signature errors ([83d53ec](https://github.com/gmtech-xyz/safe-cex/commit/83d53ec5291d33b7440cebc6e4698d97dc25f6a6))
 * **createExchange:** make key/secret optional ([ad598de](https://github.com/gmtech-xyz/safe-cex/commit/ad598de18619f309066a6f4e7b66bfed15c47d39))
+* **exchange:** allow specifying `RECV_WINDOW` ([4a3606f](https://github.com/gmtech-xyz/safe-cex/commit/4a3606ffe7a55fa86ecd18158ca9a92196b5d229))
 * **exchange:** make store overridable ([ab23d2f](https://github.com/gmtech-xyz/safe-cex/commit/ab23d2f5c883d857650e61a9bd9bb44879a0419c))
 * **exchanges:** reset normal API urls, enforce CORS Anywhgere ([522136d](https://github.com/gmtech-xyz/safe-cex/commit/522136d35f37f802d5f9e9ba5ed430086fb8b7f6))
 * **extra:** add `tickInterval` option ([bf5af40](https://github.com/gmtech-xyz/safe-cex/commit/bf5af4020898b810e7d5170d41a748743944ca13))
