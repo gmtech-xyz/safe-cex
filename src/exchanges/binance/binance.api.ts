@@ -12,7 +12,7 @@ import { BASE_URL, ENDPOINTS, RECV_WINDOW } from './binance.types';
 export const createAPI = (options: ExchangeOptions) => {
   const xhr = axios.create({
     baseURL: BASE_URL[options.testnet ? 'testnet' : 'livenet'],
-    timeout: RECV_WINDOW,
+    timeout: options?.extra?.recvWindow ?? RECV_WINDOW,
     paramsSerializer: {
       serialize: (params) => qs.stringify(params, { arrayFormat: 'repeat' }),
     },

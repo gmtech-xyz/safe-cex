@@ -30,6 +30,7 @@ export type ExchangeOptions = {
   readonly corsAnywhere?: string;
   readonly extra?: ExtraExchangeOptions & {
     tickInterval?: number;
+    recvWindow?: number;
   };
 };
 

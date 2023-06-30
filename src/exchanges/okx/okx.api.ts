@@ -21,7 +21,7 @@ export const createAPI = (options: ExchangeOptions) => {
 
   const xhr = axios.create({
     baseURL,
-    timeout: RECV_WINDOW,
+    timeout: options?.extra?.recvWindow ?? RECV_WINDOW,
     headers: options.testnet ? { 'x-simulated-trading': 1 } : {},
   });
 

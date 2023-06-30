@@ -15,7 +15,7 @@ export const createAPI = (options: ExchangeOptions) => {
 
   const xhr = axios.create({
     baseURL,
-    timeout: RECV_WINDOW,
+    timeout: options?.extra?.recvWindow ?? RECV_WINDOW,
     paramsSerializer: {
       serialize: (params) => qs.stringify(params),
     },

@@ -26,7 +26,7 @@ export const createAPI = (options: ExchangeOptions) => {
 
   const xhr = axios.create({
     baseURL,
-    timeout: RECV_WINDOW,
+    timeout: options?.extra?.recvWindow ?? RECV_WINDOW,
   });
 
   retry(xhr, { retries: 3, retryCondition: isNetworkError });
