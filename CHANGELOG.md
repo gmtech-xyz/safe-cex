@@ -1,4 +1,4 @@
-# [7.3.0](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v7.3.0) (2023-06-30)
+# [7.4.0](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v7.4.0) (2023-07-10)
 
 
 ### Bug Fixes
@@ -73,6 +73,7 @@
 * **createExchange:** make key/secret optional ([ad598de](https://github.com/gmtech-xyz/safe-cex/commit/ad598de18619f309066a6f4e7b66bfed15c47d39))
 * **exchange:** allow specifying `RECV_WINDOW` ([4a3606f](https://github.com/gmtech-xyz/safe-cex/commit/4a3606ffe7a55fa86ecd18158ca9a92196b5d229))
 * **exchange:** make store overridable ([ab23d2f](https://github.com/gmtech-xyz/safe-cex/commit/ab23d2f5c883d857650e61a9bd9bb44879a0419c))
+* **exchanges:** add `getAccount` method ([286a289](https://github.com/gmtech-xyz/safe-cex/commit/286a2895cfb8adb51b5247d91449e51f9e20748a))
 * **exchanges:** reset normal API urls, enforce CORS Anywhgere ([522136d](https://github.com/gmtech-xyz/safe-cex/commit/522136d35f37f802d5f9e9ba5ed430086fb8b7f6))
 * **extra:** add `tickInterval` option ([bf5af40](https://github.com/gmtech-xyz/safe-cex/commit/bf5af4020898b810e7d5170d41a748743944ca13))
 * **gate:** support hedge mode ([83a4bf5](https://github.com/gmtech-xyz/safe-cex/commit/83a4bf563b608bbe6aa2c66a590f03a77b459a44))
