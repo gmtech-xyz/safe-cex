@@ -11,6 +11,7 @@ import { OrderSide, OrderStatus, OrderType, PositionSide } from '../../types';
 import type {
   Balance,
   Candle,
+  ExchangeAccount,
   ExchangeOptions,
   OHLCVOptions,
   Order,
@@ -19,6 +20,7 @@ import type {
   Position,
   Ticker,
   UpdateOrderOpts,
+  Writable,
 } from '../../types';
 import { inverseObj } from '../../utils/inverse-obj';
 import { omitUndefined } from '../../utils/omit-undefined';
@@ -56,6 +58,16 @@ export class OKXExchange extends BaseExchange {
     this.publicWebsocket = new OKXPublicWebsocket(this);
     this.privateWebsocket = new OKXPrivateWebsocket(this);
   }
+
+  getAccount = async () => {
+    const { data } = await this.xhr.get(ENDPOINTS.ACCOUNT);
+    const user = data?.data?.[0];
+
+    const account: Writable<ExchangeAccount> = { userId: user?.mainUid };
+    if (user?.mainUid !== user?.uid) account.subId = user?.uid;
+
+    return account;
+  };
 
   validateAccount = async () => {
     try {

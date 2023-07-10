@@ -17,6 +17,8 @@ export const BASE_WS_URL = {
 };
 
 export const ENDPOINTS = {
+  ACCOUNT: '/api/v5/account/config',
+  PARTNER: '/api/v5/users/partner/if-rebate',
   MARKETS: '/api/v5/public/instruments',
   TICKERS: '/api/v5/market/tickers',
   BALANCE: '/api/v5/account/account-position-risk',

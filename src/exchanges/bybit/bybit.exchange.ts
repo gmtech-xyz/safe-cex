@@ -75,6 +75,19 @@ export class BybitExchange extends BaseExchange {
     this.privateWebsocket.dispose();
   };
 
+  getAccount = async () => {
+    const { data } = await this.xhr.get(ENDPOINTS.ACCOUNT);
+
+    if (data.retCode !== 0) {
+      throw new Error(data.retMsg);
+    }
+
+    return {
+      userId: data?.result?.userID,
+      affiliateId: data?.result?.inviterID,
+    };
+  };
+
   validateAccount = async () => {
     const { data } = await this.xhr.get(ENDPOINTS.BALANCE);
 

@@ -59,6 +59,17 @@ export class WOOXExchange extends BaseExchange {
     this.privateWebsocket.dispose();
   };
 
+  getAccount = async () => {
+    const {
+      data: { data },
+    } = await this.xhr.get(ENDPOINTS.ACCOUNT);
+
+    return {
+      userId: data.applicationId,
+      affiliateId: data.referrerID || null,
+    };
+  };
+
   validateAccount = async () => {
     try {
       await this.xhr.get(ENDPOINTS.ACCOUNT);

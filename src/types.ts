@@ -250,3 +250,9 @@ export type WritableStoreData = {
   loaded: Writable<StoreDataLoaded>;
   options: Writable<StoreOptions>;
 };
+
+export type ExchangeAccount = {
+  readonly userId: string;
+  readonly subId?: string | null;
+  readonly affiliateId?: string | null;
+};

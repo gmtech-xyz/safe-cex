@@ -76,6 +76,18 @@ export class BitgetExchange extends BaseExchange {
     return this.options.testnet ? 'SUSDT' : 'USDT';
   }
 
+  getAccount = async () => {
+    const {
+      data: { data },
+    } = await this.xhr.get(ENDPOINTS.ACCOUNT_SPOT);
+
+    return {
+      userId: `${data.parentId}`,
+      subId: data.user_id ? `${data.user_id}` : null,
+      affiliateId: data.inviter_id ? `${data.inviter_id}` : null,
+    };
+  };
+
   validateAccount = async () => {
     try {
       await this.xhr.get(ENDPOINTS.BALANCE, {

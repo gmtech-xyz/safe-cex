@@ -5,6 +5,7 @@ import Emitter from 'tiny-emitter';
 import type { Store } from '../store/store.interface';
 import type {
   Candle,
+  ExchangeAccount,
   ExchangeOptions,
   OHLCVOptions,
   Order,
@@ -24,6 +25,7 @@ export interface Exchange {
   once: Emitter.TinyEmitter['once'];
   off: Emitter.TinyEmitter['off'];
   dispose: () => void;
+  getAccount: () => Promise<ExchangeAccount>;
   validateAccount: () => Promise<string>;
   start: () => Promise<void>;
   nuke: (tries?: number) => Promise<void>;
@@ -68,8 +70,15 @@ export class BaseExchange implements Exchange {
 
   onWSPublicClose = () => {};
 
+  getAccount = async () => {
+    await Promise.reject(new Error('Not implemented'));
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+    return {} as ExchangeAccount;
+  };
+
   validateAccount = async () => {
-    return await Promise.resolve('Unsupported exchange');
+    await Promise.reject(new Error('Not implemented'));
+    return '';
   };
 
   log = (message: string, severity: LogSeverity = LogSeverity.Info) => {

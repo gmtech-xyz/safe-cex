@@ -69,6 +69,14 @@ export class BinanceExchange extends BaseExchange {
     this.privateWebsocket.dispose();
   };
 
+  getAccount = async () => {
+    const {
+      data: [{ accountAlias }],
+    } = await this.xhr.get(ENDPOINTS.BALANCE);
+
+    return { userId: accountAlias };
+  };
+
   validateAccount = async () => {
     try {
       await this.xhr.get(ENDPOINTS.ACCOUNT);

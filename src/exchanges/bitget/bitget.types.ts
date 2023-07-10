@@ -14,6 +14,7 @@ export const BASE_URL = 'https://api.bitget.com';
 export const BASE_WS_URL = 'wss://ws.bitget.com/mix/v1/stream';
 
 export const ENDPOINTS = {
+  ACCOUNT_SPOT: '/api/spot/v1/account/getInfo',
   ACCOUNT: '/api/mix/v1/account/account',
   BALANCE: '/api/mix/v1/account/accounts',
   MARKETS: '/api/mix/v1/market/contracts',
