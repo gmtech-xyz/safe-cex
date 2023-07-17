@@ -1,4 +1,4 @@
-# [7.4.0](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v7.4.0) (2023-07-10)
+## [7.4.1](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v7.4.1) (2023-07-17)
 
 
 ### Bug Fixes
@@ -18,6 +18,7 @@
 * **gate:** better error emit ([1da2ff3](https://github.com/gmtech-xyz/safe-cex/commit/1da2ff3af34d9dbb4c1134fcdb6520cc24168053))
 * **gate:** emit better error on orders batch ([1bfd59b](https://github.com/gmtech-xyz/safe-cex/commit/1bfd59b21c513899fad1f29f1cc307fb5709f782))
 * **gate:** update cross leverage instead of isolated ([6349780](https://github.com/gmtech-xyz/safe-cex/commit/6349780370e4b940aecb0bb56ed66b0867a51e32))
+* **json:** try/catch json parse ([0a94b00](https://github.com/gmtech-xyz/safe-cex/commit/0a94b00d2d084fcf3ee94b8dafcca8af2f785039))
 * **nuke:** retry if has dust ([8a8d469](https://github.com/gmtech-xyz/safe-cex/commit/8a8d469cdf59541a60d8935215be68105ace2fb9))
 * **okx.ohlcv:** fix timeframes ([202e789](https://github.com/gmtech-xyz/safe-cex/commit/202e789d7abfcc9d4996f1ba8e831876bbc38cab))
 * **okx.ws-private:** fill event ([02f94f1](https://github.com/gmtech-xyz/safe-cex/commit/02f94f13cd7925acfe5cc020d55e4ffad267c780))
