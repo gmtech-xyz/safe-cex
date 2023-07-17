@@ -2,6 +2,7 @@ import createHmac from 'create-hmac';
 import { multiply } from 'lodash';
 
 import { OrderSide } from '../../types';
+import { jsonParse } from '../../utils/json-parse';
 import { virtualClock } from '../../utils/virtual-clock';
 import { BaseWebSocket } from '../base.ws';
 
@@ -48,11 +49,13 @@ export class GatePrivateWebsocket extends BaseWebSocket<GateExchange> {
 
       if (data.includes('"event":"update"')) {
         if (data.includes('"channel":"futures.orders"')) {
-          this.handleOrdersUpdate(JSON.parse(data));
+          const json = jsonParse(data);
+          if (json) this.handleOrdersUpdate(json);
           return;
         }
         if (data.includes('"channel":"futures.autoorders"')) {
-          this.handleAlgoOrdersUpdate(JSON.parse(data));
+          const json = jsonParse(data);
+          if (json) this.handleAlgoOrdersUpdate(json);
         }
       }
     }

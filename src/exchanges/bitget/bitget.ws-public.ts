@@ -5,6 +5,7 @@ import type {
   Ticker,
   Writable,
 } from '../../types';
+import { jsonParse } from '../../utils/json-parse';
 import { calcOrderBookTotal, sortOrderBook } from '../../utils/orderbook';
 import { BaseWebSocket } from '../base.ws';
 
@@ -68,7 +69,8 @@ export class BitgetPublicWebsocket extends BaseWebSocket<BitgetExchange> {
         data.includes('"action":"snapshot"') &&
         data.includes('"channel":"ticker"')
       ) {
-        this.handleTickerSnapshot(JSON.parse(data));
+        const json = jsonParse(data);
+        if (json) this.handleTickerSnapshot(json);
         return;
       }
 
@@ -76,23 +78,28 @@ export class BitgetPublicWebsocket extends BaseWebSocket<BitgetExchange> {
         data.includes('"action":"update"') &&
         data.includes('"channel":"candle')
       ) {
-        const json = JSON.parse(data);
+        const json = jsonParse(data);
 
-        const interval = json.arg.channel.replace('candle', '');
-        const topic = `candle_${json.arg.instId}_${interval}`;
+        if (json) {
+          const interval = json.arg.channel.replace('candle', '');
+          const topic = `candle_${json.arg.instId}_${interval}`;
 
-        if (this.messageHandlers[topic]) {
-          this.messageHandlers[topic](json);
-          return;
+          if (this.messageHandlers[topic]) {
+            this.messageHandlers[topic](json);
+            return;
+          }
         }
       }
 
       if (data.includes('"channel":"books"')) {
-        const json = JSON.parse(data);
-        const topic = `orderBook_${json.arg.instId}`;
+        const json = jsonParse(data);
 
-        if (this.messageHandlers[topic]) {
-          this.messageHandlers[topic](json);
+        if (json) {
+          const topic = `orderBook_${json.arg.instId}`;
+
+          if (this.messageHandlers[topic]) {
+            this.messageHandlers[topic](json);
+          }
         }
       }
     }

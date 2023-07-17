@@ -1,6 +1,7 @@
 import createHmac from 'create-hmac';
 
 import { v } from '../../utils/get-key';
+import { jsonParse } from '../../utils/json-parse';
 import { virtualClock } from '../../utils/virtual-clock';
 import { BaseWebSocket } from '../base.ws';
 
@@ -57,24 +58,24 @@ export class WooPrivateWebscoket extends BaseWebSocket<WOOXExchange> {
 
   onMessage = ({ data }: MessageEvent) => {
     if (!this.isDisposed) {
-      const json = JSON.parse(data);
+      const json = jsonParse(data);
 
-      if (json.event === 'ping') {
+      if (json?.event === 'ping') {
         this.ws?.send?.(JSON.stringify({ event: 'pong' }));
       }
 
-      if (json.event === 'auth' && json.success) {
+      if (json?.event === 'auth' && json?.success) {
         this.subscribe();
         return;
       }
 
-      if (json.topic === 'executionreport') {
-        this.handleExecutionReport(json.data);
+      if (json?.topic === 'executionreport') {
+        this.handleExecutionReport(json?.data);
         return;
       }
 
-      if (json.topic === 'algoexecutionreportv2') {
-        this.handleAlgoExecutionReport(json.data);
+      if (json?.topic === 'algoexecutionreportv2') {
+        this.handleAlgoExecutionReport(json?.data);
       }
     }
   };

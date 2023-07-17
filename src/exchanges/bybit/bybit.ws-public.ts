@@ -7,6 +7,7 @@ import type {
   Ticker,
   Writable,
 } from '../../types';
+import { jsonParse } from '../../utils/json-parse';
 import { calcOrderBookTotal, sortOrderBook } from '../../utils/orderbook';
 import { BaseWebSocket } from '../base.ws';
 
@@ -72,7 +73,8 @@ export class BybitPublicWebsocket extends BaseWebSocket<BybitExchange> {
 
       for (const [topic, handler] of handlers) {
         if (data.includes(`topic":"${topic}`)) {
-          handler(JSON.parse(data));
+          const json = jsonParse(data);
+          if (json) handler(json);
           break;
         }
       }

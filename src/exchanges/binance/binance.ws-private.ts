@@ -1,4 +1,5 @@
 import { OrderStatus } from '../../types';
+import { jsonParse } from '../../utils/json-parse';
 import { BaseWebSocket } from '../base.ws';
 
 import type { BinanceExchange } from './binance.exchange';
@@ -37,12 +38,12 @@ export class BinancePrivateWebsocket extends BaseWebSocket<BinanceExchange> {
 
   onMessage = ({ data }: MessageEvent) => {
     if (!this.isDisposed) {
-      const json = JSON.parse(data);
+      const json = jsonParse(data);
 
-      if (json.e === 'ACCOUNT_UPDATE') this.handleAccountEvents([json]);
-      if (json.e === 'ORDER_TRADE_UPDATE') this.handleOrderEvents([json]);
+      if (json?.e === 'ACCOUNT_UPDATE') this.handleAccountEvents([json]);
+      if (json?.e === 'ORDER_TRADE_UPDATE') this.handleOrderEvents([json]);
 
-      if (json.id === 42) {
+      if (json?.id === 42) {
         const diff = performance.now() - this.pingAt;
         this.store.update({ latency: Math.round(diff / 2) });
 

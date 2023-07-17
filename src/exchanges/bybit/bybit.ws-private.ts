@@ -2,6 +2,7 @@ import createHmac from 'create-hmac';
 
 import type { Position } from '../../types';
 import { v } from '../../utils/get-key';
+import { jsonParse } from '../../utils/json-parse';
 import { BaseWebSocket } from '../base.ws';
 
 import type { BybitExchange } from './bybit.exchange';
@@ -30,17 +31,17 @@ export class BybitPrivateWebsocket extends BaseWebSocket<BybitExchange> {
 
   onMessage = ({ data }: MessageEvent) => {
     if (!this.isDisposed) {
-      const json = JSON.parse(data);
+      const json = jsonParse(data);
 
-      if (json.topic === 'user.order.contractAccount') {
+      if (json?.topic === 'user.order.contractAccount') {
         this.handleOrderTopic(json.data);
       }
 
-      if (json.topic === 'user.position.contractAccount') {
+      if (json?.topic === 'user.position.contractAccount') {
         this.handlePositionTopic(json.data);
       }
 
-      if (json.op === 'pong') {
+      if (json?.op === 'pong') {
         const diff = performance.now() - this.pingAt;
         this.store.update({ latency: Math.round(diff / 2) });
 

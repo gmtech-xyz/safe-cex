@@ -1,5 +1,6 @@
 import type { OHLCVOptions, Candle, OrderBook } from '../../types';
 import { v } from '../../utils/get-key';
+import { jsonParse } from '../../utils/json-parse';
 import { calcOrderBookTotal, sortOrderBook } from '../../utils/orderbook';
 import { BaseWebSocket } from '../base.ws';
 
@@ -47,8 +48,8 @@ export class BinancePublicWebsocket extends BaseWebSocket<BinanceExchange> {
 
       for (const [topic, handler] of handlers) {
         if (data.includes(`e":"${topic}`)) {
-          const json = JSON.parse(data);
-          handler(Array.isArray(json) ? json : [json]);
+          const json = jsonParse(data);
+          if (json) handler(Array.isArray(json) ? json : [json]);
           break;
         }
       }

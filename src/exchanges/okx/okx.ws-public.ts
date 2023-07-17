@@ -6,6 +6,7 @@ import type {
   OrderBook,
   OrderBookOrders,
 } from '../../types';
+import { jsonParse } from '../../utils/json-parse';
 import { calcOrderBookTotal, sortOrderBook } from '../../utils/orderbook';
 import { roundUSD } from '../../utils/round-usd';
 import { multiply } from '../../utils/safe-math';
@@ -100,7 +101,8 @@ export class OKXPublicWebsocket extends BaseWebSocket<OKXExchange> {
           data.includes(`channel":"${channel}`) &&
           !data.includes('event":"subscribe"')
         ) {
-          handler(JSON.parse(data));
+          const json = jsonParse(data);
+          if (json) handler(json);
           break;
         }
       }

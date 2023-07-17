@@ -1,5 +1,6 @@
 import createHmac from 'create-hmac';
 
+import { jsonParse } from '../../utils/json-parse';
 import { virtualClock } from '../../utils/virtual-clock';
 import { BaseWebSocket } from '../base.ws';
 
@@ -43,14 +44,14 @@ export class BitgetPrivateWebsocket extends BaseWebSocket<BitgetExchange> {
       }
     }
 
-    const json = JSON.parse(data);
+    const json = jsonParse<Record<string, any>>(data);
 
-    if (json.arg.channel === 'orders' && json.event !== 'subscribe') {
+    if (json?.arg?.channel === 'orders' && json?.event !== 'subscribe') {
       this.handleOrderTopic(json);
       return;
     }
 
-    if (json.arg.channel === 'ordersAlgo' && json.event !== 'subscribe') {
+    if (json?.arg?.channel === 'ordersAlgo' && json?.event !== 'subscribe') {
       this.handleAlgoOrdersTopic(json);
     }
   };

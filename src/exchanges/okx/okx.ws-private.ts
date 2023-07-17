@@ -3,6 +3,7 @@ import { sumBy } from 'lodash';
 
 import type { Position } from '../../types';
 import { PositionSide } from '../../types';
+import { jsonParse } from '../../utils/json-parse';
 import { roundUSD } from '../../utils/round-usd';
 import { multiply, subtract } from '../../utils/safe-math';
 import { virtualClock } from '../../utils/virtual-clock';
@@ -103,17 +104,20 @@ export class OKXPrivateWebsocket extends BaseWebSocket<OKXExchange> {
       data.includes('"channel":"orders-algo"') ||
       data.includes('"channel":"algo-advance"')
     ) {
-      this.handleOrderTopic(JSON.parse(data));
+      const json = jsonParse(data);
+      if (json) this.handleOrderTopic(json);
       return;
     }
 
     if (data.includes('"channel":"positions"')) {
-      this.handlePositionTopic(JSON.parse(data));
+      const json = jsonParse<{ data: Array<Record<string, any>> }>(data);
+      if (json) this.handlePositionTopic(json);
       return;
     }
 
     if (data.includes('"channel":"account"')) {
-      this.handleAccountTopic(JSON.parse(data));
+      const json = jsonParse<{ data: Array<Record<string, any>> }>(data);
+      if (json) this.handleAccountTopic(json);
     }
   };
 

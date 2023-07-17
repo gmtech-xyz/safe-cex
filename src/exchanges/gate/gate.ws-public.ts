@@ -1,4 +1,5 @@
 import type { OHLCVOptions, Candle, OrderBook } from '../../types';
+import { jsonParse } from '../../utils/json-parse';
 import { calcOrderBookTotal, sortOrderBook } from '../../utils/orderbook';
 import { multiply } from '../../utils/safe-math';
 import { virtualClock } from '../../utils/virtual-clock';
@@ -82,7 +83,8 @@ export class GatePublicWebsocket extends BaseWebSocket<GateExchange> {
           data.includes(`"channel":"futures.${channel}"`) &&
           data.includes(`"event":"update"`)
         ) {
-          handler(JSON.parse(data));
+          const json = jsonParse(data);
+          if (json) handler(json);
           break;
         }
       }
