@@ -448,7 +448,7 @@ export class BybitExchange extends BaseExchange {
       takeProfit: opts.takeProfit ? `${takeProfit}` : undefined,
       reduceOnly: opts.reduceOnly || false,
       slTriggerBy: opts.stopLoss ? 'MarkPrice' : undefined,
-      tpTriggerBy: opts.takeProfit ? 'MarkPrice' : undefined,
+      tpTriggerBy: opts.takeProfit ? 'LastPrice' : undefined,
       timeInForce: opts.type === OrderType.Limit ? timeInForce : undefined,
       closeOnTrigger: false,
       positionIdx,
