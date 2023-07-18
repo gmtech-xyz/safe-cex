@@ -63,6 +63,10 @@ export class BybitExchange extends BaseExchange {
     return 'CONTRACT';
   }
 
+  get accountCategory() {
+    return 'linear';
+  }
+
   constructor(opts: ExchangeOptions, store: Store) {
     super(opts, store);
 
@@ -214,7 +218,12 @@ export class BybitExchange extends BaseExchange {
       orders: Array<Record<string, any>> = []
     ): Promise<Array<Record<string, any>>> => {
       const { data } = await this.xhr.get(ENDPOINTS.UNFILLED_ORDERS, {
-        params: { settleCoin: 'USDT', cursor },
+        params: {
+          category: this.accountCategory,
+          settleCoin: 'USDT',
+          limit: 50,
+          cursor,
+        },
       });
 
       const ordersList = Array.isArray(data?.result?.list)
