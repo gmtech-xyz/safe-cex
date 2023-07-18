@@ -55,6 +55,7 @@ export class BybitExchange extends BaseExchange {
   privateWebsocket: BybitPrivateWebsocket;
 
   private unifiedMarginStatus: number = 1;
+  private hedgedPositionsMap: Record<string, boolean> = {};
 
   get accountType() {
     return this.unifiedMarginStatus === 1 ? 'CONTRACT' : 'UNIFIED';
@@ -427,7 +428,7 @@ export class BybitExchange extends BaseExchange {
       throw new Error(`Market ${opts.symbol} not found`);
     }
 
-    const positionIdx = this.getOrderPositionIdx(opts);
+    const positionIdx = await this.getOrderPositionIdx(opts);
 
     const maxSize = market.limits.amount.max;
     const pPrice = market.precision.price;
@@ -636,7 +637,7 @@ export class BybitExchange extends BaseExchange {
       const payload: Record<string, any> = {
         category: this.accountCategory,
         symbol: order.symbol,
-        positionIdx: this.getOrderPositionIdx(order),
+        positionIdx: await this.getOrderPositionIdx(order),
       };
 
       if ('price' in update) {
@@ -825,19 +826,44 @@ export class BybitExchange extends BaseExchange {
     return orders;
   }
 
-  private getOrderPositionIdx = (
+  private fetchPositionMode = async (symbol: string) => {
+    if (this.store.options.isHedged) return true;
+
+    if (symbol in this.hedgedPositionsMap) {
+      return this.hedgedPositionsMap[symbol];
+    }
+
+    const { data } = await this.xhr.get(ENDPOINTS.POSITIONS, {
+      params: {
+        category: this.accountCategory,
+        symbol,
+      },
+    });
+
+    const isHedged = data?.result?.list?.length > 1;
+
+    this.hedgedPositionsMap[symbol] = isHedged;
+    this.store.setSetting('isHedged', isHedged);
+
+    return this.hedgedPositionsMap[symbol];
+  };
+
+  private getOrderPositionIdx = async (
     opts: Pick<PlaceOrderOpts, 'reduceOnly' | 'side' | 'symbol'>
   ) => {
+    const isHedged = await this.fetchPositionMode(opts.symbol);
+    if (!isHedged) return 0;
+
     let positionIdx = opts.side === OrderSide.Buy ? 1 : 2;
     if (opts.reduceOnly) positionIdx = positionIdx === 1 ? 2 : 1;
 
     return positionIdx;
   };
 
-  private getStopOrderPositionIdx = (
+  private getStopOrderPositionIdx = async (
     opts: Pick<PlaceOrderOpts, 'reduceOnly' | 'side' | 'symbol'>
   ) => {
-    const positionIdx = this.getOrderPositionIdx(opts);
+    const positionIdx = await this.getOrderPositionIdx(opts);
     return { 0: 0, 1: 2, 2: 1 }[positionIdx];
   };
 }
