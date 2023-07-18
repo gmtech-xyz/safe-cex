@@ -40,9 +40,9 @@ export const ENDPOINTS = {
   SET_LEVERAGE: '/v5/position/set-leverage',
   SET_TRADING_STOP: '/v5/position/trading-stop',
   CREATE_ORDER: '/v5/order/create',
+  REPLACE_ORDER: '/v5/order/amend',
   // V3
   SET_POSITION_MODE: '/contract/v3/private/position/switch-mode',
-  REPLACE_ORDER: '/contract/v3/private/order/replace',
 };
 
 export const INTERVAL: Record<Timeframe, string> = {

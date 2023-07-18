@@ -569,6 +569,7 @@ export class BybitExchange extends BaseExchange {
           : 'takeProfit';
 
         const payload: Record<string, any> = {
+          category: this.accountCategory,
           orderId: og.id,
           symbol: order.symbol,
           [key]: `${update.price}`,
@@ -598,6 +599,7 @@ export class BybitExchange extends BaseExchange {
     // we can do it directly on the order
     if (order.type === OrderType.Limit) {
       const payload: Record<string, any> = {
+        category: this.accountCategory,
         orderId: order.id,
         symbol: order.symbol,
       };
@@ -621,6 +623,7 @@ export class BybitExchange extends BaseExchange {
       (order.type === OrderType.StopLoss || order.type === OrderType.TakeProfit)
     ) {
       const payload: Record<string, any> = {
+        category: this.accountCategory,
         symbol: order.symbol,
         positionIdx: this.getOrderPositionIdx(order),
       };
