@@ -95,19 +95,23 @@ export class BybitExchange extends BaseExchange {
   };
 
   validateAccount = async () => {
-    const { data } = await this.xhr.get(ENDPOINTS.BALANCE);
+    try {
+      const { data } = await this.xhr.get(ENDPOINTS.ACCOUNT_MARGIN);
 
-    if (data.retMsg !== 'OK') {
-      this.emitter.emit('error', data.retMsg);
+      if (data.retMsg !== 'OK') {
+        this.emitter.emit('error', data.retMsg);
 
-      if (data.retMsg.includes('timestamp and recv_window param')) {
-        return 'Check your computer time and date';
+        if (data.retMsg.includes('timestamp and recv_window param')) {
+          return 'Check your computer time and date';
+        }
+
+        return data.retMsg;
       }
 
-      return data.retMsg;
+      return '';
+    } catch (err) {
+      return 'Invalid API key or secret';
     }
-
-    return '';
   };
 
   start = async () => {
@@ -203,8 +207,30 @@ export class BybitExchange extends BaseExchange {
       return this.store.balance;
     }
 
+    // UNIFIED ACCOUNT TYPE BALANCE CALCULATION
+    // ----------------------------------------
+    if (this.accountType === 'UNIFIED') {
+      const [firstAccount] = data.result.list || [];
+
+      const balance: Balance = {
+        total: parseFloat(firstAccount.totalEquity),
+        upnl: parseFloat(firstAccount.totalPerpUPL),
+        used:
+          parseFloat(firstAccount.totalMaintenanceMargin) +
+          parseFloat(firstAccount.totalInitialMargin),
+        free: parseFloat(firstAccount.totalMarginBalance),
+      };
+
+      return balance;
+    }
+
+    // NORMAL ACCOUNT TYPE BALANCE CALCULATION
+    // ---------------------------------------
     const [firstAccount] = data.result.list || [];
     const usdt = firstAccount?.coin?.find?.((c: any) => c.coin === 'USDT');
+
+    // The user has no USDT balance, yet?
+    if (!usdt) return this.store.balance;
 
     const balance: Balance = {
       total: parseFloat(usdt.equity),
@@ -773,7 +799,7 @@ export class BybitExchange extends BaseExchange {
   }
 
   mapOrder(o: Record<string, any>) {
-    const isStop = o.stopOrderType !== 'UNKNOWN';
+    const isStop = o.stopOrderType !== 'UNKNOWN' && o.stopOrderType !== '';
 
     const oPrice = isStop ? v(o, 'triggerPrice') : o.price;
     const oType = isStop ? v(o, 'stopOrderType') : v(o, 'orderType');
