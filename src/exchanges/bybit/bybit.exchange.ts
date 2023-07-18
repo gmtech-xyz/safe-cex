@@ -54,8 +54,10 @@ export class BybitExchange extends BaseExchange {
   publicWebsocket: BybitPublicWebsocket;
   privateWebsocket: BybitPrivateWebsocket;
 
+  private unifiedMarginStatus: number = 1;
+
   get accountType() {
-    return 'CONTRACT';
+    return this.unifiedMarginStatus === 1 ? 'CONTRACT' : 'UNIFIED';
   }
 
   get accountCategory() {
@@ -108,6 +110,10 @@ export class BybitExchange extends BaseExchange {
   };
 
   start = async () => {
+    // first check the account type of the user
+    // this will determine the parameters for the next requests
+    await this.fetchMarginAccountInfos();
+
     // load initial market data
     // then we can poll for live data
     const markets = await this.fetchMarkets();
@@ -153,6 +159,11 @@ export class BybitExchange extends BaseExchange {
       orders,
       loaded: { ...this.store.loaded, orders: true },
     });
+  };
+
+  fetchMarginAccountInfos = async () => {
+    const { data } = await this.xhr.get(ENDPOINTS.ACCOUNT_MARGIN);
+    this.unifiedMarginStatus = data?.result?.unifiedMarginStatus;
   };
 
   tick = async () => {

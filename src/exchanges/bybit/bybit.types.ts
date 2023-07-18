@@ -27,6 +27,7 @@ export const BASE_WS_URL = {
 };
 
 export const ENDPOINTS = {
+  ACCOUNT_MARGIN: '/v5/account/info',
   ACCOUNT: '/v5/user/query-api',
   BALANCE: '/v5/account/wallet-balance',
   UNFILLED_ORDERS: '/v5/order/realtime',
