@@ -5,7 +5,6 @@ import dayjs from 'dayjs';
 import omit from 'lodash/omit';
 import orderBy from 'lodash/orderBy';
 import times from 'lodash/times';
-import uniqBy from 'lodash/uniqBy';
 import { forEachSeries, mapSeries } from 'p-iteration';
 
 import type { Store } from '../../store/store.interface';
@@ -349,44 +348,38 @@ export class BybitExchange extends BaseExchange {
     const interval = INTERVAL[opts.interval];
     const [, amount, unit] = opts.interval.split(/(\d+)/);
 
-    const from = dayjs()
-      .subtract(parseFloat(amount) * 200, unit as ManipulateType)
-      .unix();
-
-    const from2 = dayjs()
-      .subtract(parseFloat(amount) * 200 * 2, unit as ManipulateType)
-      .unix();
+    const end = dayjs().valueOf();
+    const start = dayjs()
+      .subtract(parseFloat(amount) * 500, unit as ManipulateType)
+      .valueOf();
 
     const params = {
+      category: this.accountCategory,
       symbol: opts.symbol,
-      from,
+      start,
+      end,
       interval,
-      limit: 200,
+      limit: 500,
     };
 
-    const [{ data: page1 }, { data: page2 }] = await Promise.all([
-      this.xhr.get(ENDPOINTS.KLINE, { params: { ...params, from } }),
-      this.xhr.get(ENDPOINTS.KLINE, { params: { ...params, from: from2 } }),
-    ]);
+    const { data } = await this.xhr.get(ENDPOINTS.KLINE, { params });
 
-    // ensure we have arrays with data
-    const arr1 = Array.isArray(page1.result) ? page1.result : [];
-    const arr2 = Array.isArray(page2.result) ? page2.result : [];
-    const arr = arr1.concat(arr2).filter((c: any) => c);
-
-    // sort by timestamp and remove duplicated candles
-    const data = orderBy(uniqBy(arr, 'open_time'), ['open_time'], ['asc']);
-
-    const candles: Candle[] = data.map((c: Record<string, any>) => {
-      return {
-        timestamp: c.open_time,
-        open: c.open,
-        high: c.high,
-        low: c.low,
-        close: c.close,
-        volume: c.volume,
-      };
-    });
+    const candles: Candle[] = orderBy(
+      data?.result?.list?.map?.(
+        ([open_time, open, high, low, close, volume]: string[]) => {
+          return {
+            timestamp: parseFloat(open_time) / 1000,
+            open: parseFloat(open),
+            high: parseFloat(high),
+            low: parseFloat(low),
+            close: parseFloat(close),
+            volume: parseFloat(volume),
+          };
+        }
+      ),
+      ['timestamp'],
+      ['asc']
+    );
 
     return candles;
   };
