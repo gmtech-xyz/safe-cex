@@ -700,6 +700,7 @@ export class BybitExchange extends BaseExchange {
 
     if (position.leverage !== leverage) {
       await this.xhr.post(ENDPOINTS.SET_LEVERAGE, {
+        category: this.accountCategory,
         symbol,
         buyLeverage: `${leverage}`,
         sellLeverage: `${leverage}`,

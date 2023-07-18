@@ -31,9 +31,9 @@ export const ENDPOINTS = {
   CANCEL_SYMBOL_ORDERS: '/v5/order/cancel-all',
   POSITIONS: '/v5/position/list',
   KLINE: '/v5/market/kline',
+  SET_LEVERAGE: '/v5/position/set-leverage',
   // V3
   CREATE_ORDER: '/contract/v3/private/order/create',
-  SET_LEVERAGE: '/contract/v3/private/position/set-leverage',
   SET_POSITION_MODE: '/contract/v3/private/position/switch-mode',
   REPLACE_ORDER: '/contract/v3/private/order/replace',
   SET_TRADING_STOP: '/contract/v3/private/position/trading-stop',
