@@ -27,17 +27,17 @@ export const ENDPOINTS = {
   UNFILLED_ORDERS: '/v5/order/realtime',
   TICKERS: '/v5/market/tickers',
   MARKETS: '/v5/market/instruments-info',
+  CANCEL_ORDER: '/v5/order/cancel',
+  CANCEL_SYMBOL_ORDERS: '/v5/order/cancel-all',
   POSITIONS: '/v5/position/list',
   // V3
   CREATE_ORDER: '/contract/v3/private/order/create',
-  CANCEL_ORDER: '/contract/v3/private/order/cancel',
   SET_LEVERAGE: '/contract/v3/private/position/set-leverage',
   SET_POSITION_MODE: '/contract/v3/private/position/switch-mode',
   REPLACE_ORDER: '/contract/v3/private/order/replace',
   SET_TRADING_STOP: '/contract/v3/private/position/trading-stop',
   // V2
   KLINE: '/public/linear/kline',
-  CANCEL_SYMBOL_ORDERS: '/private/linear/order/cancel-all',
 };
 
 export const INTERVAL: Record<Timeframe, string> = {

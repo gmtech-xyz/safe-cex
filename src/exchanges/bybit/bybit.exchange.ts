@@ -668,10 +668,25 @@ export class BybitExchange extends BaseExchange {
   };
 
   cancelSymbolOrders = async (symbol: string) => {
+    const tpOrSLorders = this.store.orders.filter(
+      (o) => o.symbol === symbol && o.type !== OrderType.Limit
+    );
+
     const { data } = await this.unlimitedXHR.post(
       ENDPOINTS.CANCEL_SYMBOL_ORDERS,
-      { symbol }
+      { category: this.accountCategory, symbol }
     );
+
+    // we need to re-create TP/SL after cancel all
+    // before bybit was not cancelling them
+    if (tpOrSLorders.length > 0) {
+      await this.placeOrders(
+        tpOrSLorders.map((o) => ({
+          ...o,
+          side: o.side === OrderSide.Buy ? OrderSide.Sell : OrderSide.Buy,
+        }))
+      );
+    }
 
     if (v(data, 'retMsg') !== 'OK') {
       this.emitter.emit('error', v(data, 'retMsg'));
