@@ -488,6 +488,7 @@ export class BybitExchange extends BaseExchange {
 
   placeStopLossOrTakeProfit = async (opts: PlaceOrderOpts) => {
     const payload: Record<string, any> = {
+      category: this.accountCategory,
       symbol: opts.symbol,
       positionIdx: this.getStopOrderPositionIdx(opts),
     };
@@ -525,6 +526,7 @@ export class BybitExchange extends BaseExchange {
     );
 
     const payload: Record<string, any> = {
+      category: this.accountCategory,
       symbol: opts.symbol,
       positionIdx: this.getStopOrderPositionIdx(opts),
       trailingStop: `${distance}`,

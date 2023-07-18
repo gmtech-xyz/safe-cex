@@ -32,11 +32,11 @@ export const ENDPOINTS = {
   POSITIONS: '/v5/position/list',
   KLINE: '/v5/market/kline',
   SET_LEVERAGE: '/v5/position/set-leverage',
+  SET_TRADING_STOP: '/v5/position/trading-stop',
   // V3
   CREATE_ORDER: '/contract/v3/private/order/create',
   SET_POSITION_MODE: '/contract/v3/private/position/switch-mode',
   REPLACE_ORDER: '/contract/v3/private/order/replace',
-  SET_TRADING_STOP: '/contract/v3/private/position/trading-stop',
 };
 
 export const INTERVAL: Record<Timeframe, string> = {
