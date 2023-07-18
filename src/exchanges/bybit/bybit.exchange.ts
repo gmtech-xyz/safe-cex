@@ -733,6 +733,7 @@ export class BybitExchange extends BaseExchange {
     }
 
     const { data } = await this.xhr.post(ENDPOINTS.SET_POSITION_MODE, {
+      category: this.accountCategory,
       coin: 'USDT',
       mode: hedged ? 3 : 0,
     });

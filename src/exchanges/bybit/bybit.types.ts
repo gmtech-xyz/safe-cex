@@ -27,7 +27,6 @@ export const BASE_WS_URL = {
 };
 
 export const ENDPOINTS = {
-  // V5
   ACCOUNT: '/v5/user/query-api',
   BALANCE: '/v5/account/wallet-balance',
   UNFILLED_ORDERS: '/v5/order/realtime',
@@ -41,8 +40,7 @@ export const ENDPOINTS = {
   SET_TRADING_STOP: '/v5/position/trading-stop',
   CREATE_ORDER: '/v5/order/create',
   REPLACE_ORDER: '/v5/order/amend',
-  // V3
-  SET_POSITION_MODE: '/contract/v3/private/position/switch-mode',
+  SET_POSITION_MODE: '/v5/position/switch-mode',
 };
 
 export const INTERVAL: Record<Timeframe, string> = {
