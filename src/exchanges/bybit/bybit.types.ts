@@ -21,8 +21,8 @@ export const BASE_WS_URL = {
     testnet: 'wss://stream-testnet.bybit.com/v5/public/linear',
   },
   private: {
-    livenet: 'wss://stream.bybit.com/contract/private/v3',
-    testnet: 'wss://stream-testnet.bybit.com/contract/private/v3',
+    livenet: 'wss://stream.bybit.com/v5/private',
+    testnet: 'wss://stream-testnet.bybit.com/v5/private',
   },
 };
 
