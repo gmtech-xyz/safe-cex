@@ -54,11 +54,6 @@ export class BybitExchange extends BaseExchange {
   publicWebsocket: BybitPublicWebsocket;
   privateWebsocket: BybitPrivateWebsocket;
 
-  // we use this Map to indicate if a position is on hedge mode
-  // so we can avoid counting positions on every `placeOrder()` call
-  // we could have used a memoized function instead but the Map is built only once
-  private hedgedPositionsMap: Record<string, boolean> = {};
-
   get accountType() {
     return 'CONTRACT';
   }
@@ -251,36 +246,20 @@ export class BybitExchange extends BaseExchange {
   };
 
   fetchPositions = async () => {
-    const { data } = await this.xhr.get(ENDPOINTS.POSITIONS);
+    const { data } = await this.xhr.get(ENDPOINTS.POSITIONS, {
+      params: {
+        category: this.accountCategory,
+        settleCoin: 'USDT',
+        limit: 200,
+      },
+    });
 
     if (v(data, 'retMsg') !== 'OK') {
       this.emitter.emit('error', v(data, 'retMsg'));
       return this.store.positions;
     }
 
-    const positions: Position[] = data.result.map((p: any) =>
-      this.mapPosition(p.data)
-    );
-
-    // reduce symbols into an object with symbol as key and boolean as value
-    // value is true if symbol is present more than once
-    // this means that we have a position on hedge mode
-    if (!this.store.loaded.positions) {
-      this.hedgedPositionsMap = positions
-        .map((p) => p.symbol)
-        .reduce<Record<string, boolean>>(
-          (acc, symbol) => ({
-            ...acc,
-            [symbol]: typeof acc[symbol] !== 'undefined',
-          }),
-          {}
-        );
-
-      this.store.setSetting(
-        'isHedged',
-        Object.values(this.hedgedPositionsMap).some((value) => value === true)
-      );
-    }
+    const positions: Position[] = data.result.list.map(this.mapPosition);
 
     return positions;
   };
@@ -675,6 +654,7 @@ export class BybitExchange extends BaseExchange {
   cancelOrders = async (orders: Order[]) => {
     await forEachSeries(orders, async (order) => {
       const { data } = await this.unlimitedXHR.post(ENDPOINTS.CANCEL_ORDER, {
+        category: this.accountCategory,
         symbol: order.symbol,
         orderId: order.id,
       });
@@ -740,7 +720,6 @@ export class BybitExchange extends BaseExchange {
 
     if (data.retMsg === 'All symbols switched successfully.') {
       this.store.setSetting('isHedged', hedged);
-      if (!hedged) this.hedgedPositionsMap = {};
     } else {
       this.emitter.emit('error', data.retMsg);
     }
@@ -750,7 +729,7 @@ export class BybitExchange extends BaseExchange {
     const position: Position = {
       symbol: p.symbol,
       side: POSITION_SIDE[p.side],
-      entryPrice: parseFloat(v(p, 'entryPrice') ?? 0),
+      entryPrice: parseFloat(v(p, 'avgPrice') ?? 0),
       notional: parseFloat(v(p, 'positionValue') ?? 0),
       leverage: parseFloat(p.leverage),
       unrealizedPnl: parseFloat(v(p, 'unrealisedPnl') ?? 0),
@@ -818,11 +797,6 @@ export class BybitExchange extends BaseExchange {
   private getOrderPositionIdx = (
     opts: Pick<PlaceOrderOpts, 'reduceOnly' | 'side' | 'symbol'>
   ) => {
-    // we can't use `this.store.options.isHedged` because
-    // it can be enabled on some symbols but not on others
-    const isHedged = this.hedgedPositionsMap[opts.symbol] || false;
-    if (!isHedged) return 0;
-
     let positionIdx = opts.side === OrderSide.Buy ? 1 : 2;
     if (opts.reduceOnly) positionIdx = positionIdx === 1 ? 2 : 1;
 

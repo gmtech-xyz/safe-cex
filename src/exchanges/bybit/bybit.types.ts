@@ -27,6 +27,7 @@ export const ENDPOINTS = {
   UNFILLED_ORDERS: '/v5/order/realtime',
   TICKERS: '/v5/market/tickers',
   MARKETS: '/v5/market/instruments-info',
+  POSITIONS: '/v5/position/list',
   // V3
   CREATE_ORDER: '/contract/v3/private/order/create',
   CANCEL_ORDER: '/contract/v3/private/order/cancel',
@@ -35,7 +36,6 @@ export const ENDPOINTS = {
   REPLACE_ORDER: '/contract/v3/private/order/replace',
   SET_TRADING_STOP: '/contract/v3/private/position/trading-stop',
   // V2
-  POSITIONS: '/private/linear/position/list',
   KLINE: '/public/linear/kline',
   CANCEL_SYMBOL_ORDERS: '/private/linear/order/cancel-all',
 };
