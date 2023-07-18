@@ -32,7 +32,7 @@ import { v } from '../../utils/get-key';
 import { inverseObj } from '../../utils/inverse-obj';
 import { loop } from '../../utils/loop';
 import { omitUndefined } from '../../utils/omit-undefined';
-import { adjust, subtract } from '../../utils/safe-math';
+import { add, adjust, subtract } from '../../utils/safe-math';
 import { BaseExchange } from '../base';
 
 import { createAPI } from './bybit.api';
@@ -58,6 +58,10 @@ export class BybitExchange extends BaseExchange {
   // so we can avoid counting positions on every `placeOrder()` call
   // we could have used a memoized function instead but the Map is built only once
   private hedgedPositionsMap: Record<string, boolean> = {};
+
+  get accountType() {
+    return 'CONTRACT';
+  }
 
   constructor(opts: ExchangeOptions, store: Store) {
     super(opts, store);
@@ -180,7 +184,7 @@ export class BybitExchange extends BaseExchange {
 
   fetchBalance = async () => {
     const { data } = await this.xhr.get(ENDPOINTS.BALANCE, {
-      params: { coin: 'USDT' },
+      params: { accountType: this.accountType },
     });
 
     if (v(data, 'retMsg') !== 'OK') {
@@ -188,12 +192,17 @@ export class BybitExchange extends BaseExchange {
       return this.store.balance;
     }
 
-    const [usdt] = data.result.list;
+    const [firstAccount] = data.result.list || [];
+    const usdt = firstAccount?.coin?.find?.((c: any) => c.coin === 'USDT');
+
     const balance: Balance = {
-      used: parseFloat(usdt.positionMargin) + parseFloat(usdt.orderMargin),
-      free: parseFloat(usdt.availableBalance),
-      total: parseFloat(usdt.walletBalance),
+      total: parseFloat(usdt.equity),
       upnl: parseFloat(usdt.unrealisedPnl),
+      used: add(
+        parseFloat(usdt.totalOrderIM),
+        parseFloat(usdt.totalPositionIM)
+      ),
+      free: parseFloat(usdt.availableToWithdraw),
     };
 
     return balance;

@@ -23,8 +23,8 @@ export const BASE_WS_URL = {
 export const ENDPOINTS = {
   // V5
   ACCOUNT: '/v5/user/query-api',
+  BALANCE: '/v5/account/wallet-balance',
   // V3
-  BALANCE: '/contract/v3/private/account/wallet/balance',
   UNFILLED_ORDERS: '/contract/v3/private/order/unfilled-orders',
   TICKERS: '/derivatives/v3/public/tickers',
   MARKETS: '/derivatives/v3/public/instruments-info',
