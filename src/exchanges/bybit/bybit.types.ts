@@ -1,5 +1,11 @@
 import type { Timeframe } from '../../types';
-import { OrderStatus, OrderType, OrderSide, PositionSide } from '../../types';
+import {
+  OrderTimeInForce,
+  OrderStatus,
+  OrderType,
+  OrderSide,
+  PositionSide,
+} from '../../types';
 
 export const RECV_WINDOW = 5000;
 export const BROKER_ID = 'Gi000266';
@@ -33,8 +39,8 @@ export const ENDPOINTS = {
   KLINE: '/v5/market/kline',
   SET_LEVERAGE: '/v5/position/set-leverage',
   SET_TRADING_STOP: '/v5/position/trading-stop',
+  CREATE_ORDER: '/v5/order/create',
   // V3
-  CREATE_ORDER: '/contract/v3/private/order/create',
   SET_POSITION_MODE: '/contract/v3/private/position/switch-mode',
   REPLACE_ORDER: '/contract/v3/private/order/replace',
 };
@@ -84,4 +90,11 @@ export const ORDER_SIDE: Record<string, OrderSide> = {
 export const POSITION_SIDE: Record<string, PositionSide> = {
   Buy: PositionSide.Long,
   Sell: PositionSide.Short,
+};
+
+export const ORDER_TIME_IN_FORCE: Record<string, OrderTimeInForce> = {
+  GTC: OrderTimeInForce.GoodTillCancel,
+  IOC: OrderTimeInForce.ImmediateOrCancel,
+  FOK: OrderTimeInForce.FillOrKill,
+  PostOnly: OrderTimeInForce.PostOnly,
 };

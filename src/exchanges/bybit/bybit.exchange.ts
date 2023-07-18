@@ -40,6 +40,7 @@ import {
   INTERVAL,
   ORDER_SIDE,
   ORDER_STATUS,
+  ORDER_TIME_IN_FORCE,
   ORDER_TYPE,
   POSITION_SIDE,
 } from './bybit.types';
@@ -426,9 +427,13 @@ export class BybitExchange extends BaseExchange {
     const price = opts.price ? adjust(opts.price, pPrice) : null;
     const stopLoss = opts.stopLoss ? adjust(opts.stopLoss, pPrice) : null;
     const takeProfit = opts.takeProfit ? adjust(opts.takeProfit, pPrice) : null;
-    const timeInForce = opts.timeInForce || OrderTimeInForce.GoodTillCancel;
+    const timeInForce =
+      inverseObj(ORDER_TIME_IN_FORCE)[
+        opts.timeInForce || OrderTimeInForce.GoodTillCancel
+      ];
 
     const req = omitUndefined({
+      category: this.accountCategory,
       symbol: opts.symbol,
       side: inverseObj(ORDER_SIDE)[opts.side],
       orderType: inverseObj(ORDER_TYPE)[opts.type],
