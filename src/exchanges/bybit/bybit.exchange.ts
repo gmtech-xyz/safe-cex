@@ -287,7 +287,7 @@ export class BybitExchange extends BaseExchange {
 
   fetchTickers = async () => {
     const { data } = await this.xhr.get(ENDPOINTS.TICKERS, {
-      params: { category: 'linear' },
+      params: { category: this.accountCategory },
     });
 
     if (v(data, 'retMsg') !== 'OK') {
@@ -307,8 +307,8 @@ export class BybitExchange extends BaseExchange {
         const ticker = {
           id: market.id,
           symbol: market.symbol,
-          bid: parseFloat(t.bidPrice),
-          ask: parseFloat(t.askPrice),
+          bid: parseFloat(t.bid1Price),
+          ask: parseFloat(t.ask1Price),
           last: parseFloat(t.lastPrice),
           mark: parseFloat(t.markPrice),
           index: parseFloat(t.indexPrice),
