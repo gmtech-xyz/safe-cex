@@ -1,5 +1,11 @@
 import type { Timeframe } from '../../types';
-import { OrderStatus, OrderType, OrderSide, PositionSide } from '../../types';
+import {
+  OrderTimeInForce,
+  OrderStatus,
+  OrderType,
+  OrderSide,
+  PositionSide,
+} from '../../types';
 
 export const RECV_WINDOW = 5000;
 export const BROKER_ID = 'Gi000266';
@@ -11,33 +17,31 @@ export const BASE_URL = {
 
 export const BASE_WS_URL = {
   public: {
-    livenet: 'wss://stream.bybit.com/realtime_public',
-    testnet: 'wss://stream-testnet.bybit.com/realtime_public',
+    livenet: 'wss://stream.bybit.com/v5/public/linear',
+    testnet: 'wss://stream-testnet.bybit.com/v5/public/linear',
   },
   private: {
-    livenet: 'wss://stream.bybit.com/contract/private/v3',
-    testnet: 'wss://stream-testnet.bybit.com/contract/private/v3',
+    livenet: 'wss://stream.bybit.com/v5/private',
+    testnet: 'wss://stream-testnet.bybit.com/v5/private',
   },
 };
 
 export const ENDPOINTS = {
-  // V5
+  ACCOUNT_MARGIN: '/v5/account/info',
   ACCOUNT: '/v5/user/query-api',
-  // V3
-  BALANCE: '/contract/v3/private/account/wallet/balance',
-  UNFILLED_ORDERS: '/contract/v3/private/order/unfilled-orders',
-  TICKERS: '/derivatives/v3/public/tickers',
-  MARKETS: '/derivatives/v3/public/instruments-info',
-  CREATE_ORDER: '/contract/v3/private/order/create',
-  CANCEL_ORDER: '/contract/v3/private/order/cancel',
-  SET_LEVERAGE: '/contract/v3/private/position/set-leverage',
-  SET_POSITION_MODE: '/contract/v3/private/position/switch-mode',
-  REPLACE_ORDER: '/contract/v3/private/order/replace',
-  SET_TRADING_STOP: '/contract/v3/private/position/trading-stop',
-  // V2
-  POSITIONS: '/private/linear/position/list',
-  KLINE: '/public/linear/kline',
-  CANCEL_SYMBOL_ORDERS: '/private/linear/order/cancel-all',
+  BALANCE: '/v5/account/wallet-balance',
+  UNFILLED_ORDERS: '/v5/order/realtime',
+  TICKERS: '/v5/market/tickers',
+  MARKETS: '/v5/market/instruments-info',
+  CANCEL_ORDER: '/v5/order/cancel',
+  CANCEL_SYMBOL_ORDERS: '/v5/order/cancel-all',
+  POSITIONS: '/v5/position/list',
+  KLINE: '/v5/market/kline',
+  SET_LEVERAGE: '/v5/position/set-leverage',
+  SET_TRADING_STOP: '/v5/position/trading-stop',
+  CREATE_ORDER: '/v5/order/create',
+  REPLACE_ORDER: '/v5/order/amend',
+  SET_POSITION_MODE: '/v5/position/switch-mode',
 };
 
 export const INTERVAL: Record<Timeframe, string> = {
@@ -85,4 +89,11 @@ export const ORDER_SIDE: Record<string, OrderSide> = {
 export const POSITION_SIDE: Record<string, PositionSide> = {
   Buy: PositionSide.Long,
   Sell: PositionSide.Short,
+};
+
+export const ORDER_TIME_IN_FORCE: Record<string, OrderTimeInForce> = {
+  GTC: OrderTimeInForce.GoodTillCancel,
+  IOC: OrderTimeInForce.ImmediateOrCancel,
+  FOK: OrderTimeInForce.FillOrKill,
+  PostOnly: OrderTimeInForce.PostOnly,
 };

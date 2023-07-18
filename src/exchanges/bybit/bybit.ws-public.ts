@@ -26,15 +26,15 @@ type SubscribedTopics = {
 export class BybitPublicWebsocket extends BaseWebSocket<BybitExchange> {
   topics: SubscribedTopics = {};
   messageHandlers: MessageHandlers = {
-    instrument_info: (d: Data) => this.handleInstrumentInfoEvents(d),
+    tickers: (d: Data) => this.handleTickersEvent(d),
     pong: () => this.handlePongEvent(),
   };
 
   connectAndSubscribe = () => {
     if (!this.isDisposed) {
       // add instrument_info topics to subscribe on
-      this.topics.instrumentInfos = this.parent.store.markets.map(
-        (m) => `instrument_info.100ms.${m.symbol}`
+      this.topics.tickers = this.parent.store.markets.map(
+        (m) => `tickers.${m.symbol}`
       );
 
       this.ws = new WebSocket(
@@ -90,8 +90,8 @@ export class BybitPublicWebsocket extends BaseWebSocket<BybitExchange> {
     this.pingTimeoutId = setTimeout(() => this.ping(), 10_000);
   };
 
-  handleInstrumentInfoEvents = (json: Record<string, any>) => {
-    const d = json?.data?.update?.[0];
+  handleTickersEvent = (json: Record<string, any>) => {
+    const d = json.data;
     const ticker = this.parent.store.tickers.find(
       (t) => t.symbol === d?.symbol
     );
@@ -99,31 +99,30 @@ export class BybitPublicWebsocket extends BaseWebSocket<BybitExchange> {
     if (ticker) {
       const update: Partial<Writable<Ticker>> = {};
 
-      if (d.bid1_price) update.bid = parseFloat(d.bid1_price);
-      if (d.ask1_price) update.ask = parseFloat(d.ask1_price);
-      if (d.last_price) update.last = parseFloat(d.last_price);
-      if (d.mark_price) update.mark = parseFloat(d.mark_price);
-      if (d.index_price) update.index = parseFloat(d.index_price);
+      if (d.bid1Price) update.bid = parseFloat(d.bid1Price);
+      if (d.ask1Price) update.ask = parseFloat(d.ask1Price);
+      if (d.lastPrice) update.last = parseFloat(d.lastPrice);
+      if (d.markPrice) update.mark = parseFloat(d.markPrice);
+      if (d.indexPrice) update.index = parseFloat(d.indexPrice);
 
-      if (d.price_24h_pcnt_e6) {
-        update.percentage = parseFloat(d.price_24h_pcnt_e6) / 10e3;
+      if (d.price24hPcnt) {
+        update.percentage = parseFloat(d.price24hPcnt) * 100;
       }
 
-      if (d.open_interest_e8) {
-        update.openInterest = parseFloat(d.open_interest_e8) / 10e7;
+      if (d.openInterest) {
+        update.openInterest = parseFloat(d.openInterest);
       }
 
-      if (d.funding_rate_e6) {
-        update.fundingRate = parseFloat(d.funding_rate_e6) / 10e5;
+      if (d.fundingRate) {
+        update.fundingRate = parseFloat(d.fundingRate);
       }
 
-      if (d.volume_24h_e8) {
-        update.volume = parseFloat(d.volume_24h_e8) / 10e7;
+      if (d.volume24h) {
+        update.volume = parseFloat(d.volume24h);
       }
 
-      if (d.last_price || d.volume_24h_e8) {
-        update.quoteVolume =
-          (update.volume || ticker.volume) * (update.last || ticker.last);
+      if (d.turnover24h) {
+        update.quoteVolume = parseFloat(d.turnover24h);
       }
 
       this.parent.store.updateTicker(ticker, update);
@@ -131,18 +130,18 @@ export class BybitPublicWebsocket extends BaseWebSocket<BybitExchange> {
   };
 
   listenOHLCV = (opts: OHLCVOptions, callback: (candle: Candle) => void) => {
-    const topic = `candle.${INTERVAL[opts.interval]}.${opts.symbol}`;
+    const topic = `kline.${INTERVAL[opts.interval]}.${opts.symbol}`;
 
     const waitForConnectedAndSubscribe = () => {
       if (this.isConnected) {
         if (!this.isDisposed) {
           this.messageHandlers[topic] = ({ data: [candle] }: Data) => {
             callback({
-              timestamp: candle.start,
-              open: candle.open,
-              high: candle.high,
-              low: candle.low,
-              close: candle.close,
+              timestamp: candle.start / 1000,
+              open: parseFloat(candle.open),
+              high: parseFloat(candle.high),
+              low: parseFloat(candle.low),
+              close: parseFloat(candle.close),
               volume: parseFloat(candle.volume),
             });
           };
@@ -178,7 +177,7 @@ export class BybitPublicWebsocket extends BaseWebSocket<BybitExchange> {
   ) => {
     let timeoutId: NodeJS.Timeout | null = null;
 
-    const topic = `orderBook_200.100ms.${symbol}`;
+    const topic = `orderbook.500.${symbol}`;
     const orderBook: OrderBook = { bids: [], asks: [] };
 
     const waitForConnectedAndSubscribe = () => {
@@ -188,45 +187,45 @@ export class BybitPublicWebsocket extends BaseWebSocket<BybitExchange> {
             if (data.type === 'snapshot') {
               orderBook.bids = [];
               orderBook.asks = [];
-              data.data.order_book.forEach((order: Data) => {
-                const key = order.side === 'Buy' ? 'bids' : 'asks';
-                orderBook[key].push({
-                  price: parseFloat(order.price),
-                  amount: order.size,
-                  total: 0,
+
+              Object.entries(data.data).forEach(([side, orders]: any) => {
+                if (side !== 'a' && side !== 'b') return;
+
+                const key = side === 'a' ? 'asks' : 'bids';
+                orders.forEach((order: Data) => {
+                  orderBook[key].push({
+                    price: parseFloat(order[0]),
+                    amount: parseFloat(order[1]),
+                    total: 0,
+                  });
                 });
               });
             }
 
             if (data.type === 'delta') {
-              const toDelete = data.data.delete || [];
-              const toUpdate = data.data.update || [];
-              const toInsert = data.data.insert || [];
+              Object.entries(data.data).forEach(([side, orders]: any) => {
+                if (side !== 'a' && side !== 'b') return;
 
-              toDelete.forEach((order: Data) => {
-                const key = order.side === 'Buy' ? 'bids' : 'asks';
-                const index = orderBook[key].findIndex(
-                  (o) => o.price === parseFloat(order.price)
-                );
+                const key = side === 'a' ? 'asks' : 'bids';
+                orders.forEach((order: Data) => {
+                  const price = parseFloat(order[0]);
+                  const amount = parseFloat(order[1]);
 
-                if (index > -1) orderBook[key].splice(index, 1);
-              });
+                  const index = orderBook[key].findIndex(
+                    (o) => o.price === price
+                  );
 
-              toUpdate.forEach((order: Data) => {
-                const key = order.side === 'Buy' ? 'bids' : 'asks';
-                const index = orderBook[key].findIndex(
-                  (o) => o.price === parseFloat(order.price)
-                );
+                  if (index === -1 && amount > 0) {
+                    orderBook[key].push({ price, amount, total: 0 });
+                    return;
+                  }
 
-                if (index > -1) orderBook[key][index].amount = order.size;
-              });
+                  if (amount === 0) {
+                    orderBook[key].splice(index, 1);
+                    return;
+                  }
 
-              toInsert.forEach((order: Data) => {
-                const key = order.side === 'Buy' ? 'bids' : 'asks';
-                orderBook[key].push({
-                  price: parseFloat(order.price),
-                  amount: order.size,
-                  total: 0,
+                  orderBook[key][index].amount = amount;
                 });
               });
             }

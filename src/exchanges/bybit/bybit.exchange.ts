@@ -5,7 +5,6 @@ import dayjs from 'dayjs';
 import omit from 'lodash/omit';
 import orderBy from 'lodash/orderBy';
 import times from 'lodash/times';
-import uniqBy from 'lodash/uniqBy';
 import { forEachSeries, mapSeries } from 'p-iteration';
 
 import type { Store } from '../../store/store.interface';
@@ -32,7 +31,7 @@ import { v } from '../../utils/get-key';
 import { inverseObj } from '../../utils/inverse-obj';
 import { loop } from '../../utils/loop';
 import { omitUndefined } from '../../utils/omit-undefined';
-import { adjust, subtract } from '../../utils/safe-math';
+import { add, adjust, subtract } from '../../utils/safe-math';
 import { BaseExchange } from '../base';
 
 import { createAPI } from './bybit.api';
@@ -41,6 +40,7 @@ import {
   INTERVAL,
   ORDER_SIDE,
   ORDER_STATUS,
+  ORDER_TIME_IN_FORCE,
   ORDER_TYPE,
   POSITION_SIDE,
 } from './bybit.types';
@@ -54,10 +54,16 @@ export class BybitExchange extends BaseExchange {
   publicWebsocket: BybitPublicWebsocket;
   privateWebsocket: BybitPrivateWebsocket;
 
-  // we use this Map to indicate if a position is on hedge mode
-  // so we can avoid counting positions on every `placeOrder()` call
-  // we could have used a memoized function instead but the Map is built only once
+  private unifiedMarginStatus: number = 1;
   private hedgedPositionsMap: Record<string, boolean> = {};
+
+  get accountType() {
+    return this.unifiedMarginStatus === 1 ? 'CONTRACT' : 'UNIFIED';
+  }
+
+  get accountCategory() {
+    return 'linear';
+  }
 
   constructor(opts: ExchangeOptions, store: Store) {
     super(opts, store);
@@ -89,22 +95,30 @@ export class BybitExchange extends BaseExchange {
   };
 
   validateAccount = async () => {
-    const { data } = await this.xhr.get(ENDPOINTS.BALANCE);
+    try {
+      const { data } = await this.xhr.get(ENDPOINTS.ACCOUNT_MARGIN);
 
-    if (data.retMsg !== 'OK') {
-      this.emitter.emit('error', data.retMsg);
+      if (data.retMsg !== 'OK') {
+        this.emitter.emit('error', data.retMsg);
 
-      if (data.retMsg.includes('timestamp and recv_window param')) {
-        return 'Check your computer time and date';
+        if (data.retMsg.includes('timestamp and recv_window param')) {
+          return 'Check your computer time and date';
+        }
+
+        return data.retMsg;
       }
 
-      return data.retMsg;
+      return '';
+    } catch (err) {
+      return 'Invalid API key or secret';
     }
-
-    return '';
   };
 
   start = async () => {
+    // first check the account type of the user
+    // this will determine the parameters for the next requests
+    await this.fetchMarginAccountInfos();
+
     // load initial market data
     // then we can poll for live data
     const markets = await this.fetchMarkets();
@@ -152,6 +166,11 @@ export class BybitExchange extends BaseExchange {
     });
   };
 
+  fetchMarginAccountInfos = async () => {
+    const { data } = await this.xhr.get(ENDPOINTS.ACCOUNT_MARGIN);
+    this.unifiedMarginStatus = data?.result?.unifiedMarginStatus;
+  };
+
   tick = async () => {
     if (!this.isDisposed) {
       try {
@@ -180,7 +199,7 @@ export class BybitExchange extends BaseExchange {
 
   fetchBalance = async () => {
     const { data } = await this.xhr.get(ENDPOINTS.BALANCE, {
-      params: { coin: 'USDT' },
+      params: { accountType: this.accountType },
     });
 
     if (v(data, 'retMsg') !== 'OK') {
@@ -188,12 +207,39 @@ export class BybitExchange extends BaseExchange {
       return this.store.balance;
     }
 
-    const [usdt] = data.result.list;
+    // UNIFIED ACCOUNT TYPE BALANCE CALCULATION
+    // ----------------------------------------
+    if (this.accountType === 'UNIFIED') {
+      const [firstAccount] = data.result.list || [];
+
+      const balance: Balance = {
+        total: parseFloat(firstAccount.totalEquity),
+        upnl: parseFloat(firstAccount.totalPerpUPL),
+        used:
+          parseFloat(firstAccount.totalMaintenanceMargin) +
+          parseFloat(firstAccount.totalInitialMargin),
+        free: parseFloat(firstAccount.totalMarginBalance),
+      };
+
+      return balance;
+    }
+
+    // NORMAL ACCOUNT TYPE BALANCE CALCULATION
+    // ---------------------------------------
+    const [firstAccount] = data.result.list || [];
+    const usdt = firstAccount?.coin?.find?.((c: any) => c.coin === 'USDT');
+
+    // The user has no USDT balance, yet?
+    if (!usdt) return this.store.balance;
+
     const balance: Balance = {
-      used: parseFloat(usdt.positionMargin) + parseFloat(usdt.orderMargin),
-      free: parseFloat(usdt.availableBalance),
-      total: parseFloat(usdt.walletBalance),
+      total: parseFloat(usdt.equity),
       upnl: parseFloat(usdt.unrealisedPnl),
+      used: add(
+        parseFloat(usdt.totalOrderIM),
+        parseFloat(usdt.totalPositionIM)
+      ),
+      free: parseFloat(usdt.availableToWithdraw),
     };
 
     return balance;
@@ -205,7 +251,12 @@ export class BybitExchange extends BaseExchange {
       orders: Array<Record<string, any>> = []
     ): Promise<Array<Record<string, any>>> => {
       const { data } = await this.xhr.get(ENDPOINTS.UNFILLED_ORDERS, {
-        params: { settleCoin: 'USDT', cursor },
+        params: {
+          category: this.accountCategory,
+          settleCoin: 'USDT',
+          limit: 50,
+          cursor,
+        },
       });
 
       const ordersList = Array.isArray(data?.result?.list)
@@ -233,43 +284,27 @@ export class BybitExchange extends BaseExchange {
   };
 
   fetchPositions = async () => {
-    const { data } = await this.xhr.get(ENDPOINTS.POSITIONS);
+    const { data } = await this.xhr.get(ENDPOINTS.POSITIONS, {
+      params: {
+        category: this.accountCategory,
+        settleCoin: 'USDT',
+        limit: 200,
+      },
+    });
 
     if (v(data, 'retMsg') !== 'OK') {
       this.emitter.emit('error', v(data, 'retMsg'));
       return this.store.positions;
     }
 
-    const positions: Position[] = data.result.map((p: any) =>
-      this.mapPosition(p.data)
-    );
-
-    // reduce symbols into an object with symbol as key and boolean as value
-    // value is true if symbol is present more than once
-    // this means that we have a position on hedge mode
-    if (!this.store.loaded.positions) {
-      this.hedgedPositionsMap = positions
-        .map((p) => p.symbol)
-        .reduce<Record<string, boolean>>(
-          (acc, symbol) => ({
-            ...acc,
-            [symbol]: typeof acc[symbol] !== 'undefined',
-          }),
-          {}
-        );
-
-      this.store.setSetting(
-        'isHedged',
-        Object.values(this.hedgedPositionsMap).some((value) => value === true)
-      );
-    }
+    const positions: Position[] = data.result.list.map(this.mapPosition);
 
     return positions;
   };
 
   fetchTickers = async () => {
     const { data } = await this.xhr.get(ENDPOINTS.TICKERS, {
-      params: { category: 'linear' },
+      params: { category: this.accountCategory },
     });
 
     if (v(data, 'retMsg') !== 'OK') {
@@ -289,8 +324,8 @@ export class BybitExchange extends BaseExchange {
         const ticker = {
           id: market.id,
           symbol: market.symbol,
-          bid: parseFloat(t.bidPrice),
-          ask: parseFloat(t.askPrice),
+          bid: parseFloat(t.bid1Price),
+          ask: parseFloat(t.ask1Price),
           last: parseFloat(t.lastPrice),
           mark: parseFloat(t.markPrice),
           index: parseFloat(t.indexPrice),
@@ -311,7 +346,7 @@ export class BybitExchange extends BaseExchange {
 
   fetchMarkets = async () => {
     const { data } = await this.xhr.get(ENDPOINTS.MARKETS, {
-      params: { category: 'linear', limit: 1000 },
+      params: { category: this.accountCategory, limit: 1000 },
     });
 
     if (v(data, 'retMsg') !== 'OK') {
@@ -352,44 +387,38 @@ export class BybitExchange extends BaseExchange {
     const interval = INTERVAL[opts.interval];
     const [, amount, unit] = opts.interval.split(/(\d+)/);
 
-    const from = dayjs()
-      .subtract(parseFloat(amount) * 200, unit as ManipulateType)
-      .unix();
-
-    const from2 = dayjs()
-      .subtract(parseFloat(amount) * 200 * 2, unit as ManipulateType)
-      .unix();
+    const end = dayjs().valueOf();
+    const start = dayjs()
+      .subtract(parseFloat(amount) * 500, unit as ManipulateType)
+      .valueOf();
 
     const params = {
+      category: this.accountCategory,
       symbol: opts.symbol,
-      from,
+      start,
+      end,
       interval,
-      limit: 200,
+      limit: 500,
     };
 
-    const [{ data: page1 }, { data: page2 }] = await Promise.all([
-      this.xhr.get(ENDPOINTS.KLINE, { params: { ...params, from } }),
-      this.xhr.get(ENDPOINTS.KLINE, { params: { ...params, from: from2 } }),
-    ]);
+    const { data } = await this.xhr.get(ENDPOINTS.KLINE, { params });
 
-    // ensure we have arrays with data
-    const arr1 = Array.isArray(page1.result) ? page1.result : [];
-    const arr2 = Array.isArray(page2.result) ? page2.result : [];
-    const arr = arr1.concat(arr2).filter((c: any) => c);
-
-    // sort by timestamp and remove duplicated candles
-    const data = orderBy(uniqBy(arr, 'open_time'), ['open_time'], ['asc']);
-
-    const candles: Candle[] = data.map((c: Record<string, any>) => {
-      return {
-        timestamp: c.open_time,
-        open: c.open,
-        high: c.high,
-        low: c.low,
-        close: c.close,
-        volume: c.volume,
-      };
-    });
+    const candles: Candle[] = orderBy(
+      data?.result?.list?.map?.(
+        ([open_time, open, high, low, close, volume]: string[]) => {
+          return {
+            timestamp: parseFloat(open_time) / 1000,
+            open: parseFloat(open),
+            high: parseFloat(high),
+            low: parseFloat(low),
+            close: parseFloat(close),
+            volume: parseFloat(volume),
+          };
+        }
+      ),
+      ['timestamp'],
+      ['asc']
+    );
 
     return candles;
   };
@@ -425,7 +454,7 @@ export class BybitExchange extends BaseExchange {
       throw new Error(`Market ${opts.symbol} not found`);
     }
 
-    const positionIdx = this.getOrderPositionIdx(opts);
+    const positionIdx = await this.getOrderPositionIdx(opts);
 
     const maxSize = market.limits.amount.max;
     const pPrice = market.precision.price;
@@ -436,9 +465,13 @@ export class BybitExchange extends BaseExchange {
     const price = opts.price ? adjust(opts.price, pPrice) : null;
     const stopLoss = opts.stopLoss ? adjust(opts.stopLoss, pPrice) : null;
     const takeProfit = opts.takeProfit ? adjust(opts.takeProfit, pPrice) : null;
-    const timeInForce = opts.timeInForce || OrderTimeInForce.GoodTillCancel;
+    const timeInForce =
+      inverseObj(ORDER_TIME_IN_FORCE)[
+        opts.timeInForce || OrderTimeInForce.GoodTillCancel
+      ];
 
     const req = omitUndefined({
+      category: this.accountCategory,
       symbol: opts.symbol,
       side: inverseObj(ORDER_SIDE)[opts.side],
       orderType: inverseObj(ORDER_TYPE)[opts.type],
@@ -498,8 +531,9 @@ export class BybitExchange extends BaseExchange {
 
   placeStopLossOrTakeProfit = async (opts: PlaceOrderOpts) => {
     const payload: Record<string, any> = {
+      category: this.accountCategory,
       symbol: opts.symbol,
-      positionIdx: this.getStopOrderPositionIdx(opts),
+      positionIdx: await this.getStopOrderPositionIdx(opts),
     };
 
     if (opts.type === OrderType.StopLoss) {
@@ -535,8 +569,9 @@ export class BybitExchange extends BaseExchange {
     );
 
     const payload: Record<string, any> = {
+      category: this.accountCategory,
       symbol: opts.symbol,
-      positionIdx: this.getStopOrderPositionIdx(opts),
+      positionIdx: await this.getStopOrderPositionIdx(opts),
       trailingStop: `${distance}`,
     };
 
@@ -572,6 +607,7 @@ export class BybitExchange extends BaseExchange {
           : 'takeProfit';
 
         const payload: Record<string, any> = {
+          category: this.accountCategory,
           orderId: og.id,
           symbol: order.symbol,
           [key]: `${update.price}`,
@@ -601,6 +637,7 @@ export class BybitExchange extends BaseExchange {
     // we can do it directly on the order
     if (order.type === OrderType.Limit) {
       const payload: Record<string, any> = {
+        category: this.accountCategory,
         orderId: order.id,
         symbol: order.symbol,
       };
@@ -624,8 +661,9 @@ export class BybitExchange extends BaseExchange {
       (order.type === OrderType.StopLoss || order.type === OrderType.TakeProfit)
     ) {
       const payload: Record<string, any> = {
+        category: this.accountCategory,
         symbol: order.symbol,
-        positionIdx: this.getOrderPositionIdx(order),
+        positionIdx: await this.getOrderPositionIdx(order),
       };
 
       if ('price' in update) {
@@ -657,6 +695,7 @@ export class BybitExchange extends BaseExchange {
   cancelOrders = async (orders: Order[]) => {
     await forEachSeries(orders, async (order) => {
       const { data } = await this.unlimitedXHR.post(ENDPOINTS.CANCEL_ORDER, {
+        category: this.accountCategory,
         symbol: order.symbol,
         orderId: order.id,
       });
@@ -670,10 +709,25 @@ export class BybitExchange extends BaseExchange {
   };
 
   cancelSymbolOrders = async (symbol: string) => {
+    const tpOrSLorders = this.store.orders.filter(
+      (o) => o.symbol === symbol && o.type !== OrderType.Limit
+    );
+
     const { data } = await this.unlimitedXHR.post(
       ENDPOINTS.CANCEL_SYMBOL_ORDERS,
-      { symbol }
+      { category: this.accountCategory, symbol }
     );
+
+    // we need to re-create TP/SL after cancel all
+    // before bybit was not cancelling them
+    if (tpOrSLorders.length > 0) {
+      await this.placeOrders(
+        tpOrSLorders.map((o) => ({
+          ...o,
+          side: o.side === OrderSide.Buy ? OrderSide.Sell : OrderSide.Buy,
+        }))
+      );
+    }
 
     if (v(data, 'retMsg') !== 'OK') {
       this.emitter.emit('error', v(data, 'retMsg'));
@@ -694,6 +748,7 @@ export class BybitExchange extends BaseExchange {
 
     if (position.leverage !== leverage) {
       await this.xhr.post(ENDPOINTS.SET_LEVERAGE, {
+        category: this.accountCategory,
         symbol,
         buyLeverage: `${leverage}`,
         sellLeverage: `${leverage}`,
@@ -716,13 +771,13 @@ export class BybitExchange extends BaseExchange {
     }
 
     const { data } = await this.xhr.post(ENDPOINTS.SET_POSITION_MODE, {
+      category: this.accountCategory,
       coin: 'USDT',
       mode: hedged ? 3 : 0,
     });
 
     if (data.retMsg === 'All symbols switched successfully.') {
       this.store.setSetting('isHedged', hedged);
-      if (!hedged) this.hedgedPositionsMap = {};
     } else {
       this.emitter.emit('error', data.retMsg);
     }
@@ -732,19 +787,19 @@ export class BybitExchange extends BaseExchange {
     const position: Position = {
       symbol: p.symbol,
       side: POSITION_SIDE[p.side],
-      entryPrice: parseFloat(v(p, 'entryPrice') ?? 0),
-      notional: parseFloat(v(p, 'positionValue') ?? 0),
+      entryPrice: parseFloat(v(p, 'avgPrice') || v(p, 'entryPrice') || 0),
+      notional: parseFloat(v(p, 'positionValue') || 0),
       leverage: parseFloat(p.leverage),
-      unrealizedPnl: parseFloat(v(p, 'unrealisedPnl') ?? 0),
+      unrealizedPnl: parseFloat(v(p, 'unrealisedPnl') || 0),
       contracts: parseFloat(p.size ?? 0),
-      liquidationPrice: parseFloat(v(p, 'liqPrice') ?? 0),
+      liquidationPrice: parseFloat(v(p, 'liqPrice') || 0),
     };
 
     return position;
   }
 
   mapOrder(o: Record<string, any>) {
-    const isStop = o.stopOrderType !== 'UNKNOWN';
+    const isStop = o.stopOrderType !== 'UNKNOWN' && o.stopOrderType !== '';
 
     const oPrice = isStop ? v(o, 'triggerPrice') : o.price;
     const oType = isStop ? v(o, 'stopOrderType') : v(o, 'orderType');
@@ -797,12 +852,32 @@ export class BybitExchange extends BaseExchange {
     return orders;
   }
 
-  private getOrderPositionIdx = (
+  private fetchPositionMode = async (symbol: string) => {
+    if (this.store.options.isHedged) return true;
+
+    if (symbol in this.hedgedPositionsMap) {
+      return this.hedgedPositionsMap[symbol];
+    }
+
+    const { data } = await this.xhr.get(ENDPOINTS.POSITIONS, {
+      params: {
+        category: this.accountCategory,
+        symbol,
+      },
+    });
+
+    const isHedged = data?.result?.list?.length > 1;
+
+    this.hedgedPositionsMap[symbol] = isHedged;
+    this.store.setSetting('isHedged', isHedged);
+
+    return this.hedgedPositionsMap[symbol];
+  };
+
+  private getOrderPositionIdx = async (
     opts: Pick<PlaceOrderOpts, 'reduceOnly' | 'side' | 'symbol'>
   ) => {
-    // we can't use `this.store.options.isHedged` because
-    // it can be enabled on some symbols but not on others
-    const isHedged = this.hedgedPositionsMap[opts.symbol] || false;
+    const isHedged = await this.fetchPositionMode(opts.symbol);
     if (!isHedged) return 0;
 
     let positionIdx = opts.side === OrderSide.Buy ? 1 : 2;
@@ -811,10 +886,10 @@ export class BybitExchange extends BaseExchange {
     return positionIdx;
   };
 
-  private getStopOrderPositionIdx = (
+  private getStopOrderPositionIdx = async (
     opts: Pick<PlaceOrderOpts, 'reduceOnly' | 'side' | 'symbol'>
   ) => {
-    const positionIdx = this.getOrderPositionIdx(opts);
+    const positionIdx = await this.getOrderPositionIdx(opts);
     return { 0: 0, 1: 2, 2: 1 }[positionIdx];
   };
 }

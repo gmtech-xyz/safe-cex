@@ -33,11 +33,11 @@ export class BybitPrivateWebsocket extends BaseWebSocket<BybitExchange> {
     if (!this.isDisposed) {
       const json = jsonParse(data);
 
-      if (json?.topic === 'user.order.contractAccount') {
+      if (json?.topic === 'order') {
         this.handleOrderTopic(json.data);
       }
 
-      if (json?.topic === 'user.position.contractAccount') {
+      if (json?.topic === 'position') {
         this.handlePositionTopic(json.data);
       }
 
@@ -66,8 +66,8 @@ export class BybitPrivateWebsocket extends BaseWebSocket<BybitExchange> {
     data.forEach((order: Record<string, any>) => {
       const orders = this.parent.mapOrder(order);
 
-      const price = parseFloat(v(order, 'lastExecPrice'));
-      const amount = parseFloat(v(order, 'lastExecQty'));
+      const price = parseFloat(v(order, 'price'));
+      const amount = parseFloat(v(order, 'qty'));
 
       if (order.orderStatus === 'PartiallyFilled') {
         // False positive when order is replaced
@@ -113,16 +113,8 @@ export class BybitPrivateWebsocket extends BaseWebSocket<BybitExchange> {
 
   handlePositionTopic = (data: Array<Record<string, any>>) => {
     const positions: Position[] = data.map(this.parent.mapPosition);
-
-    this.store.positions.forEach((p, idx) => {
-      const updated = positions.find(
-        (p2) => p2.symbol === p.symbol && p2.side === p.side
-      );
-
-      if (updated) {
-        this.store.positions[idx] = updated;
-      }
-    });
+    const updates: Array<[Position, Position]> = positions.map((p) => [p, p]);
+    this.store.updatePositions(updates);
   };
 
   private auth = () => {
@@ -140,11 +132,7 @@ export class BybitPrivateWebsocket extends BaseWebSocket<BybitExchange> {
   };
 
   private subscribe = () => {
-    const payload = {
-      op: 'subscribe',
-      args: ['user.order.contractAccount', 'user.position.contractAccount'],
-    };
-
+    const payload = { op: 'subscribe', args: ['order', 'position'] };
     this.ws?.send?.(JSON.stringify(payload));
   };
 }
