@@ -329,7 +329,7 @@ export class BybitExchange extends BaseExchange {
 
   fetchMarkets = async () => {
     const { data } = await this.xhr.get(ENDPOINTS.MARKETS, {
-      params: { category: 'linear', limit: 1000 },
+      params: { category: this.accountCategory, limit: 1000 },
     });
 
     if (v(data, 'retMsg') !== 'OK') {

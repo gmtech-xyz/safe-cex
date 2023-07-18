@@ -26,8 +26,8 @@ export const ENDPOINTS = {
   BALANCE: '/v5/account/wallet-balance',
   UNFILLED_ORDERS: '/v5/order/realtime',
   TICKERS: '/v5/market/tickers',
+  MARKETS: '/v5/market/instruments-info',
   // V3
-  MARKETS: '/derivatives/v3/public/instruments-info',
   CREATE_ORDER: '/contract/v3/private/order/create',
   CANCEL_ORDER: '/contract/v3/private/order/cancel',
   SET_LEVERAGE: '/contract/v3/private/position/set-leverage',
