@@ -17,8 +17,8 @@ export const BASE_URL = {
 
 export const BASE_WS_URL = {
   public: {
-    livenet: 'wss://stream.bybit.com/realtime_public',
-    testnet: 'wss://stream-testnet.bybit.com/realtime_public',
+    livenet: 'wss://stream.bybit.com/v5/public/linear',
+    testnet: 'wss://stream-testnet.bybit.com/v5/public/linear',
   },
   private: {
     livenet: 'wss://stream.bybit.com/contract/private/v3',
