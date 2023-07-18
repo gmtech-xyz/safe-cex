@@ -507,7 +507,7 @@ export class BybitExchange extends BaseExchange {
     const payload: Record<string, any> = {
       category: this.accountCategory,
       symbol: opts.symbol,
-      positionIdx: this.getStopOrderPositionIdx(opts),
+      positionIdx: await this.getStopOrderPositionIdx(opts),
     };
 
     if (opts.type === OrderType.StopLoss) {
@@ -545,7 +545,7 @@ export class BybitExchange extends BaseExchange {
     const payload: Record<string, any> = {
       category: this.accountCategory,
       symbol: opts.symbol,
-      positionIdx: this.getStopOrderPositionIdx(opts),
+      positionIdx: await this.getStopOrderPositionIdx(opts),
       trailingStop: `${distance}`,
     };
 
@@ -761,12 +761,12 @@ export class BybitExchange extends BaseExchange {
     const position: Position = {
       symbol: p.symbol,
       side: POSITION_SIDE[p.side],
-      entryPrice: parseFloat(v(p, 'avgPrice') ?? 0),
-      notional: parseFloat(v(p, 'positionValue') ?? 0),
+      entryPrice: parseFloat(v(p, 'avgPrice') || v(p, 'entryPrice') || 0),
+      notional: parseFloat(v(p, 'positionValue') || 0),
       leverage: parseFloat(p.leverage),
-      unrealizedPnl: parseFloat(v(p, 'unrealisedPnl') ?? 0),
+      unrealizedPnl: parseFloat(v(p, 'unrealisedPnl') || 0),
       contracts: parseFloat(p.size ?? 0),
-      liquidationPrice: parseFloat(v(p, 'liqPrice') ?? 0),
+      liquidationPrice: parseFloat(v(p, 'liqPrice') || 0),
     };
 
     return position;
