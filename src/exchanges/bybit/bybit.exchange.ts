@@ -433,20 +433,21 @@ export class BybitExchange extends BaseExchange {
   fetchLeverage = async () => {
     for (const market of this.store.markets) {
       if (!this.isDisposed) {
-        const {
-          data: {
-            result: {
-              list: [row],
+        try {
+          const { data } = await this.xhr.get(ENDPOINTS.POSITIONS, {
+            params: {
+              symbol: market.symbol,
+              category: this.accountCategory,
             },
-          },
-        } = await this.xhr.get(ENDPOINTS.POSITIONS, {
-          params: {
-            symbol: market.symbol,
-            category: this.accountCategory,
-          },
-        });
+          });
 
-        this.leverageHash[row.symbol] = parseFloat(row.leverage);
+          const row = data?.result?.list?.[0];
+          if (row) {
+            this.leverageHash[row.symbol] = parseFloat(row.leverage);
+          }
+        } catch {
+          // do nothing
+        }
       }
     }
   };
