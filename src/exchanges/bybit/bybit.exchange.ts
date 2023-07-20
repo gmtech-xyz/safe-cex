@@ -2,10 +2,11 @@ import type { Axios } from 'axios';
 import rateLimit from 'axios-rate-limit';
 import type { ManipulateType } from 'dayjs';
 import dayjs from 'dayjs';
+import chunk from 'lodash/chunk';
 import omit from 'lodash/omit';
 import orderBy from 'lodash/orderBy';
 import times from 'lodash/times';
-import { forEachSeries, mapSeries } from 'p-iteration';
+import { forEachSeries, map, mapSeries } from 'p-iteration';
 
 import type { Store } from '../../store/store.interface';
 import type {
@@ -55,7 +56,9 @@ export class BybitExchange extends BaseExchange {
   privateWebsocket: BybitPrivateWebsocket;
 
   private unifiedMarginStatus: number = 1;
+
   private hedgedPositionsMap: Record<string, boolean> = {};
+  private leverageHash: Record<string, number> = {};
 
   get accountType() {
     return this.unifiedMarginStatus === 1 ? 'CONTRACT' : 'UNIFIED';
@@ -128,6 +131,10 @@ export class BybitExchange extends BaseExchange {
       markets,
       loaded: { ...this.store.loaded, markets: true },
     });
+
+    // we fetch positions leverage in backggound
+    // this is for updating the leverage on the UI
+    this.fetchLeverage();
 
     // load initial tickers data
     // then we use websocket for live data
@@ -299,7 +306,48 @@ export class BybitExchange extends BaseExchange {
 
     const positions: Position[] = data.result.list.map(this.mapPosition);
 
-    return positions;
+    // copy the positions leverage to hash
+    // so we can use it for fake positions with 0
+    positions.forEach((p) => {
+      this.leverageHash[p.symbol] = p.leverage;
+    });
+
+    // We create fake positions for the leverasge settings
+    // since the API returns only the positions that are open
+    const fakePositions: Position[] = this.store.markets.reduce(
+      (acc: Position[], m) => {
+        const hasPosition = positions.find((p) => p.symbol === m.symbol);
+        if (hasPosition) return acc;
+
+        const fakeMarketPositions: Position[] = [
+          {
+            symbol: m.symbol,
+            side: PositionSide.Long,
+            entryPrice: 0,
+            notional: 0,
+            leverage: this.leverageHash[m.symbol] || 0,
+            unrealizedPnl: 0,
+            contracts: 0,
+            liquidationPrice: 0,
+          },
+          {
+            symbol: m.symbol,
+            side: PositionSide.Short,
+            entryPrice: 0,
+            notional: 0,
+            leverage: this.leverageHash[m.symbol] || 0,
+            unrealizedPnl: 0,
+            contracts: 0,
+            liquidationPrice: 0,
+          },
+        ];
+
+        return [...acc, ...fakeMarketPositions];
+      },
+      []
+    );
+
+    return [...positions, ...fakePositions];
   };
 
   fetchTickers = async () => {
@@ -381,6 +429,26 @@ export class BybitExchange extends BaseExchange {
       });
 
     return markets;
+  };
+
+  fetchLeverage = async () => {
+    await forEachSeries(chunk(this.store.markets, 20), (markets) => {
+      map(markets, async (market) => {
+        if (!this.isDisposed) {
+          const {
+            data: {
+              result: {
+                list: [row],
+              },
+            },
+          } = await this.xhr.get(ENDPOINTS.POSITIONS, {
+            params: { symbol: market.symbol, category: this.accountCategory },
+          });
+
+          this.leverageHash[row.symbol] = parseFloat(row.leverage);
+        }
+      });
+    });
   };
 
   fetchOHLCV = async (opts: OHLCVOptions) => {
@@ -754,6 +822,7 @@ export class BybitExchange extends BaseExchange {
         sellLeverage: `${leverage}`,
       });
 
+      this.leverageHash[symbol] = leverage;
       this.store.updatePositions([
         [{ symbol, side: PositionSide.Long }, { leverage }],
         [{ symbol, side: PositionSide.Short }, { leverage }],
