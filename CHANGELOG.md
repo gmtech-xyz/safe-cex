@@ -1,9 +1,10 @@
-## [8.0.3](https://github.com/gmtech-xyz/safe-cex/compare/v8.0.2...v8.0.3) (2023-07-20)
+## [8.0.4](https://github.com/gmtech-xyz/safe-cex/compare/v8.0.2...v8.0.4) (2023-07-20)
 
 
 ### Bug Fixes
 
 * **bybit.balance:** legacy accounts ([9b57410](https://github.com/gmtech-xyz/safe-cex/commit/9b57410ef5dc15d26a51487fa7e21eeacef9acb6))
+* **bybit:** some accounts fail on this call ([82435a7](https://github.com/gmtech-xyz/safe-cex/commit/82435a77877c7dfdace62dc6131b8cc4e83093b7))
 
 
 
