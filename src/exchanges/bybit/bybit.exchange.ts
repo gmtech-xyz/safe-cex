@@ -239,7 +239,7 @@ export class BybitExchange extends BaseExchange {
     if (!usdt) return this.store.balance;
 
     const balance: Balance = {
-      total: parseFloat(usdt.equity),
+      total: parseFloat(usdt.walletBalance),
       upnl: parseFloat(usdt.unrealisedPnl),
       used: add(
         parseFloat(usdt.totalOrderIM),
