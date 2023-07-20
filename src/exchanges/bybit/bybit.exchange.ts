@@ -132,10 +132,6 @@ export class BybitExchange extends BaseExchange {
       loaded: { ...this.store.loaded, markets: true },
     });
 
-    // we fetch positions leverage in backggound
-    // this is for updating the leverage on the UI
-    this.fetchLeverage();
-
     // load initial tickers data
     // then we use websocket for live data
     const tickers = await this.fetchTickers();
@@ -171,6 +167,10 @@ export class BybitExchange extends BaseExchange {
       orders,
       loaded: { ...this.store.loaded, orders: true },
     });
+
+    // we fetch positions leverage in backggound
+    // this is for updating the leverage on the UI
+    this.fetchLeverage();
   };
 
   fetchMarginAccountInfos = async () => {
