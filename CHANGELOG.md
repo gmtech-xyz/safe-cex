@@ -1,3 +1,12 @@
+## [8.0.3](https://github.com/gmtech-xyz/safe-cex/compare/v8.0.2...v8.0.3) (2023-07-20)
+
+
+### Bug Fixes
+
+* **bybit.balance:** legacy accounts ([9b57410](https://github.com/gmtech-xyz/safe-cex/commit/9b57410ef5dc15d26a51487fa7e21eeacef9acb6))
+
+
+
 ## [8.0.2](https://github.com/gmtech-xyz/safe-cex/compare/v2.1.3...v8.0.2) (2023-07-20)
 
 
@@ -11,7 +20,7 @@
 * **bybit:** fetch leverage after everything else ([a59b149](https://github.com/gmtech-xyz/safe-cex/commit/a59b149765a07b7e29e9b3c882ff6796f015da07))
 * **bybit:** fetch symbol position for leverage ([ba29f3a](https://github.com/gmtech-xyz/safe-cex/commit/ba29f3a80d27c1a5f6e4cbb2c60e328916d6de1b))
 * **bybit:** positionIdx for one-way positional SL/TP ([7c5efad](https://github.com/gmtech-xyz/safe-cex/commit/7c5efad72183a4c10c684d0f3c9c9e9506c893b4))
-* **bybit:** request leverage one by one ([0330c39](https://github.com/gmtech-xyz/safe-cex/commit/0330c39314534ba92f001d4b5e44f67b53226217))
+* **bybit:** request leverage one by one ([8c9d2ec](https://github.com/gmtech-xyz/safe-cex/commit/8c9d2ec35c276d6bbc9863b543b0076ead104cc8))
 * **bybit:** sl by last price ([a86e988](https://github.com/gmtech-xyz/safe-cex/commit/a86e988aa548121ac1e009c4470d55e0696dd9de))
 * **bybit:** timestamp closer to xhr ([de1e9f7](https://github.com/gmtech-xyz/safe-cex/commit/de1e9f72f03621322e2a8b49ba1edf5456a3bbc0))
 * **bybit:** try/catch requests ([b5d8c7c](https://github.com/gmtech-xyz/safe-cex/commit/b5d8c7ca5638a892b2a3b74aa6184600a406f3ac))
