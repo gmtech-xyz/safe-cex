@@ -2,11 +2,10 @@ import type { Axios } from 'axios';
 import rateLimit from 'axios-rate-limit';
 import type { ManipulateType } from 'dayjs';
 import dayjs from 'dayjs';
-import chunk from 'lodash/chunk';
 import omit from 'lodash/omit';
 import orderBy from 'lodash/orderBy';
 import times from 'lodash/times';
-import { forEachSeries, map, mapSeries } from 'p-iteration';
+import { forEachSeries, mapSeries } from 'p-iteration';
 
 import type { Store } from '../../store/store.interface';
 import type {
@@ -432,23 +431,24 @@ export class BybitExchange extends BaseExchange {
   };
 
   fetchLeverage = async () => {
-    await forEachSeries(chunk(this.store.markets, 20), (markets) => {
-      map(markets, async (market) => {
-        if (!this.isDisposed) {
-          const {
-            data: {
-              result: {
-                list: [row],
-              },
+    for (const market of this.store.markets) {
+      if (!this.isDisposed) {
+        const {
+          data: {
+            result: {
+              list: [row],
             },
-          } = await this.xhr.get(ENDPOINTS.POSITIONS, {
-            params: { symbol: market.symbol, category: this.accountCategory },
-          });
+          },
+        } = await this.xhr.get(ENDPOINTS.POSITIONS, {
+          params: {
+            symbol: market.symbol,
+            category: this.accountCategory,
+          },
+        });
 
-          this.leverageHash[row.symbol] = parseFloat(row.leverage);
-        }
-      });
-    });
+        this.leverageHash[row.symbol] = parseFloat(row.leverage);
+      }
+    }
   };
 
   fetchOHLCV = async (opts: OHLCVOptions) => {
