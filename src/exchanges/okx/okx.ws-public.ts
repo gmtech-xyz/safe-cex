@@ -189,15 +189,19 @@ export class OKXPublicWebsocket extends BaseWebSocket<OKXExchange> {
     const waitForConnectedAndSubscribe = () => {
       if (this.isConnected) {
         if (!this.isDisposed) {
-          this.messageHandlers.candle = ({ data: [c] }: Data) => {
-            callback({
-              timestamp: parseInt(c[0], 10) / 1000,
-              open: parseFloat(c[1]),
-              high: parseFloat(c[2]),
-              low: parseFloat(c[3]),
-              close: parseFloat(c[4]),
-              volume: parseFloat(c[7]),
-            });
+          this.messageHandlers.candle = (data: Data) => {
+            const candle = data?.data?.[0];
+
+            if (candle) {
+              callback({
+                timestamp: parseInt(candle[0], 10) / 1000,
+                open: parseFloat(candle[1]),
+                high: parseFloat(candle[2]),
+                low: parseFloat(candle[3]),
+                close: parseFloat(candle[4]),
+                volume: parseFloat(candle[7]),
+              });
+            }
           };
 
           this.ws?.send?.(JSON.stringify({ op: 'subscribe', args: [topic] }));
