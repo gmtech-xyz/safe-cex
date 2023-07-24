@@ -117,9 +117,11 @@ export class BybitExchange extends BaseExchange {
   };
 
   start = async () => {
+    const isDemo = !this.options.key || !this.options.secret;
+
     // first check the account type of the user
     // this will determine the parameters for the next requests
-    await this.fetchMarginAccountInfos();
+    if (!isDemo) await this.fetchMarginAccountInfos();
 
     // load initial market data
     // then we can poll for live data
@@ -147,17 +149,23 @@ export class BybitExchange extends BaseExchange {
 
     // start websocket streams
     this.publicWebsocket.connectAndSubscribe();
-    this.privateWebsocket.connectAndSubscribe();
+    if (!isDemo) this.privateWebsocket.connectAndSubscribe();
 
     // start ticking live data
     // balance, tickers, positions
-    await this.tick();
+    if (!isDemo) {
+      await this.tick();
+    } else {
+      this.store.update({
+        loaded: { ...this.store.loaded, balance: true, positions: true },
+      });
+    }
     if (this.isDisposed) return;
 
     this.log(`Ready to trade on Bybit`);
 
     // fetch unfilled orders
-    const orders = await this.fetchOrders();
+    const orders = isDemo ? [] : await this.fetchOrders();
     if (this.isDisposed) return;
 
     this.log(`Loaded Bybit orders`);
@@ -169,11 +177,17 @@ export class BybitExchange extends BaseExchange {
 
     // we fetch positions leverage in backggound
     // this is for updating the leverage on the UI
-    this.fetchLeverage();
+    if (!isDemo) this.fetchLeverage();
   };
 
   fetchMarginAccountInfos = async () => {
     const { data } = await this.xhr.get(ENDPOINTS.ACCOUNT_MARGIN);
+
+    if (data.retMsg !== 'OK') {
+      this.emitter.emit('error', data.retMsg);
+      return;
+    }
+
     this.unifiedMarginStatus = data?.result?.unifiedMarginStatus;
   };
 
