@@ -1,10 +1,16 @@
-## [8.0.4](https://github.com/gmtech-xyz/safe-cex/compare/v8.0.2...v8.0.4) (2023-07-20)
+## [8.0.5](https://github.com/gmtech-xyz/safe-cex/compare/v8.0.2...v8.0.5) (2023-07-24)
 
 
 ### Bug Fixes
 
 * **bybit.balance:** legacy accounts ([9b57410](https://github.com/gmtech-xyz/safe-cex/commit/9b57410ef5dc15d26a51487fa7e21eeacef9acb6))
 * **bybit:** some accounts fail on this call ([82435a7](https://github.com/gmtech-xyz/safe-cex/commit/82435a77877c7dfdace62dc6131b8cc4e83093b7))
+* **okx:** might not receive in array in certain conditions ([95bc1f8](https://github.com/gmtech-xyz/safe-cex/commit/95bc1f8f8626e410a4637c5a4d5c0d72c22cf9f3))
+
+
+### Features
+
+* **bybit:** allow usage without keys/secret for tuleep demo ([b95be84](https://github.com/gmtech-xyz/safe-cex/commit/b95be8427df43e1eb2cc20fe5462ef7d94c056d5))
 
 
 
