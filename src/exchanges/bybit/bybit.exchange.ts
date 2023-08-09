@@ -232,9 +232,12 @@ export class BybitExchange extends BaseExchange {
     if (this.accountType === 'UNIFIED') {
       const [firstAccount] = data.result.list || [];
 
+      const upnl = parseFloat(firstAccount.totalPerpUPL);
+      const total = subtract(parseFloat(firstAccount.totalEquity), upnl);
+
       const balance: Balance = {
-        total: parseFloat(firstAccount.totalEquity),
-        upnl: parseFloat(firstAccount.totalPerpUPL),
+        total,
+        upnl,
         used:
           parseFloat(firstAccount.totalMaintenanceMargin) +
           parseFloat(firstAccount.totalInitialMargin),
@@ -252,12 +255,9 @@ export class BybitExchange extends BaseExchange {
     // The user has no USDT balance, yet?
     if (!usdt) return this.store.balance;
 
-    const upnl = parseFloat(usdt.unrealisedPnl);
-    const total = add(parseFloat(usdt.walletBalance), upnl);
-
     const balance: Balance = {
-      total,
-      upnl,
+      total: parseFloat(usdt.walletBalance),
+      upnl: parseFloat(usdt.unrealisedPnl),
       used: add(
         parseFloat(usdt.totalOrderIM),
         parseFloat(usdt.totalPositionIM)
