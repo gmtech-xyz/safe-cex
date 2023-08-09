@@ -252,9 +252,12 @@ export class BybitExchange extends BaseExchange {
     // The user has no USDT balance, yet?
     if (!usdt) return this.store.balance;
 
+    const upnl = parseFloat(usdt.unrealisedPnl);
+    const total = add(parseFloat(usdt.walletBalance), upnl);
+
     const balance: Balance = {
-      total: parseFloat(usdt.walletBalance),
-      upnl: parseFloat(usdt.unrealisedPnl),
+      total,
+      upnl,
       used: add(
         parseFloat(usdt.totalOrderIM),
         parseFloat(usdt.totalPositionIM)
