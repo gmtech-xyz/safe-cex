@@ -34,6 +34,7 @@ export class BinancePublicWebsocket extends BaseWebSocket<BinanceExchange> {
   onOpen = () => {
     if (!this.isDisposed) {
       const payload = {
+        id: 1,
         method: 'SUBSCRIBE',
         params: ['!ticker@arr', '!bookTicker', '!markPrice@arr@1s'],
       };
@@ -122,7 +123,7 @@ export class BinancePublicWebsocket extends BaseWebSocket<BinanceExchange> {
           }
         };
 
-        const payload = { method: 'SUBSCRIBE', params: [topic], id: 1 };
+        const payload = { method: 'SUBSCRIBE', params: [topic], id: 2 };
         this.ws?.send?.(JSON.stringify(payload));
         this.parent.log(`Switched to [${opts.symbol}:${opts.interval}]`);
       } else {
@@ -136,7 +137,7 @@ export class BinancePublicWebsocket extends BaseWebSocket<BinanceExchange> {
       delete this.messageHandlers.kline;
 
       if (this.isConnected) {
-        const payload = { method: 'UNSUBSCRIBE', params: [topic], id: 1 };
+        const payload = { method: 'UNSUBSCRIBE', params: [topic], id: 2 };
         this.ws?.send?.(JSON.stringify(payload));
       }
     };
@@ -226,7 +227,7 @@ export class BinancePublicWebsocket extends BaseWebSocket<BinanceExchange> {
           callback(orderBook);
         };
 
-        const payload = { method: 'SUBSCRIBE', params: [topic], id: 1 };
+        const payload = { method: 'SUBSCRIBE', params: [topic], id: 3 };
         this.ws?.send?.(JSON.stringify(payload));
       } else {
         timeoutId = setTimeout(() => waitForConnectedAndSubscribe(), 100);
@@ -248,7 +249,7 @@ export class BinancePublicWebsocket extends BaseWebSocket<BinanceExchange> {
       }
 
       if (this.isConnected) {
-        const payload = { method: 'UNSUBSCRIBE', params: [topic], id: 1 };
+        const payload = { method: 'UNSUBSCRIBE', params: [topic], id: 3 };
         this.ws?.send?.(JSON.stringify(payload));
       }
     };
