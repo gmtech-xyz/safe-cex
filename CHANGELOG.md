@@ -1,8 +1,9 @@
-## [8.0.7](https://github.com/gmtech-xyz/safe-cex/compare/v8.0.2...v8.0.7) (2023-08-09)
+## [8.0.8](https://github.com/gmtech-xyz/safe-cex/compare/v8.0.2...v8.0.8) (2023-08-30)
 
 
 ### Bug Fixes
 
+* **binance.ws:** add `id` in sub/unsub ([a3390c2](https://github.com/gmtech-xyz/safe-cex/commit/a3390c213bfb7805726bb280878d12971594e882))
 * **bybit.balance:** legacy accounts ([9b57410](https://github.com/gmtech-xyz/safe-cex/commit/9b57410ef5dc15d26a51487fa7e21eeacef9acb6))
 * **bybit:** account balance on unified ([3ec5bc5](https://github.com/gmtech-xyz/safe-cex/commit/3ec5bc5d46431b21ded80e8a56bd099ab8d8d878))
 * **bybit:** apply fix to unified ([f7ddbb2](https://github.com/gmtech-xyz/safe-cex/commit/f7ddbb249eb4415f251e25e68b3577c30f696542))
@@ -135,7 +136,6 @@
 
 ### Reverts
 
-* Revert "feat(fetcOHLCV): allow fetch historical data" ([4ee6d6c](https://github.com/gmtech-xyz/safe-cex/commit/4ee6d6cba05386f182fa22ba571bed6d952c70bf))
 * Revert "fixed page index (#5)" ([1c42d74](https://github.com/gmtech-xyz/safe-cex/commit/1c42d74236d0f1344e704b0ee41decbb07d104f0)), closes [#5](https://github.com/gmtech-xyz/safe-cex/issues/5)
 
 
