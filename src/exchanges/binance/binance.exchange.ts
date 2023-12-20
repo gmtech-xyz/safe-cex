@@ -172,8 +172,9 @@ export class BinanceExchange extends BaseExchange {
         ENDPOINTS.BALANCE
       );
 
+      // TOFIX: refactor this without loop
       const usdt = data.find(({ asset }) => asset === 'USDT')!;
-      const balances = usdt.map((margin: Record<string, string>) => {
+      const balances = [usdt].map((margin: Record<string, string>) => {
         const free = parseFloat(margin.availableBalance);
         const total = parseFloat(margin.balance);
         const upnl = parseFloat(margin.crossUnPnl);
