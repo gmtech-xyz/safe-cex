@@ -1,9 +1,10 @@
-## [8.0.8](https://github.com/gmtech-xyz/safe-cex/compare/v8.0.2...v8.0.8) (2023-08-30)
+## [8.0.9](https://github.com/gmtech-xyz/safe-cex/compare/v8.0.2...v8.0.9) (2023-12-20)
 
 
 ### Bug Fixes
 
 * **binance.ws:** add `id` in sub/unsub ([a3390c2](https://github.com/gmtech-xyz/safe-cex/commit/a3390c213bfb7805726bb280878d12971594e882))
+* **binance:** remove busd ([20099e0](https://github.com/gmtech-xyz/safe-cex/commit/20099e0bc7081f3a9450904367817c63c6d3e520))
 * **bybit.balance:** legacy accounts ([9b57410](https://github.com/gmtech-xyz/safe-cex/commit/9b57410ef5dc15d26a51487fa7e21eeacef9acb6))
 * **bybit:** account balance on unified ([3ec5bc5](https://github.com/gmtech-xyz/safe-cex/commit/3ec5bc5d46431b21ded80e8a56bd099ab8d8d878))
 * **bybit:** apply fix to unified ([f7ddbb2](https://github.com/gmtech-xyz/safe-cex/commit/f7ddbb249eb4415f251e25e68b3577c30f696542))
