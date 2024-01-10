@@ -17,7 +17,7 @@ export const BASE_WS_URL = {
     testnet: 'wss://stream.binancefuture.com/ws',
   },
   private: {
-    livenet: 'wss://fstream-auth.binance.com/ws',
+    livenet: 'wss://fstream.binance.com/ws',
     testnet: 'wss://stream.binancefuture.com/ws',
   },
 };
