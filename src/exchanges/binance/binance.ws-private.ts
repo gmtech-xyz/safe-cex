@@ -19,9 +19,7 @@ export class BinancePrivateWebsocket extends BaseWebSocket<BinanceExchange> {
       const key = this.parent.options.testnet ? 'testnet' : 'livenet';
       const base = BASE_WS_URL.private[key];
 
-      const url = this.parent.options.testnet
-        ? `${base}/${listenKey}`
-        : `${base}/${listenKey}?listenKey=${listenKey}`;
+      const url = `${base}/${listenKey}`;
 
       this.ws = new WebSocket(url);
       this.ws.addEventListener('message', this.onMessage);
