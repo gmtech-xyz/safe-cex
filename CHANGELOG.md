@@ -1,4 +1,4 @@
-## [8.0.10](https://github.com/gmtech-xyz/safe-cex/compare/v8.0.2...v8.0.10) (2023-12-20)
+## [8.0.11](https://github.com/gmtech-xyz/safe-cex/compare/v8.0.2...v8.0.11) (2024-01-11)
 
 
 ### Bug Fixes
