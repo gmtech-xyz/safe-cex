@@ -8,7 +8,6 @@ import { forEachSeries } from 'p-iteration';
 
 import type { Store } from '../../store/store.interface';
 import type {
-  Balance,
   Candle,
   ExchangeOptions,
   Market,
@@ -168,31 +167,16 @@ export class BinanceExchange extends BaseExchange {
 
   fetchBalance = async () => {
     try {
-      const { data } = await this.xhr.get<Array<Record<string, any>>>(
-        ENDPOINTS.BALANCE
+      const { data } = await this.xhr.get<Record<string, any>>(
+        ENDPOINTS.ACCOUNT
       );
 
-      // TOFIX: refactor this without loop
-      const usdt = data.find(({ asset }) => asset === 'USDT')!;
-      const balances = [usdt].map((margin: Record<string, string>) => {
-        const free = parseFloat(margin.availableBalance);
-        const total = parseFloat(margin.balance);
-        const upnl = parseFloat(margin.crossUnPnl);
-        const used = total - free;
-        return { free, total, used, upnl };
-      });
+      const total = parseFloat(data.totalWalletBalance);
+      const free = parseFloat(data.availableBalance);
+      const upnl = parseFloat(data.totalUnrealizedProfit);
+      const used = parseFloat(data.totalInitialMargin);
 
-      return balances.reduce(
-        (acc: Balance, curr: Balance) => {
-          return {
-            free: acc.free + curr.free,
-            total: acc.total + curr.total,
-            used: acc.used + curr.used,
-            upnl: acc.upnl + curr.upnl,
-          };
-        },
-        { free: 0, total: 0, used: 0, upnl: 0 }
-      );
+      return { total, free, used, upnl };
     } catch (err: any) {
       this.emitter.emit('error', err?.response?.data?.msg || err?.message);
       return this.store.balance;
