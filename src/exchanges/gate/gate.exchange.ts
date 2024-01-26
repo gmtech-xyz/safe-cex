@@ -1,5 +1,7 @@
 import type { Axios } from 'axios';
 import axiosRateLimit from 'axios-rate-limit';
+import type { ManipulateType } from 'dayjs';
+import dayjs from 'dayjs';
 import chunk from 'lodash/chunk';
 import flatten from 'lodash/flatten';
 import partition from 'lodash/partition';
@@ -338,6 +340,15 @@ export class GateExchange extends BaseExchange {
   };
 
   fetchOHLCV = async (opts: OHLCVOptions) => {
+    const limit = Math.min(opts.limit || 500, 2000);
+    const [, amount, unit] = opts.interval.split(/(\d+)/);
+
+    const end = opts.to ? dayjs(opts.to) : dayjs();
+    const start =
+      !opts.limit && opts.from
+        ? dayjs(opts.from)
+        : end.subtract(parseFloat(amount) * limit, unit as ManipulateType);
+
     const market = this.store.markets.find((m) => m.symbol === opts.symbol);
 
     if (!market) {
@@ -349,7 +360,9 @@ export class GateExchange extends BaseExchange {
       params: {
         contract: market.id,
         interval: opts.interval,
-        limit: 500,
+        limit,
+        to: end.valueOf(),
+        from: start.valueOf(),
       },
     });
 

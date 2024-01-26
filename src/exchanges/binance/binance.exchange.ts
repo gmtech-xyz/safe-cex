@@ -1,5 +1,7 @@
 import type { Axios } from 'axios';
 import rateLimit from 'axios-rate-limit';
+import type { ManipulateType } from 'dayjs';
+import dayjs from 'dayjs';
 import chunk from 'lodash/chunk';
 import groupBy from 'lodash/groupBy';
 import omit from 'lodash/omit';
@@ -372,11 +374,27 @@ export class BinanceExchange extends BaseExchange {
   };
 
   fetchOHLCV = async (opts: OHLCVOptions) => {
+    const interval = opts.interval;
+    const limit = Math.min(opts.limit || 500, 1500);
+    const [, amount, unit] = opts.interval.split(/(\d+)/);
+
+    const end = opts.to ? dayjs(opts.to) : dayjs();
+    const start =
+      !opts.limit && opts.from
+        ? dayjs(opts.from)
+        : end.subtract(parseFloat(amount) * limit, unit as ManipulateType);
+
     const { data } = await this.xhr.get<any[][]>(ENDPOINTS.KLINE, {
       params: {
         symbol: opts.symbol,
-        interval: opts.interval,
-        limit: 500,
+        interval,
+        startTime: start.valueOf(),
+        endTime: end.valueOf(),
+        ...(opts.limit
+          ? {
+              limit,
+            }
+          : {}),
       },
     });
 

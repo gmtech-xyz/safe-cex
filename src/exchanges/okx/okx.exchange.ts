@@ -1,4 +1,6 @@
 import type { Axios } from 'axios';
+import type { ManipulateType } from 'dayjs';
+import dayjs from 'dayjs';
 import { partition } from 'lodash';
 import chunk from 'lodash/chunk';
 import flatten from 'lodash/flatten';
@@ -416,6 +418,15 @@ export class OKXExchange extends BaseExchange {
   };
 
   fetchOHLCV = async (opts: OHLCVOptions) => {
+    const limit = Math.min(opts.limit || 300, 300);
+    const [, amount, unit] = opts.interval.split(/(\d+)/);
+
+    const end = opts.to ? dayjs(opts.to) : dayjs();
+    const start =
+      !opts.limit && opts.from
+        ? dayjs(opts.from)
+        : end.subtract(parseFloat(amount) * limit, unit as ManipulateType);
+
     const market = this.store.markets.find((m) => m.symbol === opts.symbol);
 
     if (market) {
@@ -426,7 +437,9 @@ export class OKXExchange extends BaseExchange {
           params: {
             instId: market.id,
             bar: INTERVAL[opts.interval],
-            limit: 300,
+            limit,
+            after: start.valueOf(),
+            before: end.valueOf(),
           },
         });
 

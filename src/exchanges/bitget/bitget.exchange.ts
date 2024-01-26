@@ -471,20 +471,23 @@ export class BitgetExchange extends BaseExchange {
   };
 
   fetchOHLCV = async (opts: OHLCVOptions) => {
+    const limit = Math.min(opts.limit || 500, 1000);
     const interval = INTERVAL[opts.interval];
     const [, amount, unit] = opts.interval.split(/(\d+)/);
 
-    const from = dayjs()
-      .subtract(parseFloat(amount) * 200, unit as ManipulateType)
-      .valueOf();
+    const end = opts.to ? dayjs(opts.to) : dayjs();
+    const start =
+      !opts.limit && opts.from
+        ? dayjs(opts.from)
+        : end.subtract(parseFloat(amount) * limit, unit as ManipulateType);
 
     const { data } = await this.xhr.get(ENDPOINTS.KLINE, {
       params: {
         symbol: `${opts.symbol}_${this.apiProductType.toUpperCase()}`,
         granularity: interval,
-        startTime: from,
-        endTime: Date.now(),
-        limit: 500,
+        startTime: start.valueOf(),
+        endTime: end.valueOf(),
+        limit,
       },
     });
 

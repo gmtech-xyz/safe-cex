@@ -340,7 +340,7 @@ export class WOOXExchange extends BaseExchange {
         params: {
           symbol: reverseSymbol(opts.symbol),
           type: opts.interval,
-          limit: 500,
+          limit: Math.min(opts.limit || 500, 1000),
         },
       }
     );

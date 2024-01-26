@@ -470,21 +470,23 @@ export class BybitExchange extends BaseExchange {
   };
 
   fetchOHLCV = async (opts: OHLCVOptions) => {
+    const limit = Math.min(opts.limit || 500, 1000);
     const interval = INTERVAL[opts.interval];
     const [, amount, unit] = opts.interval.split(/(\d+)/);
 
-    const end = dayjs().valueOf();
-    const start = dayjs()
-      .subtract(parseFloat(amount) * 500, unit as ManipulateType)
-      .valueOf();
+    const end = opts.to ? dayjs(opts.to) : dayjs();
+    const start =
+      !opts.limit && opts.from
+        ? dayjs(opts.from)
+        : end.subtract(parseFloat(amount) * limit, unit as ManipulateType);
 
     const params = {
       category: this.accountCategory,
       symbol: opts.symbol,
-      start,
-      end,
+      start: start.valueOf(),
+      end: end.valueOf(),
       interval,
-      limit: 500,
+      limit,
     };
 
     const { data } = await this.xhr.get(ENDPOINTS.KLINE, { params });
