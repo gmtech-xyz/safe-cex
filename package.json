@@ -1,5 +1,5 @@
 {
-  "name": "safe-cex",
+  "name": "@tealstreet/safe-cex",
   "version": "8.0.12",
   "main": "dist/index.js",
   "license": "MIT",
