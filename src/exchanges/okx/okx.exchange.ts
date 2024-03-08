@@ -893,7 +893,7 @@ export class OKXExchange extends BaseExchange {
       return { ...req, sz: `${lotSize}` };
     });
 
-    if (rest) payloads.push({ ...req, qty: rest });
+    if (rest) payloads.push({ ...req, sz: `${rest}` });
 
     return payloads;
   };
