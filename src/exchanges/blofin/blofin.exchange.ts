@@ -269,7 +269,7 @@ export class BlofinExchange extends BaseExchange {
 
       if (!this.isDisposed) {
         responses.forEach((r: Record<string, any>) => {
-          this.leverageHash[r.instId] = parseFloat(r.lever);
+          this.leverageHash[r.instId] = parseFloat(r.leverage);
         });
       }
     } catch (err: any) {
@@ -622,15 +622,13 @@ export class BlofinExchange extends BaseExchange {
           marketOrders
         );
 
-        if (data.code !== '0') {
-          this.emitter.emit('error', data.msg);
-        } else {
-          orderIds.push(
-            ...data.data.reduce((acc: string[], o: Record<string, any>) => {
-              return [...acc, o.orderId];
-            }, [])
-          );
-        }
+        data.data.forEach((o: Record<string, any>) => {
+          if (o.code !== '0') {
+            this.emitter.emit('error', o.msg);
+          } else {
+            orderIds.push(o.orderId);
+          }
+        });
       } catch (err: any) {
         this.emitter.emit('error', err?.response?.data?.msg || err?.message);
       }
@@ -648,7 +646,7 @@ export class BlofinExchange extends BaseExchange {
         return [];
       }
 
-      return [data.tpslId];
+      return data.tpslId;
     } catch (err: any) {
       this.emitter.emit('error', err?.response?.data?.msg || err?.message);
       return [];
@@ -658,11 +656,16 @@ export class BlofinExchange extends BaseExchange {
   private cancelNormalOrders = async (orders: Order[]) => {
     try {
       const ids = orders.map((o) => ({ orderId: o.id }));
-      const { data } = await this.xhr.post(ENDPOINTS.CANCEL_ORDERS, ids);
+      const { data } = await this.xhr.post<Record<string, any>>(
+        ENDPOINTS.CANCEL_ORDERS,
+        ids
+      );
 
-      if (data.code !== '0') {
-        this.emitter.emit('error', data.msg);
-      }
+      data.data.forEach((o: Record<string, any>) => {
+        if (o.code === '1000') {
+          this.store.removeOrder(o.orderId);
+        }
+      });
     } catch (err: any) {
       this.emitter.emit('error', err?.response?.data?.msg || err?.message);
     }
