@@ -545,13 +545,17 @@ export class BlofinExchange extends BaseExchange {
 
       const tmpOrders: Order[] = [];
 
+      const orderSide = ORDER_SIDE[o.side];
+      const inverseSide =
+        orderSide === OrderSide.Buy ? OrderSide.Sell : OrderSide.Buy;
+
       if (o.tpTriggerPrice) {
         tmpOrders.push({
-          id: `${o.tpslId}_tp`,
+          id: `${o.tpslId || o.orderId}_tp`,
           status: OrderStatus.Open,
           symbol: market.symbol,
           type: OrderType.TakeProfit,
-          side: ORDER_SIDE[o.side],
+          side: o.orderId ? inverseSide : orderSide,
           price: parseFloat(o.tpTriggerPrice),
           amount: 0,
           filled: 0,
@@ -562,11 +566,11 @@ export class BlofinExchange extends BaseExchange {
 
       if (o.slTriggerPrice) {
         tmpOrders.push({
-          id: `${o.tpslId}_sl`,
+          id: `${o.tpslId || o.orderId}_sl`,
           status: OrderStatus.Open,
           symbol: market.symbol,
           type: OrderType.StopLoss,
-          side: ORDER_SIDE[o.side],
+          side: o.orderId ? inverseSide : orderSide,
           price: parseFloat(o.slTriggerPrice),
           amount: 0,
           filled: 0,
@@ -714,12 +718,12 @@ export class BlofinExchange extends BaseExchange {
     });
 
     if (opts.stopLoss) {
-      req.slTriggerPrice = `${price}`;
+      req.slTriggerPrice = `${opts.stopLoss}`;
       req.slOrderPrice = `-1`;
     }
 
     if (opts.takeProfit) {
-      req.tpTriggerPrice = `${price}`;
+      req.tpTriggerPrice = `${opts.takeProfit}`;
       req.tpOrderPrice = `-1`;
     }
 
