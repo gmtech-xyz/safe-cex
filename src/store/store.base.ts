@@ -215,7 +215,7 @@ export class DefaultStore implements Store {
   };
 
   private updateInArray = <
-    K extends 'markets' | 'orders' | 'positions' | 'tickers'
+    K extends 'markets' | 'orders' | 'positions' | 'tickers',
   >(
     key: K,
     idx: number,

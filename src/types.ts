@@ -230,16 +230,16 @@ export type Writable<T> =
   T extends Date | RegExp | ((...args: any[]) => any)
     ? T
     : T extends ReadonlyMap<infer K, infer V> // maps
-    ? Map<Writable<K>, Writable<V>> // make key and values writable
-    : T extends ReadonlySet<infer U> // sets
-    ? Set<Writable<U>> // make elements writable
-    : T extends readonly unknown[] // is an array or tuple?
-    ? `${bigint}` extends `${any & keyof T}` // is tuple
-      ? { -readonly [K in keyof T]: Writable<T[K]> }
-      : Array<Writable<T[number]>> // is regular array
-    : T extends Record<string, unknown> // is regular object
-    ? { -readonly [K in keyof T]: Writable<T[K]> }
-    : T; // is primitive or literal value
+      ? Map<Writable<K>, Writable<V>> // make key and values writable
+      : T extends ReadonlySet<infer U> // sets
+        ? Set<Writable<U>> // make elements writable
+        : T extends readonly unknown[] // is an array or tuple?
+          ? `${bigint}` extends `${any & keyof T}` // is tuple
+            ? { -readonly [K in keyof T]: Writable<T[K]> }
+            : Array<Writable<T[number]>> // is regular array
+          : T extends Record<string, unknown> // is regular object
+            ? { -readonly [K in keyof T]: Writable<T[K]> }
+            : T; // is primitive or literal value
 
 export type WritableStoreData = {
   latency: number;
