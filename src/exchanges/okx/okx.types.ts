@@ -37,6 +37,12 @@ export const ENDPOINTS = {
   UPDATE_ORDER: '/api/v5/trade/amend-order',
 };
 
+export const PUBLIC_ENDPOINTS = [
+  ENDPOINTS.MARKETS,
+  ENDPOINTS.TICKERS,
+  ENDPOINTS.KLINE,
+];
+
 export const INTERVAL: Record<Timeframe, string> = {
   '1m': '1m',
   '3m': '3m',

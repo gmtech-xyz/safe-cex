@@ -27,6 +27,12 @@ export const ENDPOINTS = {
   PLACE_ALGO_ORDER: '/api/v1/trade/order-tpsl',
 };
 
+export const PUBLIC_ENDPOINTS = [
+  ENDPOINTS.MARKETS,
+  ENDPOINTS.TICKERS,
+  ENDPOINTS.KLINE,
+];
+
 export const ORDER_STATUS: Record<string, OrderStatus> = {
   live: OrderStatus.Open,
 };

@@ -6,7 +6,12 @@ import qs from 'qs';
 import type { ExchangeOptions } from '../../types';
 import { virtualClock } from '../../utils/virtual-clock';
 
-import { BASE_URL, BROKER_ID, RECV_WINDOW } from './bitget.types';
+import {
+  BASE_URL,
+  BROKER_ID,
+  PUBLIC_ENDPOINTS,
+  RECV_WINDOW,
+} from './bitget.types';
 
 export const createAPI = (options: ExchangeOptions) => {
   const baseURL = options.corsAnywhere
@@ -15,7 +20,6 @@ export const createAPI = (options: ExchangeOptions) => {
 
   const xhr = axios.create({
     baseURL,
-    timeout: options?.extra?.recvWindow ?? RECV_WINDOW,
     paramsSerializer: {
       serialize: (params) => qs.stringify(params),
     },
@@ -30,6 +34,11 @@ export const createAPI = (options: ExchangeOptions) => {
   retry(xhr, { retries: 3, retryCondition: isNetworkError });
 
   xhr.interceptors.request.use((config) => {
+    // dont sign public endpoints and don't add timeout
+    if (PUBLIC_ENDPOINTS.some((str) => config.url?.startsWith(str))) {
+      return config;
+    }
+
     const nextConfig = { ...config };
 
     const timestamp = virtualClock.getCurrentTime().valueOf();
@@ -54,7 +63,11 @@ export const createAPI = (options: ExchangeOptions) => {
       'ACCESS-TIMESTAMP': timestamp,
     });
 
-    return { ...nextConfig, headers };
+    return {
+      ...nextConfig,
+      headers,
+      timeout: options?.extra?.recvWindow ?? RECV_WINDOW,
+    };
   });
 
   return xhr;

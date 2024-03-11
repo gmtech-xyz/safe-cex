@@ -8,7 +8,7 @@ import type { ExchangeOptions } from '../../types';
 import { toBase64 } from '../../utils/base64';
 import { virtualClock } from '../../utils/virtual-clock';
 
-import { BASE_URL, RECV_WINDOW } from './blofin.types';
+import { BASE_URL, PUBLIC_ENDPOINTS, RECV_WINDOW } from './blofin.types';
 
 export const createAPI = (options: ExchangeOptions) => {
   const baseURL = options.corsAnywhere
@@ -17,10 +17,7 @@ export const createAPI = (options: ExchangeOptions) => {
 
   const xhr = axios.create({
     baseURL,
-    timeout: options?.extra?.recvWindow ?? RECV_WINDOW,
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
   });
 
   retry(xhr, {
@@ -29,7 +26,8 @@ export const createAPI = (options: ExchangeOptions) => {
   });
 
   xhr.interceptors.request.use((config) => {
-    if (config.method === 'get' && config.url?.includes?.('/market/')) {
+    // dont sign public endpoints and don't add timeout
+    if (PUBLIC_ENDPOINTS.some((str) => config.url?.startsWith(str))) {
       return config;
     }
 
@@ -60,7 +58,11 @@ export const createAPI = (options: ExchangeOptions) => {
       'ACCESS-SIGN': signature,
     });
 
-    return { ...nextConfig, headers };
+    return {
+      ...nextConfig,
+      headers,
+      timeout: options?.extra?.recvWindow ?? RECV_WINDOW,
+    };
   });
 
   return xhr;

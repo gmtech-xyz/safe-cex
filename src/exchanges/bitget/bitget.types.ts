@@ -40,6 +40,13 @@ export const ENDPOINTS = {
   PLACE_TRAILING_STOP_ORDER: '/api/mix/v1/plan/placeTrailStop',
 };
 
+export const PUBLIC_ENDPOINTS = [
+  ENDPOINTS.MARKETS,
+  ENDPOINTS.TICKERS,
+  ENDPOINTS.KLINE,
+  ENDPOINTS.SYMBOL_LEVERAGE,
+];
+
 export const INTERVAL: Record<Timeframe, string> = {
   '1m': '1m',
   '3m': '3m',

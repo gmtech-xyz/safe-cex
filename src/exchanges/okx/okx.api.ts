@@ -6,7 +6,7 @@ import qs from 'qs';
 import type { ExchangeOptions } from '../../types';
 import { virtualClock } from '../../utils/virtual-clock';
 
-import { BASE_URL, RECV_WINDOW } from './okx.types';
+import { BASE_URL, PUBLIC_ENDPOINTS, RECV_WINDOW } from './okx.types';
 
 export const createAPI = (options: ExchangeOptions) => {
   const { passphrase } = options;
@@ -21,14 +21,14 @@ export const createAPI = (options: ExchangeOptions) => {
 
   const xhr = axios.create({
     baseURL,
-    timeout: options?.extra?.recvWindow ?? RECV_WINDOW,
     headers: options.testnet ? { 'x-simulated-trading': 1 } : {},
   });
 
   retry(xhr, { retries: 3, retryCondition: isNetworkError });
 
   xhr.interceptors.request.use((config) => {
-    if (config?.url?.includes('public')) {
+    // dont sign public endpoints and don't add timeout
+    if (PUBLIC_ENDPOINTS.some((str) => config?.url?.startsWith(str))) {
       return config;
     }
 
@@ -56,7 +56,11 @@ export const createAPI = (options: ExchangeOptions) => {
       'OK-ACCESS-PASSPHRASE': passphrase,
     });
 
-    return { ...nextConfig, headers };
+    return {
+      ...nextConfig,
+      headers,
+      timeout: options?.extra?.recvWindow ?? RECV_WINDOW,
+    };
   });
 
   return xhr;

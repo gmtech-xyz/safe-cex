@@ -7,16 +7,7 @@ import qs from 'qs';
 import type { ExchangeOptions } from '../../types';
 import { virtualClock } from '../../utils/virtual-clock';
 
-import { BASE_URL, ENDPOINTS, RECV_WINDOW } from './gate.types';
-
-const AUTH_ENDPOINTS = [
-  ENDPOINTS.BALANCE,
-  ENDPOINTS.ORDERS,
-  ENDPOINTS.BATCH_ORDERS,
-  ENDPOINTS.POSITIONS,
-  ENDPOINTS.ALGO_ORDERS,
-  ENDPOINTS.DUAL_MODE,
-];
+import { BASE_URL, PUBLIC_ENDPOINTS, RECV_WINDOW } from './gate.types';
 
 export const createAPI = (options: ExchangeOptions) => {
   const BASE_API_URL = BASE_URL[options.testnet ? 'testnet' : 'livenet'];
@@ -24,15 +15,12 @@ export const createAPI = (options: ExchangeOptions) => {
     ? `${options.corsAnywhere}/${BASE_API_URL}`
     : BASE_API_URL;
 
-  const xhr = axios.create({
-    baseURL,
-    timeout: options?.extra?.recvWindow ?? RECV_WINDOW,
-  });
-
+  const xhr = axios.create({ baseURL });
   retry(xhr, { retries: 3, retryCondition: isNetworkError });
 
   xhr.interceptors.request.use((config) => {
-    if (!AUTH_ENDPOINTS.some((str) => config?.url?.startsWith(str))) {
+    // dont sign public endpoints and don't add timeout
+    if (PUBLIC_ENDPOINTS.some((str) => config?.url?.startsWith(str))) {
       return config;
     }
 
@@ -62,7 +50,11 @@ export const createAPI = (options: ExchangeOptions) => {
       Timestamp: timestamp,
     });
 
-    return { ...nextConfig, headers };
+    return {
+      ...nextConfig,
+      headers,
+      timeout: options?.extra?.recvWindow ?? RECV_WINDOW,
+    };
   });
 
   return xhr;

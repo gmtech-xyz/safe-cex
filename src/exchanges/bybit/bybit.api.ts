@@ -6,7 +6,12 @@ import qs from 'qs';
 import type { ExchangeOptions } from '../../types';
 import { virtualClock } from '../../utils/virtual-clock';
 
-import { BASE_URL, BROKER_ID, ENDPOINTS, RECV_WINDOW } from './bybit.types';
+import {
+  BASE_URL,
+  BROKER_ID,
+  PUBLIC_ENDPOINTS,
+  RECV_WINDOW,
+} from './bybit.types';
 
 const isErrorSignature = (error: any) => {
   const isNetwork = isNetworkError(error);
@@ -19,15 +24,10 @@ const isErrorSignature = (error: any) => {
 export const createAPI = (options: ExchangeOptions) => {
   const xhr = axios.create({
     baseURL: BASE_URL[options.testnet ? 'testnet' : 'livenet'],
-    timeout: options?.extra?.recvWindow ?? RECV_WINDOW,
     paramsSerializer: {
       serialize: (params) => qs.stringify(params),
     },
-    headers: {
-      'X-Referer': BROKER_ID,
-      'X-BAPI-RECV-WINDOW': RECV_WINDOW,
-      'Content-Type': 'application/json, charset=utf-8',
-    },
+    headers: { 'Content-Type': 'application/json' },
   });
 
   // retry requests on network errors instead of throwing
@@ -38,11 +38,12 @@ export const createAPI = (options: ExchangeOptions) => {
   });
 
   xhr.interceptors.request.use((config) => {
-    const nextConfig = { ...config };
-
-    if (config.method === 'get' && config.url === ENDPOINTS.KLINE) {
-      return { ...nextConfig, headers: new AxiosHeaders({}) };
+    // dont sign public endpoints and don't add timeout
+    if (PUBLIC_ENDPOINTS.some((str) => config.url?.startsWith(str))) {
+      return config;
     }
+
+    const nextConfig = { ...config };
 
     const data =
       config.method === 'get'
@@ -59,9 +60,15 @@ export const createAPI = (options: ExchangeOptions) => {
       'X-BAPI-SIGN': signature,
       'X-BAPI-API-KEY': options.key,
       'X-BAPI-TIMESTAMP': timestamp,
+      'X-Referer': BROKER_ID,
+      'X-BAPI-RECV-WINDOW': RECV_WINDOW,
     });
 
-    return { ...nextConfig, headers };
+    return {
+      ...nextConfig,
+      headers,
+      timeout: options?.extra?.recvWindow ?? RECV_WINDOW,
+    };
   });
 
   return xhr;

@@ -42,6 +42,13 @@ export const ENDPOINTS = {
   ORDERBOOK: '/v1/public/orderbook',
 };
 
+export const PUBLIC_ENDPOINTS = [
+  ENDPOINTS.MARKETS,
+  ENDPOINTS.TICKERS,
+  ENDPOINTS.KLINE,
+  ENDPOINTS.ORDERBOOK,
+];
+
 export const ORDER_TYPE: Record<string, OrderType> = {
   LIMIT: OrderType.Limit,
   MARKET: OrderType.Market,

@@ -11,6 +11,7 @@ import {
   BASE_URL,
   BROKER_ID,
   ENDPOINTS,
+  PUBLIC_ENDPOINTS,
   RECV_WINDOW,
   TESTNET_BROKER_ID,
 } from './woo.types';
@@ -87,7 +88,6 @@ const signV3 = (c: AxiosRequestConfig, options: ExchangeOptions) => {
 export const createAPI = (options: ExchangeOptions) => {
   const xhr = axios.create({
     baseURL: BASE_URL[options.testnet ? 'testnet' : 'livenet'],
-    timeout: options?.extra?.recvWindow ?? RECV_WINDOW,
     paramsSerializer: {
       serialize: (params) =>
         qs.stringify(params, { sort: (a, b) => a.localeCompare(b) }),
@@ -102,29 +102,34 @@ export const createAPI = (options: ExchangeOptions) => {
   retry(xhr, { retries: 3, retryCondition: isNetworkError });
 
   xhr.interceptors.request.use((config) => {
-    // don't sign public endpoints requests
-    if (config.url?.includes?.('/public/')) {
+    // dont sign public endpoints and don't add timeout
+    if (PUBLIC_ENDPOINTS.some((str) => config?.url?.startsWith(str))) {
       return config;
     }
 
-    if (config.method?.toUpperCase?.() === 'POST') {
-      if (config.url === ENDPOINTS.PLACE_ORDER) {
-        // eslint-disable-next-line no-param-reassign
-        config.data.broker_id = options.testnet ? TESTNET_BROKER_ID : BROKER_ID;
+    const nextConfig = { ...config };
+    nextConfig.timeout = options?.extra?.recvWindow ?? RECV_WINDOW;
+
+    if (nextConfig.method?.toUpperCase?.() === 'POST') {
+      if (nextConfig.url === ENDPOINTS.PLACE_ORDER) {
+        nextConfig.data.broker_id = options.testnet
+          ? TESTNET_BROKER_ID
+          : BROKER_ID;
       }
-      if (config.url === ENDPOINTS.ALGO_ORDER) {
-        // eslint-disable-next-line no-param-reassign
-        config.data.brokerId = options.testnet ? TESTNET_BROKER_ID : BROKER_ID;
+      if (nextConfig.url === ENDPOINTS.ALGO_ORDER) {
+        nextConfig.data.brokerId = options.testnet
+          ? TESTNET_BROKER_ID
+          : BROKER_ID;
       }
     }
 
     // sign v1 endpoints requests
-    if (config.url?.includes('v1')) {
-      return signV1(config, options);
+    if (nextConfig.url?.includes('v1')) {
+      return signV1(nextConfig, options);
     }
 
     // sign v3 endpoints requests
-    return signV3(config, options);
+    return signV3(nextConfig, options);
   });
 
   return xhr;

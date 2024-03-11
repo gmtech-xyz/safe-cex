@@ -24,6 +24,12 @@ export const ENDPOINTS = {
   DUAL_MODE: '/futures/usdt/dual_mode',
 };
 
+export const PUBLIC_ENDPOINTS = [
+  ENDPOINTS.MARKETS,
+  ENDPOINTS.TICKERS,
+  ENDPOINTS.KLINE,
+];
+
 export const ORDER_TIME_IN_FORCE: Record<string, OrderTimeInForce> = {
   gtc: OrderTimeInForce.GoodTillCancel,
   ioc: OrderTimeInForce.ImmediateOrCancel,

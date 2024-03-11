@@ -42,6 +42,15 @@ export const ENDPOINTS = {
   ORDERBOOK: '/fapi/v1/depth',
 };
 
+export const PUBLIC_ENDPOINTS = [
+  ENDPOINTS.MARKETS,
+  ENDPOINTS.TICKERS_24H,
+  ENDPOINTS.TICKERS_BOOK,
+  ENDPOINTS.TICKERS_PRICE,
+  ENDPOINTS.KLINE,
+  ENDPOINTS.ORDERBOOK,
+];
+
 export const ORDER_TYPE: Record<string, OrderType> = {
   LIMIT: OrderType.Limit,
   MARKET: OrderType.Market,

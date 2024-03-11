@@ -7,12 +7,16 @@ import qs from 'qs';
 import type { ExchangeOptions } from '../../types';
 import { virtualClock } from '../../utils/virtual-clock';
 
-import { BASE_URL, ENDPOINTS, RECV_WINDOW } from './binance.types';
+import {
+  BASE_URL,
+  ENDPOINTS,
+  PUBLIC_ENDPOINTS,
+  RECV_WINDOW,
+} from './binance.types';
 
 export const createAPI = (options: ExchangeOptions) => {
   const xhr = axios.create({
     baseURL: BASE_URL[options.testnet ? 'testnet' : 'livenet'],
-    timeout: options?.extra?.recvWindow ?? RECV_WINDOW,
     paramsSerializer: {
       serialize: (params) => qs.stringify(params, { arrayFormat: 'repeat' }),
     },
@@ -28,6 +32,12 @@ export const createAPI = (options: ExchangeOptions) => {
   xhr.interceptors.request.use((config) => {
     // on livenet, don't sign listen key requests (they don't need it)
     if (config.url === ENDPOINTS.LISTEN_KEY && !options.testnet) {
+      return config;
+    }
+
+    // don't sign requests if no API key is provided
+    // and don't add the timeout option
+    if (PUBLIC_ENDPOINTS.some((str) => config.url?.startsWith(str))) {
       return config;
     }
 
@@ -55,6 +65,9 @@ export const createAPI = (options: ExchangeOptions) => {
     ) {
       nextConfig.baseURL = `${options.corsAnywhere}/${config.baseURL}`;
     }
+
+    // Add timeout to signed requests (default is 5s)
+    nextConfig.timeout = options?.extra?.recvWindow ?? RECV_WINDOW;
 
     // remove data from POST/PUT/DELETE requests
     // Binance API takes data as query params
