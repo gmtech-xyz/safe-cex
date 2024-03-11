@@ -1,6 +1,7 @@
 export type ExchangeName =
   | 'binance'
   | 'bitget'
+  | 'blofin'
   | 'bybit'
   | 'gate'
   | 'okx'

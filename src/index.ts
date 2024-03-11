@@ -1,6 +1,7 @@
 import type { BaseExchange } from './exchanges/base';
 import { BinanceExchange } from './exchanges/binance/binance.exchange';
 import { BitgetExchange } from './exchanges/bitget/bitget.exchange';
+import { BlofinExchange } from './exchanges/blofin/blofin.exchange';
 import { BybitExchange } from './exchanges/bybit/bybit.exchange';
 import { GateExchange } from './exchanges/gate/gate.exchange';
 import { OKXExchange } from './exchanges/okx/okx.exchange';
@@ -17,6 +18,7 @@ const exchanges: Record<ExchangeName, typeof BaseExchange> = {
   okx: OKXExchange,
   gate: GateExchange,
   bitget: BitgetExchange,
+  blofin: BlofinExchange,
 };
 
 export const createExchange = (

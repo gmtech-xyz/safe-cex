@@ -1,9 +1,7 @@
 # safe-cex
 
-![Snyk Vulnerabilities for GitHub Repo](https://img.shields.io/snyk/vulnerabilities/github/gmtech-xyz/safe-cex)
 [![npm version](https://badge.fury.io/js/safe-cex.svg)](https://badge.fury.io/js/safe-cex)
 ![npm](https://img.shields.io/npm/dt/safe-cex)
-![npm bundle size](https://img.shields.io/bundlephobia/minzip/safe-cex)
 ![Discord](https://img.shields.io/discord/965643018004738189)
 
 ![image](https://user-images.githubusercontent.com/893837/228979174-32b7f08d-6e13-4bdd-9598-e25846911335.png)
@@ -38,18 +36,13 @@ Currently, the library supports Bybit and Binance Futures contracts, OKX Perpetu
 - [WOO X](https://x.woo.org/en/trade?ref=safecex) Futures USDT & futures unified margin
 - [OKX](https://www.okx.com/join/TULEEP) Perpetuals unified margin
 - [GateIO](https://www.gate.io/signup/13385879) Futures USDT contracts
+- [Blofin](https://partner.blofin.com/d/tuleeptrade) Futures USDT contracts
 
 ---
 
 ## Installation
 
 - `npm install --save safe-cex`
-
-## Examples
-
-You can use this template as starter for integrating the best way safe-cex into ReactJS:
-
-- [NextJS/ReactJS + Safe-Cex](https://github.com/gmtech-xyz/nextjs-reactjs-safe-cex)
 
 ## Getting started
 
@@ -63,12 +56,12 @@ import { createExchange } from "safe-cex";
 
 // Initialize exchange class object
 const exchange = createExchange(
-  "bybit" | "binance" | "okx" | "woo" | "gate" | "bitget",
+  "bybit" | "binance" | "okx" | "woo" | "gate" | "bitget" | "blofin",
   {
     key: API_KEY,
     secret: API_SECRET,
     applicationId: string, // FOR WOO X
-    passphrase: string, // FOR OKX & BITGET
+    passphrase: string, // FOR OKX, BITGET & BLOFIN
     testnet: boolean,
     corsAnywhere: "https://cors-anywhere.example.com",
     extra?:{
@@ -439,18 +432,15 @@ await exchange.dispose();
 
 ## Known issues
 
-### VueJS
-
-You need to add [vite-plugin-node-stdlib-browser](https://github.com/sodatea/vite-plugin-node-stdlib-browser) to your vite config.
-
 ## Donations
 
 If you found this project interesting or useful, create accounts with my referral links:
 
 - [Bybit](https://partner.bybit.com/b/safecex) **Up to $30,000 deposit bonus**
+- [Blofin](https://partner.blofin.com/d/tuleeptrade) **$5,000 welcome bonus & no KYC required**
 - [OKX](https://www.okx.com/join/TULEEP) **20% less fees, up to $10,000 deposit bonus**
-- [WOO X](https://x.woo.org/en/trade?ref=safecex) **Deposit $100 and 0 fees for 14 days!**
 - [Bitget](https://bonus.bitget.com/tuleep) **10% less fees, up to $1,000 deposit bonus**
+- [WOO X](https://x.woo.org/en/trade?ref=safecex) **Deposit $100 and 0 fees for 14 days!**
 - [Binance](https://accounts.binance.com/en/register?ref=KOLLSXK0)
 - [GateIO](https://www.gate.io/signup/13385879)
 
