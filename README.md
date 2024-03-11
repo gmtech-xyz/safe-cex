@@ -30,7 +30,7 @@ Currently, the library supports Bybit and Binance Futures contracts, OKX Perpetu
 
 ## Exchanges supported
 
-- [Bybit](https://partner.bybit.com/b/safecex) Futures USDT contracts (not the unified margin)
+- [Bybit](https://partner.bybit.com/b/safecex) Futures USDT contracts & futures unified Margin
 - [Binance](https://accounts.binance.com/en/register?ref=KOLLSXK0) USD-M futures (USDT contracts)
 - [Bitget](https://bonus.bitget.com/tuleep) USDT-M Futures (USDT contracts)
 - [WOO X](https://x.woo.org/en/trade?ref=safecex) Futures USDT & futures unified margin
