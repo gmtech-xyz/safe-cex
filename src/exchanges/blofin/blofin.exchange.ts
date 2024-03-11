@@ -603,24 +603,40 @@ export class BlofinExchange extends BaseExchange {
   };
 
   private placeOrderBatch = async (payloads: Array<Record<string, any>>) => {
-    try {
-      const { data } = await this.xhr.post<Record<string, any>>(
-        ENDPOINTS.PLACE_ORDERS,
-        payloads
-      );
+    const groupedByMarket = Object.values(
+      payloads.reduce<Record<string, any>>((acc, p) => {
+        const market = p.instId;
+        // eslint-disable-next-line no-param-reassign
+        if (!acc[market]) acc[market] = [];
+        acc[market].push(p);
+        return acc;
+      }, {})
+    );
 
-      if (data.code !== '0') {
-        this.emitter.emit('error', data.msg);
-        return [];
+    const orderIds: string[] = [];
+
+    for (const marketOrders of groupedByMarket) {
+      try {
+        const { data } = await this.xhr.post<Record<string, any>>(
+          ENDPOINTS.PLACE_ORDERS,
+          marketOrders
+        );
+
+        if (data.code !== '0') {
+          this.emitter.emit('error', data.msg);
+        } else {
+          orderIds.push(
+            ...data.data.reduce((acc: string[], o: Record<string, any>) => {
+              return [...acc, o.orderId];
+            }, [])
+          );
+        }
+      } catch (err: any) {
+        this.emitter.emit('error', err?.response?.data?.msg || err?.message);
       }
-
-      return data.data.reduce((acc: string[], o: Record<string, any>) => {
-        return [...acc, o.orderId];
-      }, []);
-    } catch (err: any) {
-      this.emitter.emit('error', err?.response?.data?.msg || err?.message);
-      return [];
     }
+
+    return orderIds;
   };
 
   private placeAlgoOrder = async (payload: Record<string, any>) => {
