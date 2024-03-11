@@ -448,9 +448,20 @@ export class BlofinExchange extends BaseExchange {
   };
 
   cancelOrders = async (orders: Order[]) => {
-    const [algoOrders, normalOrders] = partition(orders, (o) =>
-      this.isAlgoOrder(o.type)
-    );
+    const [algoOrders, normalOrders] = partition(orders, (o) => {
+      const isAlgo = this.isAlgoOrder(o.type);
+      if (!isAlgo) return false;
+
+      // Some TP/SL are linked to a normal order
+      // we need to treat those as normal orders as well
+      const existingNormalId = this.store.orders.find(
+        (storeOrder) =>
+          storeOrder.id === storeOrder.id.replace('_sl', '').replace('_tp', '')
+      );
+
+      if (existingNormalId) return false;
+      return true;
+    });
 
     if (normalOrders.length) await this.cancelNormalOrders(normalOrders);
     if (algoOrders.length) await this.cancelAlgoOrders(algoOrders);
@@ -659,7 +670,10 @@ export class BlofinExchange extends BaseExchange {
 
   private cancelNormalOrders = async (orders: Order[]) => {
     try {
-      const ids = orders.map((o) => ({ orderId: o.id }));
+      const ids = orders.map((o) => ({
+        orderId: o.id.replace('_tp', '').replace('_sl', ''),
+      }));
+
       const { data } = await this.xhr.post<Record<string, any>>(
         ENDPOINTS.CANCEL_ORDERS,
         ids
