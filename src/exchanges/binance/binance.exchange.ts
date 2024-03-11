@@ -142,10 +142,7 @@ export class BinanceExchange extends BaseExchange {
   tick = async () => {
     if (!this.isDisposed) {
       try {
-        const balance = await this.fetchBalance();
-        if (this.isDisposed) return;
-
-        const positions = await this.fetchPositions();
+        const { balance, positions } = await this.fetchBalanceAndPositions();
         if (this.isDisposed) return;
 
         this.store.update({
@@ -162,24 +159,6 @@ export class BinanceExchange extends BaseExchange {
       }
 
       loop(() => this.tick(), this.options.extra?.tickInterval);
-    }
-  };
-
-  fetchBalance = async () => {
-    try {
-      const { data } = await this.xhr.get<Record<string, any>>(
-        ENDPOINTS.ACCOUNT
-      );
-
-      const total = parseFloat(data.totalWalletBalance);
-      const free = parseFloat(data.availableBalance);
-      const upnl = parseFloat(data.totalUnrealizedProfit);
-      const used = parseFloat(data.totalInitialMargin);
-
-      return { total, free, used, upnl };
-    } catch (err: any) {
-      this.emitter.emit('error', err?.response?.data?.msg || err?.message);
-      return this.store.balance;
     }
   };
 
@@ -302,23 +281,30 @@ export class BinanceExchange extends BaseExchange {
     }
   };
 
-  fetchPositions = async () => {
+  fetchBalanceAndPositions = async () => {
     try {
-      const { data } = await this.xhr.get<Array<Record<string, any>>>(
-        ENDPOINTS.POSITIONS
-      );
+      const { data } = await this.xhr.get<
+        Record<string, any> & { positions: Array<Record<string, any>> }
+      >(ENDPOINTS.ACCOUNT);
+
+      const balance = {
+        total: parseFloat(data.totalWalletBalance),
+        free: parseFloat(data.availableBalance),
+        used: parseFloat(data.totalInitialMargin),
+        upnl: parseFloat(data.totalUnrealizedProfit),
+      };
 
       // We need to filter out positions that corresponds to
       // markets that are not supported by safe-cex
 
-      const supportedPositions = data.filter((p) =>
+      const supportedPositions = data.positions.filter((p) =>
         this.store.markets.some((m) => m.symbol === p.symbol)
       );
 
       const positions: Position[] = supportedPositions.map((p) => {
         const entryPrice = parseFloat(v(p, 'entryPrice'));
         const contracts = parseFloat(v(p, 'positionAmt'));
-        const upnl = parseFloat(v(p, 'unRealizedProfit'));
+        const upnl = parseFloat(v(p, 'unrealizedProfit'));
         const pSide = v(p, 'positionSide');
 
         // If account is not on hedge mode,
@@ -339,36 +325,48 @@ export class BinanceExchange extends BaseExchange {
         };
       });
 
-      return positions;
+      return {
+        positions,
+        balance,
+      };
     } catch (err: any) {
       this.emitter.emit('error', err?.response?.data?.msg || err?.message);
-      return this.store.positions;
+
+      return {
+        positions: this.store.positions,
+        balance: this.store.balance,
+      };
     }
   };
 
   fetchOrders = async () => {
-    const { data } = await this.xhr.get<Array<Record<string, any>>>(
-      ENDPOINTS.OPEN_ORDERS
-    );
+    try {
+      const { data } = await this.xhr.get<Array<Record<string, any>>>(
+        ENDPOINTS.OPEN_ORDERS
+      );
 
-    const orders: Order[] = data.map((o) => {
-      const order = {
-        id: v(o, 'clientOrderId'),
-        status: OrderStatus.Open,
-        symbol: o.symbol,
-        type: ORDER_TYPE[o.type],
-        side: ORDER_SIDE[o.side],
-        price: parseFloat(o.price) || parseFloat(v(o, 'stopPrice')),
-        amount: parseFloat(v(o, 'origQty')),
-        reduceOnly: v(o, 'reduceOnly') || false,
-        filled: parseFloat(v(o, 'executedQty')),
-        remaining: subtract(v(o, 'origQty'), v(o, 'executedQty')),
-      };
+      const orders: Order[] = data.map((o) => {
+        const order = {
+          id: v(o, 'clientOrderId'),
+          status: OrderStatus.Open,
+          symbol: o.symbol,
+          type: ORDER_TYPE[o.type],
+          side: ORDER_SIDE[o.side],
+          price: parseFloat(o.price) || parseFloat(v(o, 'stopPrice')),
+          amount: parseFloat(v(o, 'origQty')),
+          reduceOnly: v(o, 'reduceOnly') || false,
+          filled: parseFloat(v(o, 'executedQty')),
+          remaining: subtract(v(o, 'origQty'), v(o, 'executedQty')),
+        };
 
-      return order;
-    });
+        return order;
+      });
 
-    return orders;
+      return orders;
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.msg || err?.message);
+      return this.store.orders;
+    }
   };
 
   fetchOHLCV = async (opts: OHLCVOptions) => {
