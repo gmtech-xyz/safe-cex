@@ -758,31 +758,14 @@ export class BlofinExchange extends BaseExchange {
     const market = this.store.markets.find((m) => m.symbol === opts.symbol);
     if (!market) throw new Error(`Market ${opts.symbol} not found on Blofin`);
 
-    const openPosition = this.store.positions.find(
-      (p) =>
-        p.contracts > 0 &&
-        p.symbol === opts.symbol &&
-        p.side ===
-          (opts.side === OrderSide.Buy ? PositionSide.Short : PositionSide.Long)
-    );
-
-    if (!openPosition) {
-      throw new Error(`No open position found for ${opts.symbol} on Blofin`);
-    }
-
     const pPrice = market.precision.price;
     const price = opts.price ? adjust(opts.price, pPrice) : null;
-
-    const pFactor = market.precision.amount;
-    const pAmount = divide(pFactor, pFactor);
-
-    const amount = adjust(divide(openPosition.contracts, pFactor), pAmount);
 
     const req: Record<string, any> = omitUndefined({
       instId: market.id,
       marginMode: 'cross',
       side: inverseObj(ORDER_SIDE)[opts.side],
-      size: `${amount}`,
+      size: `-1`,
     });
 
     if (opts.type === OrderType.StopLoss) {
