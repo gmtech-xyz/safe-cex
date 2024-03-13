@@ -1,4 +1,4 @@
-## [8.0.12](https://github.com/gmtech-xyz/safe-cex/compare/v8.0.2...v8.0.12) (2024-01-25)
+# [8.1.0](https://github.com/gmtech-xyz/safe-cex/compare/v8.0.2...v8.1.0) (2024-03-13)
 
 
 ### Bug Fixes
@@ -7,16 +7,30 @@
 * **binance:** object is not array ([ecb1909](https://github.com/gmtech-xyz/safe-cex/commit/ecb190973dddacce02afe55279997b6587468e9b))
 * **binance:** remove busd ([20099e0](https://github.com/gmtech-xyz/safe-cex/commit/20099e0bc7081f3a9450904367817c63c6d3e520))
 * **binance:** support multi-assets balances ([4455665](https://github.com/gmtech-xyz/safe-cex/commit/44556654a592d667269c08f10fbab216a8466413))
+* **blofin:** batch order only same market ([48773ed](https://github.com/gmtech-xyz/safe-cex/commit/48773ed8ba8ccf15cee16b839e510ebde213b572))
+* **blofin:** cancel linked tp/sl orders to normal order ([2a5988e](https://github.com/gmtech-xyz/safe-cex/commit/2a5988e8d4b73c6cc20a16889a9c43a70312bfac))
+* **blofin:** fetch leverage ([0a22606](https://github.com/gmtech-xyz/safe-cex/commit/0a22606d29d016685443c1386b0c41c6b22096ec))
+* **blofin:** place tp/sl with normal order ([b8fa879](https://github.com/gmtech-xyz/safe-cex/commit/b8fa8793ded20bfffa749c6d9203774f5b3b1c12))
 * **bybit.balance:** legacy accounts ([9b57410](https://github.com/gmtech-xyz/safe-cex/commit/9b57410ef5dc15d26a51487fa7e21eeacef9acb6))
 * **bybit:** account balance on unified ([3ec5bc5](https://github.com/gmtech-xyz/safe-cex/commit/3ec5bc5d46431b21ded80e8a56bd099ab8d8d878))
 * **bybit:** apply fix to unified ([f7ddbb2](https://github.com/gmtech-xyz/safe-cex/commit/f7ddbb249eb4415f251e25e68b3577c30f696542))
 * **bybit:** some accounts fail on this call ([82435a7](https://github.com/gmtech-xyz/safe-cex/commit/82435a77877c7dfdace62dc6131b8cc4e83093b7))
 * **okx:** might not receive in array in certain conditions ([95bc1f8](https://github.com/gmtech-xyz/safe-cex/commit/95bc1f8f8626e410a4637c5a4d5c0d72c22cf9f3))
+* **okx:** rest order when splitted ([41a9d2d](https://github.com/gmtech-xyz/safe-cex/commit/41a9d2d87411b19e20af8ea8197892ba8bca616c))
 
 
 ### Features
 
+* **blofin:** use `-1` for entire position ([67201d7](https://github.com/gmtech-xyz/safe-cex/commit/67201d72d5def48fc2987da2ecc76a224cb40939))
 * **bybit:** allow usage without keys/secret for tuleep demo ([b95be84](https://github.com/gmtech-xyz/safe-cex/commit/b95be8427df43e1eb2cc20fe5462ef7d94c056d5))
+* **exchanges:** add blofin ([8166728](https://github.com/gmtech-xyz/safe-cex/commit/81667282cc0c2dba3a8f4b11ae2163f395847479))
+
+
+### Performance Improvements
+
+* **binance:** use one call for balance & positions ([004a364](https://github.com/gmtech-xyz/safe-cex/commit/004a364259d9872df554654b2e3e7c70a46f0f46))
+* **woo:** increase to 5 RPS ([42c3516](https://github.com/gmtech-xyz/safe-cex/commit/42c3516505888847f091b103be686a03370af1e0))
+* **xhr:** don't timeout public calls ([b5643f0](https://github.com/gmtech-xyz/safe-cex/commit/b5643f0ef00284077893037405e17a23a7dd3edd))
 
 
 
