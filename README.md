@@ -432,6 +432,17 @@ await exchange.dispose();
 
 ## Known issues
 
+### Using with next.js
+
+Because of `nanoid` package, in next.config.js add:
+
+```ts
+transpilePackages: ['safe-cex'],
+experimental: {
+  esmExternals: 'loose',
+}
+```
+
 ## Donations
 
 If you found this project interesting or useful, create accounts with my referral links:
