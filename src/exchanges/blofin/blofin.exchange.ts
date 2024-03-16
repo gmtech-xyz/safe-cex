@@ -29,6 +29,7 @@ import { BaseExchange } from '../base';
 
 import { createAPI } from './blofin.api';
 import {
+  BROKER_ID,
   ENDPOINTS,
   INTERVAL,
   ORDER_SIDE,
@@ -729,6 +730,7 @@ export class BlofinExchange extends BaseExchange {
       price: opts.type === OrderType.Limit ? `${price}` : undefined,
       size: `${amount}`,
       reduceOnly: opts.reduceOnly ? 'true' : 'false',
+      brokerId: BROKER_ID,
     });
 
     if (opts.stopLoss) {
@@ -766,6 +768,7 @@ export class BlofinExchange extends BaseExchange {
       marginMode: 'cross',
       side: inverseObj(ORDER_SIDE)[opts.side],
       size: `-1`,
+      brokerId: BROKER_ID,
     });
 
     if (opts.type === OrderType.StopLoss) {

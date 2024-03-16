@@ -2,6 +2,7 @@ import type { Timeframe } from '../../types';
 import { OrderSide, OrderStatus, OrderType } from '../../types';
 
 export const RECV_WINDOW = 5000;
+export const BROKER_ID = '997078d04f249b74';
 
 export const BASE_URL = 'https://openapi.blofin.com';
 
