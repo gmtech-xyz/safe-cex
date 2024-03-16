@@ -1,3 +1,12 @@
+## [8.1.1](https://github.com/gmtech-xyz/safe-cex/compare/v8.1.0...v8.1.1) (2024-03-16)
+
+
+### Features
+
+* **blofin:** add `brokerId` ([cf82d33](https://github.com/gmtech-xyz/safe-cex/commit/cf82d33523dc9da90669e155d7e1637de3e2525d))
+
+
+
 # [8.1.0](https://github.com/gmtech-xyz/safe-cex/compare/v8.0.2...v8.1.0) (2024-03-13)
 
 
