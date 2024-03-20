@@ -142,7 +142,7 @@ export class BybitPublicWebsocket extends BaseWebSocket<BybitExchange> {
               high: parseFloat(candle.high),
               low: parseFloat(candle.low),
               close: parseFloat(candle.close),
-              volume: parseFloat(candle.volume),
+              volume: parseFloat(candle.turnover),
             });
           };
 

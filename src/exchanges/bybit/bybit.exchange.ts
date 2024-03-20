@@ -493,7 +493,7 @@ export class BybitExchange extends BaseExchange {
 
     const candles: Candle[] = orderBy(
       data?.result?.list?.map?.(
-        ([open_time, open, high, low, close, volume]: string[]) => {
+        ([open_time, open, high, low, close, , volume]: string[]) => {
           return {
             timestamp: parseFloat(open_time) / 1000,
             open: parseFloat(open),
