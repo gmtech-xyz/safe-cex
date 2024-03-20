@@ -1,4 +1,10 @@
-# [8.2.0](https://github.com/gmtech-xyz/safe-cex/compare/v8.1.1...v8.2.0) (2024-03-20)
+## [8.2.1](https://github.com/gmtech-xyz/safe-cex/compare/v8.1.1...v8.2.1) (2024-03-20)
+
+
+### Bug Fixes
+
+* **bybit:** return turnover instead of volume ([fa2e3a2](https://github.com/gmtech-xyz/safe-cex/commit/fa2e3a2a4be6c4ca313a2472d65a4c8cc012ce99))
+* **okx:** subscribe to right candlestick ([678cc04](https://github.com/gmtech-xyz/safe-cex/commit/678cc0456542a3f4a760164d52f02e38cc8daf30))
 
 
 ### Features
