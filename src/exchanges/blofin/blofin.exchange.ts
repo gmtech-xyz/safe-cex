@@ -1,4 +1,6 @@
 import type { Axios } from 'axios';
+import type { ManipulateType } from 'dayjs';
+import dayjs from 'dayjs';
 import chunk from 'lodash/chunk';
 import flatten from 'lodash/flatten';
 import partition from 'lodash/partition';
@@ -376,13 +378,22 @@ export class BlofinExchange extends BaseExchange {
   };
 
   fetchOHLCV = async (opts: OHLCVOptions) => {
-    const interval = INTERVAL[opts.interval];
     const market = this.store.markets.find((m) => m.symbol === opts.symbol);
 
     if (!market) {
       this.emitter.emit('error', `Market ${opts.symbol} not found on Blofin`);
       return [];
     }
+
+    const interval = INTERVAL[opts.interval];
+    const limit = Math.min(opts.limit || 300, 1440);
+    const [, amount, unit] = opts.interval.split(/(\d+)/);
+
+    const end = opts.to ? dayjs(opts.to) : dayjs();
+    const start =
+      !opts.limit && opts.from
+        ? dayjs(opts.from)
+        : end.subtract(parseFloat(amount) * limit, unit as ManipulateType);
 
     try {
       const {
@@ -391,7 +402,9 @@ export class BlofinExchange extends BaseExchange {
         params: {
           instId: market?.id,
           bar: interval,
-          limit: 300,
+          limit,
+          after: start.valueOf(),
+          before: end.valueOf(),
         },
       });
 

@@ -1,4 +1,6 @@
 import type { Axios } from 'axios';
+import type { ManipulateType } from 'dayjs';
+import dayjs from 'dayjs';
 import { partition } from 'lodash';
 import chunk from 'lodash/chunk';
 import flatten from 'lodash/flatten';
@@ -418,40 +420,51 @@ export class OKXExchange extends BaseExchange {
   fetchOHLCV = async (opts: OHLCVOptions) => {
     const market = this.store.markets.find((m) => m.symbol === opts.symbol);
 
-    if (market) {
-      try {
-        const {
-          data: { data },
-        } = await this.xhr.get(ENDPOINTS.KLINE, {
-          params: {
-            instId: market.id,
-            bar: INTERVAL[opts.interval],
-            limit: 300,
-          },
-        });
-
-        const candles: Candle[] = data.map((c: string[]) => {
-          return {
-            timestamp: parseInt(c[0], 10) / 1000,
-            open: parseFloat(c[1]),
-            high: parseFloat(c[2]),
-            low: parseFloat(c[3]),
-            close: parseFloat(c[4]),
-            volume: parseFloat(c[7]),
-          };
-        });
-
-        candles.sort((a, b) => a.timestamp - b.timestamp);
-
-        return candles;
-      } catch (err: any) {
-        this.emitter.emit('error', err?.response?.data?.msg || err?.message);
-        return [];
-      }
+    if (!market) {
+      this.emitter.emit('error', `Market ${opts.symbol} not found on OKX`);
+      return [];
     }
 
-    this.emitter.emit('error', `Market ${opts.symbol} not found on OKX`);
-    return [];
+    const limit = Math.min(opts.limit || 300, 300);
+    const [, amount, unit] = opts.interval.split(/(\d+)/);
+
+    const end = opts.to ? dayjs(opts.to) : dayjs();
+    const start =
+      !opts.limit && opts.from
+        ? dayjs(opts.from)
+        : end.subtract(parseFloat(amount) * limit, unit as ManipulateType);
+
+    try {
+      const {
+        data: { data },
+      } = await this.xhr.get(ENDPOINTS.KLINE, {
+        params: {
+          instId: market.id,
+          bar: INTERVAL[opts.interval],
+          limit,
+          after: start.valueOf(),
+          before: end.valueOf(),
+        },
+      });
+
+      const candles: Candle[] = data.map((c: string[]) => {
+        return {
+          timestamp: parseInt(c[0], 10) / 1000,
+          open: parseFloat(c[1]),
+          high: parseFloat(c[2]),
+          low: parseFloat(c[3]),
+          close: parseFloat(c[4]),
+          volume: parseFloat(c[7]),
+        };
+      });
+
+      candles.sort((a, b) => a.timestamp - b.timestamp);
+
+      return candles;
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.msg || err?.message);
+      return [];
+    }
   };
 
   listenOHLCV = (opts: OHLCVOptions, callback: (candle: Candle) => void) => {
