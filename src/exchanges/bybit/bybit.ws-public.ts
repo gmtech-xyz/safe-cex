@@ -151,7 +151,7 @@ export class BybitPublicWebsocket extends BaseWebSocket<BybitExchange> {
           this.parent.log(`Switched to [${opts.symbol}:${opts.interval}]`);
 
           // store subscribed topic to re-subscribe on reconnect
-          this.topics.ohlcv = topic;
+          this.topics[topic] = topic;
         }
       } else {
         setTimeout(() => waitForConnectedAndSubscribe(), 100);
@@ -162,7 +162,7 @@ export class BybitPublicWebsocket extends BaseWebSocket<BybitExchange> {
 
     return () => {
       delete this.messageHandlers[topic];
-      delete this.topics.ohlcv;
+      delete this.topics[topic];
 
       if (this.isConnected) {
         const payload = { op: 'unsubscribe', args: [topic] };

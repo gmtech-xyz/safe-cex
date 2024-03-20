@@ -54,6 +54,18 @@ export class BinancePublicWebsocket extends BaseWebSocket<BinanceExchange> {
           break;
         }
       }
+
+      // Binance special case for kline
+      // we need to re-build the topic and call the correspondant handler
+      if (data.includes('e":"kline"')) {
+        const json = jsonParse(data);
+
+        if (json) {
+          const topic = `${json.s.toLowerCase()}@kline_${json.k.i}`;
+          const handler = this.messageHandlers[topic];
+          if (handler) handler([json]);
+        }
+      }
     }
   };
 
@@ -110,7 +122,7 @@ export class BinancePublicWebsocket extends BaseWebSocket<BinanceExchange> {
 
     const waitForConnectedAndSubscribe = () => {
       if (this.isConnected) {
-        this.messageHandlers.kline = ([json]: Data) => {
+        this.messageHandlers[topic] = ([json]: Data) => {
           if (opts.symbol === json.k.s) {
             callback({
               timestamp: json.k.t / 1000,
@@ -134,7 +146,7 @@ export class BinancePublicWebsocket extends BaseWebSocket<BinanceExchange> {
     waitForConnectedAndSubscribe();
 
     return () => {
-      delete this.messageHandlers.kline;
+      delete this.messageHandlers[topic];
 
       if (this.isConnected) {
         const payload = { method: 'UNSUBSCRIBE', params: [topic], id: 2 };

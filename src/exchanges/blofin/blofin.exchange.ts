@@ -1,6 +1,4 @@
 import type { Axios } from 'axios';
-import type { ManipulateType } from 'dayjs';
-import dayjs from 'dayjs';
 import chunk from 'lodash/chunk';
 import flatten from 'lodash/flatten';
 import partition from 'lodash/partition';
@@ -58,9 +56,16 @@ export class BlofinExchange extends BaseExchange {
   }
 
   getAccount = async () => {
-    const { data } = await this.xhr.get(ENDPOINTS.API_KEY);
-    const { apiKey, referralCode } = data.data;
+    const {
+      data: { data, code, msg },
+    } = await this.xhr.get<Record<string, any>>(ENDPOINTS.API_KEY);
 
+    if (code !== '0') {
+      this.emitter.emit('error', msg);
+      return { userId: '', referralCode: '' };
+    }
+
+    const { apiKey, referralCode } = data.data;
     return { userId: apiKey, affiliateId: referralCode };
   };
 
@@ -141,8 +146,13 @@ export class BlofinExchange extends BaseExchange {
   fetchBalance = async () => {
     try {
       const {
-        data: { data },
-      } = await this.xhr.get<{ data: Record<string, any> }>(ENDPOINTS.BALANCE);
+        data: { data, code, msg },
+      } = await this.xhr.get<Record<string, any>>(ENDPOINTS.BALANCE);
+
+      if (code !== '0') {
+        this.emitter.emit('error', msg);
+        return this.store.balance;
+      }
 
       const usdt = data.details.find((d: any) => d.currency === 'USDT');
 
@@ -258,13 +268,18 @@ export class BlofinExchange extends BaseExchange {
           if (this.isDisposed) return [];
 
           const {
-            data: { data },
+            data: { data, code, msg },
           } = await this.xhr.get(ENDPOINTS.LEVERAGE, {
             params: {
               instId: batch.map((m) => m.id).join(','),
               marginMode: 'cross',
             },
           });
+
+          if (code !== '0') {
+            this.emitter.emit('error', msg);
+            return [];
+          }
 
           return data;
         })
@@ -282,10 +297,13 @@ export class BlofinExchange extends BaseExchange {
 
   fetchPositions = async () => {
     const {
-      data: { data },
-    } = await this.xhr.get<{ data: Array<Record<string, any>> }>(
-      ENDPOINTS.POSITIONS
-    );
+      data: { data, code, msg },
+    } = await this.xhr.get<Record<string, any>>(ENDPOINTS.POSITIONS);
+
+    if (code !== '0') {
+      this.emitter.emit('error', msg);
+      return this.store.positions;
+    }
 
     const positions: Position[] = this.mapPositions(data);
     const fakePositions = this.store.markets.reduce((acc: Position[], m) => {
@@ -320,18 +338,18 @@ export class BlofinExchange extends BaseExchange {
       orders: Array<Record<string, any>> = []
     ): Promise<Array<Record<string, any>>> => {
       const {
-        data: { data },
-      } = await this.xhr.get<{ data: Array<Record<string, any>> }>(
-        ENDPOINTS.UNFILLED_ORDERS,
-        {
-          params: {
-            limit: 100,
-            after: orders.length
-              ? orders[orders.length - 1].orderId
-              : undefined,
-          },
-        }
-      );
+        data: { data, code, msg },
+      } = await this.xhr.get<Record<string, any>>(ENDPOINTS.UNFILLED_ORDERS, {
+        params: {
+          limit: 100,
+          after: orders.length ? orders[orders.length - 1].orderId : undefined,
+        },
+      });
+
+      if (code !== '0') {
+        this.emitter.emit('error', msg);
+        return [];
+      }
 
       if (data.length === 100) {
         return await recursiveFetch([...orders, ...data]);
@@ -351,8 +369,8 @@ export class BlofinExchange extends BaseExchange {
       orders: Array<Record<string, any>> = []
     ): Promise<Array<Record<string, any>>> => {
       const {
-        data: { data },
-      } = await this.xhr.get<{ data: Array<Record<string, any>> }>(
+        data: { data, code, msg },
+      } = await this.xhr.get<Record<string, any>>(
         ENDPOINTS.UNFILLED_ALGO_ORDERS,
         {
           params: {
@@ -363,6 +381,11 @@ export class BlofinExchange extends BaseExchange {
           },
         }
       );
+
+      if (code !== '0') {
+        this.emitter.emit('error', msg);
+        return [];
+      }
 
       if (data.length === 100) {
         return await recursiveFetch([...orders, ...data]);
@@ -387,25 +410,18 @@ export class BlofinExchange extends BaseExchange {
 
     const interval = INTERVAL[opts.interval];
     const limit = Math.min(opts.limit || 300, 1440);
-    const [, amount, unit] = opts.interval.split(/(\d+)/);
-
-    const end = opts.to ? dayjs(opts.to) : dayjs();
-    const start =
-      !opts.limit && opts.from
-        ? dayjs(opts.from)
-        : end.subtract(parseFloat(amount) * limit, unit as ManipulateType);
 
     try {
       const {
         data: { data },
       } = await this.xhr.get(ENDPOINTS.KLINE, {
-        params: {
-          instId: market?.id,
+        params: omitUndefined({
+          instId: market.id,
           bar: interval,
           limit,
-          after: start.valueOf(),
-          before: end.valueOf(),
-        },
+          after: opts.to,
+          before: opts.from,
+        }),
       });
 
       const candles: Candle[] = data.map((c: string[]) => {
@@ -415,7 +431,7 @@ export class BlofinExchange extends BaseExchange {
           high: parseFloat(c[2]),
           low: parseFloat(c[3]),
           close: parseFloat(c[4]),
-          volume: parseFloat(c[5]),
+          volume: parseFloat(c[7]),
         };
       });
 

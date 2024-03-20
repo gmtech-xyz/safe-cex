@@ -76,11 +76,8 @@ export class BlofinPublicWebsocket extends BaseWebSocket<BlofinExchange> {
         return;
       }
 
-      for (const [channel, handler] of Object.entries(this.messageHandlers)) {
-        if (
-          data.includes(`channel":"${channel}`) &&
-          !data.includes('event":"subscribe"')
-        ) {
+      for (const [topic, handler] of Object.entries(this.messageHandlers)) {
+        if (data.includes(topic) && !data.includes('event":"subscribe"')) {
           const json = jsonParse(data);
           if (json) handler(json);
           break;
@@ -141,15 +138,14 @@ export class BlofinPublicWebsocket extends BaseWebSocket<BlofinExchange> {
     const market = this.store.markets.find((m) => m.symbol === opts.symbol);
     if (!market) return () => {};
 
-    const topic = {
-      channel: `candle${INTERVAL[opts.interval]}`,
-      instId: market.id,
-    };
+    const interval = INTERVAL[opts.interval];
+    const topic = { channel: `candle${interval}`, instId: market.id };
+    const topicAsString = JSON.stringify(topic);
 
     const waitForConnectedAndSubscribe = () => {
       if (this.isConnected) {
         if (!this.isDisposed) {
-          this.messageHandlers.candle = (data: Data) => {
+          this.messageHandlers[topicAsString] = (data: Data) => {
             const candle = data?.data?.[0];
 
             if (candle) {
@@ -167,7 +163,7 @@ export class BlofinPublicWebsocket extends BaseWebSocket<BlofinExchange> {
           this.ws?.send?.(JSON.stringify({ op: 'subscribe', args: [topic] }));
           this.parent.log(`Switched to [${opts.symbol}:${opts.interval}]`);
 
-          this.topics.candle = [topic];
+          this.topics[topicAsString] = [topic];
         }
       } else {
         timeoutId = setTimeout(waitForConnectedAndSubscribe, 100);
@@ -177,8 +173,8 @@ export class BlofinPublicWebsocket extends BaseWebSocket<BlofinExchange> {
     waitForConnectedAndSubscribe();
 
     return () => {
-      delete this.messageHandlers.candle;
-      delete this.topics.candle;
+      delete this.messageHandlers[topicAsString];
+      delete this.topics[topicAsString];
 
       if (timeoutId) {
         clearTimeout(timeoutId);
