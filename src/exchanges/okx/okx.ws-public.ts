@@ -1,11 +1,6 @@
 import flatten from 'lodash/flatten';
 
-import type {
-  Candle,
-  OHLCVOptions,
-  OrderBook,
-  OrderBookOrders,
-} from '../../types';
+import type { OrderBook, OrderBookOrders } from '../../types';
 import { jsonParse } from '../../utils/json-parse';
 import { calcOrderBookTotal, sortOrderBook } from '../../utils/orderbook';
 import { roundUSD } from '../../utils/round-usd';
@@ -13,7 +8,7 @@ import { multiply } from '../../utils/safe-math';
 import { BaseWebSocket } from '../base.ws';
 
 import type { OKXExchange } from './okx.exchange';
-import { BASE_WS_URL, INTERVAL } from './okx.types';
+import { BASE_WS_URL } from './okx.types';
 
 type Data = Record<string, any>;
 type MessageHandlers = {
@@ -162,75 +157,6 @@ export class OKXPublicWebsocket extends BaseWebSocket<OKXExchange> {
       { id: update.instId },
       { fundingRate: parseFloat(update.fundingRate) }
     );
-  };
-
-  listenOHLCV = (opts: OHLCVOptions, callback: (candle: Candle) => void) => {
-    let timeoutId: NodeJS.Timeout | null = null;
-
-    if (!this.store.loaded.markets) {
-      timeoutId = setTimeout(() => this.listenOHLCV(opts, callback), 100);
-
-      return () => {
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
-        }
-      };
-    }
-
-    const market = this.store.markets.find((m) => m.symbol === opts.symbol);
-    if (!market) return () => {};
-
-    const topic = {
-      channel: `candle${INTERVAL[opts.interval]}`,
-      instId: market.id,
-    };
-
-    const waitForConnectedAndSubscribe = () => {
-      if (this.isConnected) {
-        if (!this.isDisposed) {
-          this.messageHandlers.candle = (data: Data) => {
-            const candle = data?.data?.[0];
-
-            if (candle) {
-              callback({
-                timestamp: parseInt(candle[0], 10) / 1000,
-                open: parseFloat(candle[1]),
-                high: parseFloat(candle[2]),
-                low: parseFloat(candle[3]),
-                close: parseFloat(candle[4]),
-                volume: parseFloat(candle[7]),
-              });
-            }
-          };
-
-          this.ws?.send?.(JSON.stringify({ op: 'subscribe', args: [topic] }));
-          this.parent.log(`Switched to [${opts.symbol}:${opts.interval}]`);
-
-          // store the topic so we can unsubscribe later
-          this.topics.candle = [topic];
-        }
-      } else {
-        timeoutId = setTimeout(() => waitForConnectedAndSubscribe(), 100);
-      }
-    };
-
-    waitForConnectedAndSubscribe();
-
-    return () => {
-      delete this.messageHandlers.candle;
-      delete this.topics.candle;
-
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-        timeoutId = null;
-      }
-
-      if (this.isConnected) {
-        const payload = { op: 'unsubscribe', args: [topic] };
-        this.ws?.send?.(JSON.stringify(payload));
-      }
-    };
   };
 
   listenOrderBook = (

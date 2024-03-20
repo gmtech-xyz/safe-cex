@@ -10,6 +10,10 @@ export const BASE_WS_URL = {
     livenet: 'wss://wsaws.okx.com:8443/ws/v5/public',
     testnet: 'wss://wsaws.okx.com:8443/ws/v5/public?brokerId=9999',
   },
+  public_candles: {
+    livenet: 'wss://ws.okx.com:8443/ws/v5/business',
+    testnet: 'wss://wspap.okx.com:8443/ws/v5/business?brokerId=9999',
+  },
   private: {
     livenet: 'wss://wsaws.okx.com:8443/ws/v5/private',
     testnet: 'wss://wsaws.okx.com:8443/ws/v5/private?brokerId=9999',

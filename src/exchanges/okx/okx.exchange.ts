@@ -1,6 +1,4 @@
 import type { Axios } from 'axios';
-import type { ManipulateType } from 'dayjs';
-import dayjs from 'dayjs';
 import { partition } from 'lodash';
 import chunk from 'lodash/chunk';
 import flatten from 'lodash/flatten';
@@ -44,11 +42,13 @@ import {
 } from './okx.types';
 import { OKXPrivateWebsocket } from './okx.ws-private';
 import { OKXPublicWebsocket } from './okx.ws-public';
+import { OKXPublicCandlesWebsocket } from './okx.ws-public-candles';
 
 export class OKXExchange extends BaseExchange {
   xhr: Axios;
 
   publicWebsocket: OKXPublicWebsocket;
+  publicCandlesWebsocket: OKXPublicCandlesWebsocket;
   privateWebsocket: OKXPrivateWebsocket;
 
   leverageHash: Record<string, number> = {};
@@ -58,6 +58,7 @@ export class OKXExchange extends BaseExchange {
 
     this.xhr = createAPI(opts);
     this.publicWebsocket = new OKXPublicWebsocket(this);
+    this.publicCandlesWebsocket = new OKXPublicCandlesWebsocket(this);
     this.privateWebsocket = new OKXPrivateWebsocket(this);
   }
 
@@ -84,6 +85,7 @@ export class OKXExchange extends BaseExchange {
   dispose = () => {
     super.dispose();
     this.publicWebsocket.dispose();
+    this.publicCandlesWebsocket.dispose();
     this.privateWebsocket.dispose();
   };
 
@@ -112,6 +114,7 @@ export class OKXExchange extends BaseExchange {
 
     // Start websocket
     this.publicWebsocket.connectAndSubscribe();
+    this.publicCandlesWebsocket.connectAndSubscribe();
     this.privateWebsocket.connectAndSubscribe();
 
     // fetch current position mode (Hedge/One-way)
@@ -425,26 +428,17 @@ export class OKXExchange extends BaseExchange {
       return [];
     }
 
-    const limit = Math.min(opts.limit || 300, 300);
-    const [, amount, unit] = opts.interval.split(/(\d+)/);
-
-    const end = opts.to ? dayjs(opts.to) : dayjs();
-    const start =
-      !opts.limit && opts.from
-        ? dayjs(opts.from)
-        : end.subtract(parseFloat(amount) * limit, unit as ManipulateType);
-
     try {
       const {
         data: { data },
       } = await this.xhr.get(ENDPOINTS.KLINE, {
-        params: {
+        params: omitUndefined({
           instId: market.id,
           bar: INTERVAL[opts.interval],
-          limit,
-          after: start.valueOf(),
-          before: end.valueOf(),
-        },
+          limit: opts.limit ? Math.min(opts.limit, 300) : 300,
+          after: opts.to,
+          before: opts.from,
+        }),
       });
 
       const candles: Candle[] = data.map((c: string[]) => {
@@ -468,7 +462,7 @@ export class OKXExchange extends BaseExchange {
   };
 
   listenOHLCV = (opts: OHLCVOptions, callback: (candle: Candle) => void) => {
-    return this.publicWebsocket.listenOHLCV(opts, callback);
+    return this.publicCandlesWebsocket.listenOHLCV(opts, callback);
   };
 
   listenOrderBook = (
