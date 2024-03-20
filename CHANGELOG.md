@@ -1,3 +1,12 @@
+# [8.2.0](https://github.com/gmtech-xyz/safe-cex/compare/v8.1.1...v8.2.0) (2024-03-20)
+
+
+### Features
+
+* **fetchOHLCV:** support start, end & limit ([93ac6bd](https://github.com/gmtech-xyz/safe-cex/commit/93ac6bdf22a130af260fbeada38c04ed86923ccb))
+
+
+
 ## [8.1.1](https://github.com/gmtech-xyz/safe-cex/compare/v8.1.0...v8.1.1) (2024-03-16)
 
 
