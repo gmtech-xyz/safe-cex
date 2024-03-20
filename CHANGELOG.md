@@ -1,3 +1,12 @@
+## [8.2.2](https://github.com/gmtech-xyz/safe-cex/compare/v8.2.1...v8.2.2) (2024-03-20)
+
+
+### Features
+
+* **exchanges:** allow multiple OHLCV subscriptions ([c1205b0](https://github.com/gmtech-xyz/safe-cex/commit/c1205b0d1335ff4a9038ffcff5041c6400781e4b))
+
+
+
 ## [8.2.1](https://github.com/gmtech-xyz/safe-cex/compare/v8.1.1...v8.2.1) (2024-03-20)
 
 
