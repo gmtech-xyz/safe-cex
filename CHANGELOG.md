@@ -1,3 +1,12 @@
+## [8.2.3](https://github.com/gmtech-xyz/safe-cex/compare/v8.2.2...v8.2.3) (2024-03-21)
+
+
+### Features
+
+* **exchanges:** add `name` property ([22a1fb6](https://github.com/gmtech-xyz/safe-cex/commit/22a1fb617a72c3850420a35672a3f9326a1a145c))
+
+
+
 ## [8.2.2](https://github.com/gmtech-xyz/safe-cex/compare/v8.2.1...v8.2.2) (2024-03-20)
 
 
