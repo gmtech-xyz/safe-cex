@@ -1,3 +1,12 @@
+## [8.3.1](https://github.com/gmtech-xyz/safe-cex/compare/v8.3.0...v8.3.1) (2024-03-21)
+
+
+### Bug Fixes
+
+* **typings:** CustomTimezone match ([7c7c09e](https://github.com/gmtech-xyz/safe-cex/commit/7c7c09e543ef1b5b4ce8a149c6206deba1f43241))
+
+
+
 # [8.3.0](https://github.com/gmtech-xyz/safe-cex/compare/v8.2.3...v8.3.0) (2024-03-21)
 
 
