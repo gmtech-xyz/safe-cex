@@ -40,6 +40,8 @@ import { BlofinPrivateWebsocket } from './blofin.ws-private';
 import { BlofinPublicWebsocket } from './blofin.ws-public';
 
 export class BlofinExchange extends BaseExchange {
+  name = 'BLOFIN';
+
   xhr: Axios;
 
   publicWebsocket: BlofinPublicWebsocket;

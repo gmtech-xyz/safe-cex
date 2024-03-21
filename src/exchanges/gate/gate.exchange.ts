@@ -42,6 +42,8 @@ import { GatePrivateWebsocket } from './gate.ws-private';
 import { GatePublicWebsocket } from './gate.ws-public';
 
 export class GateExchange extends BaseExchange {
+  name = 'GATE';
+
   xhr: Axios;
 
   publicWebsocket: GatePublicWebsocket;

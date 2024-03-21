@@ -45,6 +45,8 @@ import { OKXPublicWebsocket } from './okx.ws-public';
 import { OKXPublicCandlesWebsocket } from './okx.ws-public-candles';
 
 export class OKXExchange extends BaseExchange {
+  name = 'OKX';
+
   xhr: Axios;
 
   publicWebsocket: OKXPublicWebsocket;

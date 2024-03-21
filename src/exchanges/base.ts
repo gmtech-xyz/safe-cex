@@ -17,6 +17,7 @@ import { LogSeverity, OrderSide, OrderType } from '../types';
 import { sleep } from '../utils/sleep';
 
 export interface Exchange {
+  name: string;
   store: Store;
   emitter: Emitter.TinyEmitter;
   options: ExchangeOptions;
@@ -44,6 +45,8 @@ export interface Exchange {
 }
 
 export class BaseExchange implements Exchange {
+  name: string;
+
   store: Store;
   options: ExchangeOptions;
   emitter: Emitter.TinyEmitter = new (Emitter as any)();
@@ -56,6 +59,8 @@ export class BaseExchange implements Exchange {
   off: Emitter.TinyEmitter['off'];
 
   constructor(opts: ExchangeOptions, store: Store) {
+    this.name = 'SAFE-CEX';
+
     this.options = opts;
     this.store = store;
 

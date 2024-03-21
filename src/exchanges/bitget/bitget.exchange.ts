@@ -50,6 +50,8 @@ import { BitgetPrivateWebsocket } from './bitget.ws-private';
 import { BitgetPublicWebsocket } from './bitget.ws-public';
 
 export class BitgetExchange extends BaseExchange {
+  name = 'BITGET';
+
   xhr: Axios;
   unlimitedXHR: Axios;
 

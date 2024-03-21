@@ -34,6 +34,8 @@ import { WooPrivateWebscoket } from './woo.ws-private';
 import { WooPublicWebsocket } from './woo.ws-public';
 
 export class WOOXExchange extends BaseExchange {
+  name = 'WOO';
+
   xhr: Axios;
 
   publicWebsocket: WooPublicWebsocket;
