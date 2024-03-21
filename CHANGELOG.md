@@ -1,3 +1,12 @@
+# [8.3.0](https://github.com/gmtech-xyz/safe-cex/compare/v8.2.3...v8.3.0) (2024-03-21)
+
+
+### Features
+
+* **exchanges:** expose dataFeed API for TradingView ([b3c31d6](https://github.com/gmtech-xyz/safe-cex/commit/b3c31d64effb8ea202f1c7938674c6d6fdce6f06))
+
+
+
 ## [8.2.3](https://github.com/gmtech-xyz/safe-cex/compare/v8.2.2...v8.2.3) (2024-03-21)
 
 
