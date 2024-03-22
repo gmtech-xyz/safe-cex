@@ -2,7 +2,10 @@ import uniq from 'lodash/uniq';
 import { forEachSeries, mapSeries } from 'p-iteration';
 import Emitter from 'tiny-emitter';
 
-import type { IBasicDataFeed } from '../charting_library';
+import type {
+  DatafeedConfiguration,
+  IBasicDataFeed,
+} from '../charting_library';
 import type { Store } from '../store/store.interface';
 import type {
   Candle,
@@ -44,7 +47,7 @@ export interface Exchange {
   fetchOHLCV: (opts: OHLCVOptions) => Promise<Candle[]>;
   listenOHLCV: (o: OHLCVOptions, c: (c: Candle) => void) => () => void;
   listenOrderBook: (s: string, c: (o: OrderBook) => void) => () => void;
-  getDatafeedAPI: () => IBasicDataFeed;
+  getDatafeedAPI: (customConfig?: DatafeedConfiguration) => IBasicDataFeed;
 }
 
 export class BaseExchange implements Exchange {
@@ -223,8 +226,8 @@ export class BaseExchange implements Exchange {
     }
   };
 
-  getDatafeedAPI = () => {
-    return createDatafeedAPI(this);
+  getDatafeedAPI = (customConfig?: DatafeedConfiguration) => {
+    return createDatafeedAPI(this, customConfig);
   };
 
   dispose() {

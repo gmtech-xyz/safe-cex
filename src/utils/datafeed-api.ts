@@ -1,4 +1,5 @@
 import type {
+  DatafeedConfiguration,
   IBasicDataFeed,
   LibrarySymbolInfo,
   ResolutionString,
@@ -38,16 +39,22 @@ export const TIMEFRAME_TO_TV_INTERVAL: Record<Timeframe, ResolutionString> = {
   '1w': '1W' as ResolutionString,
 };
 
-export const createDatafeedAPI = (exchange: BaseExchange): IBasicDataFeed => {
+export const createDatafeedAPI = (
+  exchange: BaseExchange,
+  customConfig: DatafeedConfiguration = {}
+): IBasicDataFeed => {
   const WS_SUBSCRIBERS: Record<string, () => void> = {};
 
-  const config = {
-    supported_resolutions: ['1', '3', '5', '15', '60', '240', '1D'] as any,
-    symbols_types: [{ name: 'crypto', value: 'crypto' }],
-    exchanges: [
-      { value: exchange.name, name: exchange.name, desc: exchange.name },
-    ],
-  };
+  const config = Object.assign(
+    {
+      supported_resolutions: ['1', '3', '5', '15', '60', '240', '1D'] as any,
+      symbols_types: [{ name: 'crypto', value: 'crypto' }],
+      exchanges: [
+        { value: exchange.name, name: exchange.name, desc: exchange.name },
+      ],
+    },
+    customConfig
+  );
 
   return {
     onReady: (callback) => {
