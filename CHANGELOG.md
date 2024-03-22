@@ -1,3 +1,12 @@
+## [8.3.2](https://github.com/gmtech-xyz/safe-cex/compare/v8.3.1...v8.3.2) (2024-03-22)
+
+
+### Features
+
+* **datafeed:** allow override config ([6313c5e](https://github.com/gmtech-xyz/safe-cex/commit/6313c5e3c349a15f0dcf5dba9b6a420021c83139))
+
+
+
 ## [8.3.1](https://github.com/gmtech-xyz/safe-cex/compare/v8.3.0...v8.3.1) (2024-03-21)
 
 
