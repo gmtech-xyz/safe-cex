@@ -1,3 +1,13 @@
+## [8.3.3](https://github.com/gmtech-xyz/safe-cex/compare/v8.3.2...v8.3.3) (2024-03-25)
+
+
+### Bug Fixes
+
+* **binance:** re-subscribe ws on disconnect ([be99f01](https://github.com/gmtech-xyz/safe-cex/commit/be99f014c21c9ac76920945a3933ef68596dd720))
+* **blofin:** wrong obj key ([e6a0521](https://github.com/gmtech-xyz/safe-cex/commit/e6a0521eae1071a81f8e1bbdcd1f8e13e164deb3))
+
+
+
 ## [8.3.2](https://github.com/gmtech-xyz/safe-cex/compare/v8.3.1...v8.3.2) (2024-03-22)
 
 
