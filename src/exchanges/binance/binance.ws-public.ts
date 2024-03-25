@@ -12,7 +12,17 @@ type MessageHandlers = {
   [topic: string]: (json: Data) => void;
 };
 
+type SubscribedTopics = {
+  [id: string]: boolean;
+};
+
 export class BinancePublicWebsocket extends BaseWebSocket<BinanceExchange> {
+  topics: SubscribedTopics = {
+    '!ticker@arr': true,
+    '!bookTicker': true,
+    '!markPrice@arr@1s': true,
+  };
+
   messageHandlers: MessageHandlers = {
     '24hrTicker': (d: Data) => this.handleTickerStreamEvents(d),
     bookTicker: (d: Data) => this.handleBookTickersStreamEvents(d),
@@ -33,14 +43,21 @@ export class BinancePublicWebsocket extends BaseWebSocket<BinanceExchange> {
 
   onOpen = () => {
     if (!this.isDisposed) {
-      const payload = {
-        id: 1,
-        method: 'SUBSCRIBE',
-        params: ['!ticker@arr', '!bookTicker', '!markPrice@arr@1s'],
-      };
-
-      this.ws?.send?.(JSON.stringify(payload));
+      this.subscribe();
+      this.ping();
     }
+  };
+
+  ping = () => {
+    if (!this.isDisposed) {
+      this.ws?.send?.(JSON.stringify({ id: 42, method: 'LIST_SUBSCRIPTIONS' }));
+    }
+  };
+
+  subscribe = () => {
+    const topics = Object.keys(this.topics);
+    const payload = { method: 'SUBSCRIBE', params: topics, id: 1 };
+    this.ws?.send?.(JSON.stringify(payload));
   };
 
   onMessage = ({ data }: MessageEvent) => {
@@ -138,6 +155,7 @@ export class BinancePublicWebsocket extends BaseWebSocket<BinanceExchange> {
         const payload = { method: 'SUBSCRIBE', params: [topic], id: 2 };
         this.ws?.send?.(JSON.stringify(payload));
         this.parent.log(`Switched to [${opts.symbol}:${opts.interval}]`);
+        this.topics[topic] = true;
       } else {
         setTimeout(() => waitForConnectedAndSubscribe(), 100);
       }
@@ -147,6 +165,7 @@ export class BinancePublicWebsocket extends BaseWebSocket<BinanceExchange> {
 
     return () => {
       delete this.messageHandlers[topic];
+      delete this.topics[topic];
 
       if (this.isConnected) {
         const payload = { method: 'UNSUBSCRIBE', params: [topic], id: 2 };
@@ -241,6 +260,7 @@ export class BinancePublicWebsocket extends BaseWebSocket<BinanceExchange> {
 
         const payload = { method: 'SUBSCRIBE', params: [topic], id: 3 };
         this.ws?.send?.(JSON.stringify(payload));
+        this.topics[topic] = true;
       } else {
         timeoutId = setTimeout(() => waitForConnectedAndSubscribe(), 100);
       }
@@ -250,6 +270,8 @@ export class BinancePublicWebsocket extends BaseWebSocket<BinanceExchange> {
 
     return () => {
       delete this.messageHandlers.depthUpdate;
+      delete this.topics[topic];
+
       orderBook.asks = [];
       orderBook.bids = [];
       innerState.updates = [];
