@@ -67,7 +67,7 @@ export class BlofinExchange extends BaseExchange {
       return { userId: '', referralCode: '' };
     }
 
-    const { apiKey, referralCode } = data.data;
+    const { apiKey, referralCode } = data;
     return { userId: apiKey, affiliateId: referralCode };
   };
 
