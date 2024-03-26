@@ -334,8 +334,6 @@ export class WOOXExchange extends BaseExchange {
   };
 
   fetchOHLCV = async (opts: OHLCVOptions) => {
-    const limit = Math.min(opts.limit || 500, 1000);
-
     const {
       data: { rows },
     } = await this.xhr.get<{ rows: Array<Record<string, any>> }>(
@@ -344,21 +342,25 @@ export class WOOXExchange extends BaseExchange {
         params: {
           symbol: reverseSymbol(opts.symbol),
           type: opts.interval,
-          limit,
+          limit: 1000,
         },
       }
     );
 
-    const candles: Candle[] = rows.map((r) => {
-      return {
+    const candles: Candle[] = rows
+      .filter((r) => {
+        const isAfter = r.timestamp >= (opts.from || Infinity);
+        const isBefore = r.timestamp <= (opts.to || 0);
+        return !isAfter && !isBefore;
+      })
+      .map((r) => ({
         timestamp: r.start_timestamp / 1000,
         open: r.open,
         high: r.high,
         low: r.low,
         close: r.close,
         volume: r.volume,
-      };
-    });
+      }));
 
     return candles.reverse();
   };
