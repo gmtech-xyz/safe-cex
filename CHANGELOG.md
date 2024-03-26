@@ -1,3 +1,17 @@
+# [8.4.0](https://github.com/gmtech-xyz/safe-cex/compare/v8.3.3...v8.4.0) (2024-03-26)
+
+
+### Bug Fixes
+
+* **woo:** workaround kline limitations ([9cb3343](https://github.com/gmtech-xyz/safe-cex/commit/9cb3343af8ad0cd5b7b521e054d105f78ea6bda9))
+
+
+### Features
+
+* **woo:** provide datafeed api ([4691961](https://github.com/gmtech-xyz/safe-cex/commit/469196134fd98f35510523033adcb1531a3a5163))
+
+
+
 ## [8.3.3](https://github.com/gmtech-xyz/safe-cex/compare/v8.3.2...v8.3.3) (2024-03-25)
 
 
