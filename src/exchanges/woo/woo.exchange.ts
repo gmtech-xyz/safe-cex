@@ -787,10 +787,6 @@ export class WOOXExchange extends BaseExchange {
     await this.emitter.emit('error', 'Position mode is not supported on Woo X');
   };
 
-  getDatafeedAPI = () => {
-    throw new Error('Datafeed API is not supported on WOO');
-  };
-
   private isAlgoOrder = (orderType: OrderType) => {
     return (
       orderType === OrderType.StopLoss ||
