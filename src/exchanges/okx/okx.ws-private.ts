@@ -77,15 +77,16 @@ export class OKXPrivateWebsocket extends BaseWebSocket<OKXExchange> {
           { channel: 'account' },
           { channel: 'positions', instType: 'SWAP' },
           { channel: 'orders', instType: 'SWAP' },
-          { channel: 'orders-algo', instType: 'SWAP' },
-          { channel: 'algo-advance', instType: 'SWAP' },
         ],
       })
     );
   };
 
   onMessage = ({ data }: MessageEvent) => {
-    if (data.includes('event":"subscribe"')) {
+    if (
+      data.includes('event":"subscribe"') ||
+      data.includes('event":"channel-conn-count"')
+    ) {
       return;
     }
 
@@ -94,16 +95,12 @@ export class OKXPrivateWebsocket extends BaseWebSocket<OKXExchange> {
       return;
     }
 
-    if (data === '{"event":"login", "msg" : "", "code": "0"}') {
+    if (data.includes('"event":"login","msg":"","code":"0"')) {
       this.subscribe();
       return;
     }
 
-    if (
-      data.includes('"channel":"orders"') ||
-      data.includes('"channel":"orders-algo"') ||
-      data.includes('"channel":"algo-advance"')
-    ) {
+    if (data.includes('"channel":"orders"')) {
       const json = jsonParse(data);
       if (json) this.handleOrderTopic(json);
       return;

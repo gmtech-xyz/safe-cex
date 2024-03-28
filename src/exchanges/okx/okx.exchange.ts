@@ -40,9 +40,9 @@ import {
   POSITION_SIDE,
   REVERSE_ORDER_TYPE,
 } from './okx.types';
+import { OKXBusinessWebsocket } from './okx.ws-business';
 import { OKXPrivateWebsocket } from './okx.ws-private';
 import { OKXPublicWebsocket } from './okx.ws-public';
-import { OKXPublicCandlesWebsocket } from './okx.ws-public-candles';
 
 export class OKXExchange extends BaseExchange {
   name = 'OKX';
@@ -50,17 +50,18 @@ export class OKXExchange extends BaseExchange {
   xhr: Axios;
 
   publicWebsocket: OKXPublicWebsocket;
-  publicCandlesWebsocket: OKXPublicCandlesWebsocket;
+  businessWebsocket: OKXBusinessWebsocket;
   privateWebsocket: OKXPrivateWebsocket;
 
   leverageHash: Record<string, number> = {};
+  isPortfolioMargin: boolean = false;
 
   constructor(opts: ExchangeOptions, store: Store) {
     super(opts, store);
 
     this.xhr = createAPI(opts);
     this.publicWebsocket = new OKXPublicWebsocket(this);
-    this.publicCandlesWebsocket = new OKXPublicCandlesWebsocket(this);
+    this.businessWebsocket = new OKXBusinessWebsocket(this);
     this.privateWebsocket = new OKXPrivateWebsocket(this);
   }
 
@@ -87,7 +88,7 @@ export class OKXExchange extends BaseExchange {
   dispose = () => {
     super.dispose();
     this.publicWebsocket.dispose();
-    this.publicCandlesWebsocket.dispose();
+    this.businessWebsocket.dispose();
     this.privateWebsocket.dispose();
   };
 
@@ -110,13 +111,18 @@ export class OKXExchange extends BaseExchange {
       loaded: { ...this.store.loaded, tickers: true },
     });
 
+    // we set the account level to multi-currency margin
+    // the portfolio margin mode is bugged with TP/SL orders
+    // and with leverage settings
+    await this.setAccountLevel();
+
     // we need to fetch leverage before positions
     // this means before ws connect and before balance/positions fetch
     await this.fetchLeverage();
 
     // Start websocket
     this.publicWebsocket.connectAndSubscribe();
-    this.publicCandlesWebsocket.connectAndSubscribe();
+    this.businessWebsocket.connectAndSubscribe();
     this.privateWebsocket.connectAndSubscribe();
 
     // fetch current position mode (Hedge/One-way)
@@ -464,7 +470,7 @@ export class OKXExchange extends BaseExchange {
   };
 
   listenOHLCV = (opts: OHLCVOptions, callback: (candle: Candle) => void) => {
-    return this.publicCandlesWebsocket.listenOHLCV(opts, callback);
+    return this.businessWebsocket.listenOHLCV(opts, callback);
   };
 
   listenOrderBook = (
@@ -562,6 +568,14 @@ export class OKXExchange extends BaseExchange {
     await this.cancelOrders(orders);
   };
 
+  setAccountLevel = async () => {
+    try {
+      await this.xhr.post(ENDPOINTS.ACCOUNT_LEVEL, { acctLv: '3' });
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.msg || err?.message);
+    }
+  };
+
   setLeverage = async (symbol: string, inputLeverage: number) => {
     const market = this.store.markets.find((m) => m.symbol === symbol);
     const position = this.store.positions.find((p) => p.symbol === symbol);
@@ -592,9 +606,14 @@ export class OKXExchange extends BaseExchange {
   fetchPositionMode = async () => {
     const {
       data: {
-        data: [{ posMode }],
+        data: [{ posMode, acctLv }],
       },
     } = await this.xhr.get(ENDPOINTS.ACCOUNT_CONFIG);
+
+    // set portifolio margin flag
+    // this is used for algo orders
+    this.isPortfolioMargin = acctLv === '4';
+
     return posMode === 'long_short_mode';
   };
 
@@ -835,11 +854,13 @@ export class OKXExchange extends BaseExchange {
       opts.type === OrderType.StopLoss ||
       opts.type === OrderType.TakeProfit
     ) {
-      if (this.store.options.isHedged) {
+      req.cxlOnClosePos = true;
+      req.reduceOnly = true;
+
+      if (this.store.options.isHedged || this.isPortfolioMargin) {
         req.sz = `${amount}`;
       } else {
         req.closeFraction = '1';
-        req.reduceOnly = true;
       }
     }
 

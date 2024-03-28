@@ -10,7 +10,7 @@ export const BASE_WS_URL = {
     livenet: 'wss://wsaws.okx.com:8443/ws/v5/public',
     testnet: 'wss://wsaws.okx.com:8443/ws/v5/public?brokerId=9999',
   },
-  public_candles: {
+  business: {
     livenet: 'wss://ws.okx.com:8443/ws/v5/business',
     testnet: 'wss://wspap.okx.com:8443/ws/v5/business?brokerId=9999',
   },
@@ -39,6 +39,7 @@ export const ENDPOINTS = {
   SET_POSITION_MODE: '/api/v5/account/set-position-mode',
   ACCOUNT_CONFIG: '/api/v5/account/config',
   UPDATE_ORDER: '/api/v5/trade/amend-order',
+  ACCOUNT_LEVEL: '/api/v5/account/set-account-level',
 };
 
 export const PUBLIC_ENDPOINTS = [

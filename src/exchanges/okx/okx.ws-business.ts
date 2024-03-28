@@ -1,7 +1,10 @@
+import createHmac from 'create-hmac';
 import flatten from 'lodash/flatten';
 
 import type { Candle, OHLCVOptions } from '../../types';
 import { jsonParse } from '../../utils/json-parse';
+import { multiply } from '../../utils/safe-math';
+import { virtualClock } from '../../utils/virtual-clock';
 import { BaseWebSocket } from '../base.ws';
 
 import type { OKXExchange } from './okx.exchange';
@@ -12,17 +15,26 @@ type MessageHandlers = {
   [channel: string]: (json: Data) => void;
 };
 type SubscribedTopics = {
-  [id: string]: Array<{ channel: string; instId: string }>;
+  [id: string]: Array<{ channel: string; instId?: string; instType?: string }>;
 };
 
-export class OKXPublicCandlesWebsocket extends BaseWebSocket<OKXExchange> {
-  topics: SubscribedTopics = {};
+export class OKXBusinessWebsocket extends BaseWebSocket<OKXExchange> {
+  topics: SubscribedTopics = {
+    orders: [
+      { channel: 'orders-algo', instType: 'SWAP' },
+      { channel: 'algo-advance', instType: 'SWAP' },
+    ],
+  };
+
   messageHandlers: MessageHandlers = {};
 
   connectAndSubscribe = () => {
     if (!this.isDisposed) {
+      this.messageHandlers['orders-algo'] = this.handleOrderTopic;
+      this.messageHandlers['algo-advance'] = this.handleOrderTopic;
+
       this.ws = new WebSocket(
-        BASE_WS_URL.public_candles[
+        BASE_WS_URL.business[
           this.parent.options.testnet ? 'testnet' : 'livenet'
         ]
       );
@@ -35,7 +47,7 @@ export class OKXPublicCandlesWebsocket extends BaseWebSocket<OKXExchange> {
 
   onOpen = () => {
     if (!this.isDisposed) {
-      this.subscribe();
+      this.auth();
       this.ping();
     }
   };
@@ -46,6 +58,27 @@ export class OKXPublicCandlesWebsocket extends BaseWebSocket<OKXExchange> {
     }
   };
 
+  auth = () => {
+    const timestamp = virtualClock.getCurrentTime().unix();
+    const signature = createHmac('sha256', this.parent.options.secret)
+      .update([timestamp, 'GET', '/users/self/verify'].join(''))
+      .digest('base64');
+
+    this.ws?.send?.(
+      JSON.stringify({
+        op: 'login',
+        args: [
+          {
+            apiKey: this.parent.options.key,
+            passphrase: this.parent.options.passphrase,
+            timestamp,
+            sign: signature,
+          },
+        ],
+      })
+    );
+  };
+
   subscribe = () => {
     const topics = flatten(Object.values(this.topics));
     const payload = { op: 'subscribe', args: topics };
@@ -54,13 +87,25 @@ export class OKXPublicCandlesWebsocket extends BaseWebSocket<OKXExchange> {
 
   onMessage = ({ data }: MessageEvent) => {
     if (!this.isDisposed) {
+      if (
+        data.includes('event":"subscribe"') ||
+        data.includes('event":"channel-conn-count"')
+      ) {
+        return;
+      }
+
       if (data === 'pong') {
         this.handlePongEvent();
         return;
       }
 
+      if (data.includes('"event":"login","msg":"","code":"0"')) {
+        this.subscribe();
+        return;
+      }
+
       for (const [topic, handler] of Object.entries(this.messageHandlers)) {
-        if (data.includes(topic) && !data.includes('event":"subscribe"')) {
+        if (data.includes(topic)) {
           const json = jsonParse(data);
           if (json) handler(json);
           break;
@@ -76,6 +121,35 @@ export class OKXPublicCandlesWebsocket extends BaseWebSocket<OKXExchange> {
     }
 
     this.pingTimeoutId = setTimeout(() => this.ping(), 10_000);
+  };
+
+  handleOrderTopic = ({ data: okxOrders }: Record<string, any>) => {
+    for (const o of okxOrders) {
+      const orders = this.parent.mapOrders([o]);
+
+      if (orders.length) {
+        if (o.state === 'filled' || o.state === 'canceled') {
+          this.store.removeOrders(orders);
+        }
+
+        if (o.state === 'live' || o.state === 'partially_filled') {
+          this.store.addOrUpdateOrders(orders);
+        }
+
+        if (o.state === 'filled' || o.state === 'partially_filled') {
+          const market = this.store.markets.find((m) => m.id === o.instId);
+
+          if (market) {
+            this.emitter.emit('fill', {
+              side: orders[0].side,
+              symbol: orders[0].symbol,
+              price: parseFloat(o.fillPx),
+              amount: multiply(parseFloat(o.fillSz), market.precision.amount),
+            });
+          }
+        }
+      }
+    }
   };
 
   listenOHLCV = (opts: OHLCVOptions, callback: (candle: Candle) => void) => {
