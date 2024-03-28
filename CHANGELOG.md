@@ -1,3 +1,12 @@
+## [8.4.1](https://github.com/gmtech-xyz/safe-cex/compare/v8.4.0...v8.4.1) (2024-03-28)
+
+
+### Bug Fixes
+
+* **okx:** support new business and changes in algo ([3fc0635](https://github.com/gmtech-xyz/safe-cex/commit/3fc0635d7949f0a986bbaa8b9bf57f642bf3f561))
+
+
+
 # [8.4.0](https://github.com/gmtech-xyz/safe-cex/compare/v8.3.3...v8.4.0) (2024-03-26)
 
 
