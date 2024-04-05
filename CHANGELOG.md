@@ -1,3 +1,12 @@
+## [8.4.2](https://github.com/gmtech-xyz/safe-cex/compare/v8.4.1...v8.4.2) (2024-04-05)
+
+
+### Features
+
+* **woo:** increase RPS to 10 ([48f3372](https://github.com/gmtech-xyz/safe-cex/commit/48f33726935bd81e3508ff7f2e0e3ab2ae1a4fc9))
+
+
+
 ## [8.4.1](https://github.com/gmtech-xyz/safe-cex/compare/v8.4.0...v8.4.1) (2024-03-28)
 
 
