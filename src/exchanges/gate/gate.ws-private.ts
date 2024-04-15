@@ -1,8 +1,8 @@
 import createHmac from 'create-hmac';
-import { multiply } from 'lodash';
 
 import { OrderSide } from '../../types';
 import { jsonParse } from '../../utils/json-parse';
+import { multiply } from '../../utils/safe-math';
 import { virtualClock } from '../../utils/virtual-clock';
 import { BaseWebSocket } from '../base.ws';
 
