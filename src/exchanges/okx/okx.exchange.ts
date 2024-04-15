@@ -1,7 +1,7 @@
 import type { Axios } from 'axios';
-import { partition } from 'lodash';
 import chunk from 'lodash/chunk';
 import flatten from 'lodash/flatten';
+import partition from 'lodash/partition';
 import sumBy from 'lodash/sumBy';
 import times from 'lodash/times';
 import { forEachSeries, map, mapSeries } from 'p-iteration';

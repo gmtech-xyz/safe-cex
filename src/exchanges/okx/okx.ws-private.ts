@@ -1,5 +1,5 @@
 import createHmac from 'create-hmac';
-import { sumBy } from 'lodash';
+import sumBy from 'lodash/sumBy';
 
 import type { Position } from '../../types';
 import { PositionSide } from '../../types';
