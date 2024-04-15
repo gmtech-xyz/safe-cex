@@ -86,6 +86,8 @@ export class BlofinExchange extends BaseExchange {
 
   dispose = () => {
     super.dispose();
+    this.publicWebsocket.dispose();
+    this.privateWebsocket.dispose();
   };
 
   start = async () => {
