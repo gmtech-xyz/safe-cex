@@ -5,6 +5,7 @@ export type ExchangeName =
   | 'bybit'
   | 'gate'
   | 'okx'
+  | 'phemex'
   | 'woo';
 
 export type ExtraExchangeOptions = {

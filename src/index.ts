@@ -5,6 +5,7 @@ import { BlofinExchange } from './exchanges/blofin/blofin.exchange';
 import { BybitExchange } from './exchanges/bybit/bybit.exchange';
 import { GateExchange } from './exchanges/gate/gate.exchange';
 import { OKXExchange } from './exchanges/okx/okx.exchange';
+import { PhemexExchange } from './exchanges/phemex/phemex.exchange';
 import { WOOXExchange } from './exchanges/woo/woo.exchange';
 import { DefaultStore } from './store/store.base';
 import type { Store } from './store/store.interface';
@@ -19,6 +20,7 @@ const exchanges: Record<ExchangeName, typeof BaseExchange> = {
   gate: GateExchange,
   bitget: BitgetExchange,
   blofin: BlofinExchange,
+  phemex: PhemexExchange,
 };
 
 export const createExchange = (
