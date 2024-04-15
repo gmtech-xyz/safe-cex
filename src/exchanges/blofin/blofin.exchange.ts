@@ -64,7 +64,7 @@ export class BlofinExchange extends BaseExchange {
 
     if (code !== '0') {
       this.emitter.emit('error', msg);
-      return { userId: '', referralCode: '' };
+      return { userId: '', affiliateId: '' };
     }
 
     const { apiKey, referralCode } = data;
