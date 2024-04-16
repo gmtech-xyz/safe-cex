@@ -8,8 +8,18 @@ import { virtualClock } from '../../utils/virtual-clock';
 
 import { BASE_URL, PUBLIC_ENDPOINTS, RECV_WINDOW } from './phemex.types';
 
+const getBaseURL = (options: ExchangeOptions) => {
+  if (options.extra?.phemex?.http) {
+    return options.testnet
+      ? options.extra.phemex.http.testnet
+      : options.extra.phemex.http.livenet;
+  }
+
+  return options.testnet ? BASE_URL.testnet : BASE_URL.livenet;
+};
+
 export const createAPI = (options: ExchangeOptions) => {
-  const baseURL = options.testnet ? BASE_URL.testnet : BASE_URL.livenet;
+  const baseURL = getBaseURL(options);
   const baseURLWithCors = options.corsAnywhere
     ? `${options.corsAnywhere}/${baseURL}`
     : baseURL;
