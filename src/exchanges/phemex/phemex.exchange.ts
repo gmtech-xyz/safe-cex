@@ -1,21 +1,36 @@
 import type { Axios } from 'axios';
+import sumBy from 'lodash/sumBy';
 
 import type { Store } from '../../store/store.interface';
-import type { ExchangeOptions, Market, Ticker } from '../../types';
+import { PositionSide } from '../../types';
+import type {
+  Candle,
+  OHLCVOptions,
+  ExchangeOptions,
+  Market,
+  Position,
+  Ticker,
+} from '../../types';
+import { omitUndefined } from '../../utils/omit-undefined';
 import { roundUSD } from '../../utils/round-usd';
+import { multiply, subtract } from '../../utils/safe-math';
 import { BaseExchange } from '../base';
 
 import { createAPI } from './phemex.api';
-import { ENDPOINTS } from './phemex.types';
+import type { PhemexApiResponse } from './phemex.types';
+import { ENDPOINTS, INTERVAL } from './phemex.types';
+import { PhemexPublicWebsocket } from './phemex.ws-public';
 
 export class PhemexExchange extends BaseExchange {
   xhr: Axios;
+  publicWebsocket: PhemexPublicWebsocket;
 
   constructor(opts: ExchangeOptions, store: Store) {
     super(opts, store);
 
     this.name = 'PHEMEX';
     this.xhr = createAPI(opts);
+    this.publicWebsocket = new PhemexPublicWebsocket(this);
   }
 
   getAccount = async () => {
@@ -28,10 +43,12 @@ export class PhemexExchange extends BaseExchange {
 
   validateAccount = async () => {
     try {
-      const { data } = await this.xhr.get(ENDPOINTS.SPOT_WALLETS);
+      const {
+        data: { code, msg },
+      } = await this.xhr.get<PhemexApiResponse<any>>(ENDPOINTS.SPOT_WALLETS);
 
-      if (data?.code !== 0) return data?.msg;
-      if (data?.code === 0) return '';
+      if (code !== 0) return msg;
+      if (code === 0) return '';
 
       return 'Invalide API key or secret';
     } catch (err: any) {
@@ -41,6 +58,7 @@ export class PhemexExchange extends BaseExchange {
 
   dispose = () => {
     super.dispose();
+    this.publicWebsocket.dispose();
   };
 
   start = async () => {
@@ -63,15 +81,45 @@ export class PhemexExchange extends BaseExchange {
       tickers,
       loaded: { ...this.store.loaded, tickers: true },
     });
+
+    const { balance, positions } = await this.fetchBalanceAndPositions();
+    if (this.isDisposed) return;
+
+    this.store.update({
+      balance,
+      positions,
+      loaded: { ...this.store.loaded, balance: true, positions: true },
+    });
+
+    this.publicWebsocket.connectAndSubscribe();
+
+    this.log(`Ready to trade on Phemex`);
+
+    const orders = await this.fetchOrders();
+    if (this.isDisposed) return;
+
+    this.log(`Loaded ${orders.length} Phemex orders`);
+
+    this.store.update({
+      orders,
+      loaded: { ...this.store.loaded, orders: true },
+    });
   };
 
   fetchMarkets = async () => {
     try {
       const {
-        data: { data },
-      } = await this.xhr.get<{
-        data: { perpProductsV2: Array<Record<string, any>> };
-      }>(ENDPOINTS.MARKETS);
+        data: { code, msg, data },
+      } = await this.xhr.get<
+        PhemexApiResponse<{
+          data: { perpProductsV2: Array<Record<string, any>> };
+        }>
+      >(ENDPOINTS.MARKETS);
+
+      if (code !== 0) {
+        this.emitter.emit('error', msg);
+        return this.store.markets;
+      }
 
       const markets: Market[] = data.perpProductsV2
         .filter((m) => m.status === 'Listed')
@@ -109,10 +157,17 @@ export class PhemexExchange extends BaseExchange {
   fetchTickers = async () => {
     try {
       const {
-        data: { result },
-      } = await this.xhr.get<{ result: Array<Record<string, any>> }>(
-        ENDPOINTS.TICKERS
-      );
+        data: { id, error, result },
+      } = await this.xhr.get<{
+        id: number;
+        error: string | null;
+        result: Array<Record<string, any>>;
+      }>(ENDPOINTS.TICKERS);
+
+      if (id !== 0) {
+        this.emitter.emit('error', error);
+        return this.store.tickers;
+      }
 
       const tickers: Ticker[] = result.reduce(
         (acc: Ticker[], t: Record<string, any>) => {
@@ -148,5 +203,128 @@ export class PhemexExchange extends BaseExchange {
       this.emitter.emit('error', err?.response?.data?.msg || err.message);
       return this.store.tickers;
     }
+  };
+
+  fetchBalanceAndPositions = async () => {
+    try {
+      const {
+        data: { code, msg, data },
+      } = await this.xhr.get<
+        PhemexApiResponse<{
+          data: {
+            account: Record<string, any>;
+            positions: Array<Record<string, any>>;
+          };
+        }>
+      >(ENDPOINTS.POSITIONS, {
+        params: { currency: 'USDT' },
+      });
+
+      if (code !== 0) {
+        this.emitter.emit('error', msg);
+        return {
+          balance: this.store.balance,
+          positions: this.store.positions,
+        };
+      }
+
+      const positions: Position[] = this.mapPositions(data.positions);
+
+      const total = parseFloat(data.account.accountBalanceRv);
+      const used = parseFloat(data.account.totalUsedBalanceRv);
+      const free = subtract(total, used);
+      const upnl = sumBy(positions, 'unrealizedPnl');
+
+      return {
+        balance: { total, free, used, upnl },
+        positions,
+      };
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.msg || err.message);
+
+      return {
+        balance: this.store.balance,
+        positions: this.store.positions,
+      };
+    }
+  };
+
+  fetchOrders = async () => {
+    return this.store.orders;
+  };
+
+  fetchOHLCV = async (opts: OHLCVOptions) => {
+    const interval = INTERVAL[opts.interval];
+
+    try {
+      const { data } = await this.xhr.get<
+        PhemexApiResponse<{ data: { rows: any[] } }>
+      >(ENDPOINTS.KLINE, {
+        params: omitUndefined({
+          symbol: opts.symbol,
+          from: opts.from ? opts.from / 1000 : undefined,
+          to: opts.to ? opts.to / 1000 : undefined,
+          resolution: interval,
+        }),
+      });
+
+      if (data.code !== 0) {
+        this.emitter.emit('error', data.msg);
+        return [];
+      }
+
+      const candles: Candle[] = data.data.rows.map((c: any[]) => {
+        return {
+          timestamp: c[0],
+          open: parseFloat(c[3]),
+          high: parseFloat(c[4]),
+          low: parseFloat(c[5]),
+          close: parseFloat(c[6]),
+          volume: parseFloat(c[8]),
+        };
+      });
+
+      return candles;
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.msg || err.message);
+      return [];
+    }
+  };
+
+  listenOHLCV = (opts: OHLCVOptions, callback: (candle: Candle) => void) => {
+    return this.publicWebsocket.listenOHLCV(opts, callback);
+  };
+
+  mapPositions = (data: Array<Record<string, any>>) => {
+    return data.reduce((acc: Position[], p: Record<string, any>) => {
+      const market = this.store.markets.find((m) => m.id === p.symbol);
+      if (!market) return acc;
+
+      const side =
+        p.posSide === 'Long' ? PositionSide.Long : PositionSide.Short;
+
+      const contracts = parseFloat(p.size);
+      const markPrice = parseFloat(p.markPriceRp);
+      const entryPrice = parseFloat(p.avgEntryPriceRp);
+      const notional = multiply(contracts, markPrice);
+
+      const unrealizedPnl =
+        side === PositionSide.Long
+          ? subtract(notional, multiply(contracts, entryPrice))
+          : subtract(multiply(contracts, entryPrice), notional);
+
+      const position: Position = {
+        symbol: market.symbol,
+        side,
+        entryPrice,
+        notional,
+        leverage: Math.abs(parseFloat(p.leverageRr)),
+        unrealizedPnl,
+        contracts,
+        liquidationPrice: parseFloat(p.liquidationPriceRp),
+      };
+
+      return [...acc, position];
+    }, []);
   };
 }
