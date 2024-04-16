@@ -1,3 +1,14 @@
+## [8.4.3](https://github.com/gmtech-xyz/safe-cex/compare/v8.4.2...v8.4.3) (2024-04-15)
+
+
+### Bug Fixes
+
+* **blofin:** dispose websockets ([44bf2f4](https://github.com/gmtech-xyz/safe-cex/commit/44bf2f414343d3f8ec8aebddb601bc301e380144))
+* **blofin:** return data of `getAccount` ([26dc2a1](https://github.com/gmtech-xyz/safe-cex/commit/26dc2a140d017d64c963bc11dd55c68521075e99))
+* **gate:** use safe-math `multiply` ([86c2997](https://github.com/gmtech-xyz/safe-cex/commit/86c2997db22f8bd04f24aba46baa6bbd52f330b4))
+
+
+
 ## [8.4.2](https://github.com/gmtech-xyz/safe-cex/compare/v8.4.1...v8.4.2) (2024-04-05)
 
 
