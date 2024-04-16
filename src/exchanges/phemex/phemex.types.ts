@@ -30,6 +30,7 @@ export const ENDPOINTS = {
   TICKERS: '/md/v3/ticker/24hr/all',
   POSITIONS: '/g-accounts/accountPositions',
   KLINE: '/exchange/public/md/v2/kline/list',
+  ORDERS: '/g-orders/activeList',
 };
 
 export const PUBLIC_ENDPOINTS = [

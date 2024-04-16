@@ -15,7 +15,7 @@ type SubscribedTopics = {
 };
 
 export class PhemexPublicWebsocket extends BaseWebSocket<PhemexExchange> {
-  id = 0;
+  id = 1;
 
   topics: SubscribedTopics = {
     tickers: { method: 'perp_market24h_pack_p.subscribe', params: [] },

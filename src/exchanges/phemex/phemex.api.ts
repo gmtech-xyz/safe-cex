@@ -47,7 +47,7 @@ export const createAPI = (options: ExchangeOptions) => {
       : '';
 
     const timeout = options?.extra?.recvWindow ?? RECV_WINDOW;
-    const expiry = virtualClock.getCurrentTime().unix() + timeout;
+    const expiry = virtualClock.getCurrentTime().unix() + timeout / 1000;
     const toSign = [config.url, params, data, expiry].join('');
 
     const signature = createHmac('sha256', options.secret)

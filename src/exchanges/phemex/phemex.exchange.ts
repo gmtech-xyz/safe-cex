@@ -2,7 +2,7 @@ import type { Axios } from 'axios';
 import sumBy from 'lodash/sumBy';
 
 import type { Store } from '../../store/store.interface';
-import { PositionSide } from '../../types';
+import { OrderSide, OrderStatus, OrderType, PositionSide } from '../../types';
 import type {
   Candle,
   OHLCVOptions,
@@ -10,6 +10,7 @@ import type {
   Market,
   Position,
   Ticker,
+  Order,
 } from '../../types';
 import { omitUndefined } from '../../utils/omit-undefined';
 import { roundUSD } from '../../utils/round-usd';
@@ -19,11 +20,13 @@ import { BaseExchange } from '../base';
 import { createAPI } from './phemex.api';
 import type { PhemexApiResponse } from './phemex.types';
 import { ENDPOINTS, INTERVAL } from './phemex.types';
+import { PhemexPrivateWebsocket } from './phemex.ws-private';
 import { PhemexPublicWebsocket } from './phemex.ws-public';
 
 export class PhemexExchange extends BaseExchange {
   xhr: Axios;
   publicWebsocket: PhemexPublicWebsocket;
+  privateWebsocket: PhemexPrivateWebsocket;
 
   constructor(opts: ExchangeOptions, store: Store) {
     super(opts, store);
@@ -31,6 +34,7 @@ export class PhemexExchange extends BaseExchange {
     this.name = 'PHEMEX';
     this.xhr = createAPI(opts);
     this.publicWebsocket = new PhemexPublicWebsocket(this);
+    this.privateWebsocket = new PhemexPrivateWebsocket(this);
   }
 
   getAccount = async () => {
@@ -92,18 +96,9 @@ export class PhemexExchange extends BaseExchange {
     });
 
     this.publicWebsocket.connectAndSubscribe();
+    this.privateWebsocket.connectAndSubscribe();
 
     this.log(`Ready to trade on Phemex`);
-
-    const orders = await this.fetchOrders();
-    if (this.isDisposed) return;
-
-    this.log(`Loaded ${orders.length} Phemex orders`);
-
-    this.store.update({
-      orders,
-      loaded: { ...this.store.loaded, orders: true },
-    });
   };
 
   fetchMarkets = async () => {
@@ -249,10 +244,6 @@ export class PhemexExchange extends BaseExchange {
     }
   };
 
-  fetchOrders = async () => {
-    return this.store.orders;
-  };
-
   fetchOHLCV = async (opts: OHLCVOptions) => {
     const interval = INTERVAL[opts.interval];
 
@@ -325,6 +316,41 @@ export class PhemexExchange extends BaseExchange {
       };
 
       return [...acc, position];
+    }, []);
+  };
+
+  mapOrders = (data: Array<Record<string, any>>) => {
+    return data.reduce((acc: Order[], o: Record<string, any>) => {
+      const market = this.store.markets.find((m) => m.id === o.symbol);
+      if (!market) return acc;
+
+      let type = OrderType.Limit;
+      if (o.ordType === 'MarketIfTouched') type = OrderType.TakeProfit;
+      if (o.ordType === 'Stop') type = OrderType.StopLoss;
+
+      const amount = parseFloat(o.orderQty);
+      const remaining = parseFloat(o.leavesQty);
+      const filled = subtract(amount, remaining);
+
+      let reduceOnly = o.reduceOnly || false;
+      if (o.ordType === 'Stop' || o.ordType === 'MarketIfTouched') {
+        reduceOnly = true;
+      }
+
+      const order: Order = {
+        id: o.orderID,
+        symbol: o.symbol,
+        status: OrderStatus.Open,
+        type,
+        side: o.side === 'Sell' ? OrderSide.Sell : OrderSide.Buy,
+        price: parseFloat(o.priceRp) || parseFloat(o.stopPxRp),
+        amount,
+        remaining,
+        filled,
+        reduceOnly,
+      };
+
+      return [...acc, order];
     }, []);
   };
 }
