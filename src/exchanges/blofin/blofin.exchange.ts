@@ -17,8 +17,6 @@ import type {
   OHLCVOptions,
   Candle,
   PlaceOrderOpts,
-  UpdateOrderOpts,
-  Writable,
   OrderBook,
 } from '../../types';
 import { inverseObj } from '../../utils/inverse-obj';
@@ -532,26 +530,6 @@ export class BlofinExchange extends BaseExchange {
     );
 
     return [...normalOrdersIds, ...algoOrdersIds];
-  };
-
-  updateOrder = async ({ order, update }: UpdateOrderOpts) => {
-    const market = this.store.markets.find((m) => m.symbol === order.symbol);
-    if (!market) throw new Error(`Market ${order.symbol} not found on Blofin`);
-
-    const newOrder: Writable<PlaceOrderOpts> = {
-      symbol: order.symbol,
-      side: order.side,
-      type: order.type,
-      price: order.price,
-      amount: order.amount,
-      reduceOnly: order.reduceOnly,
-    };
-
-    if ('price' in update) newOrder.price = update.price;
-    if ('amount' in update) newOrder.amount = update.amount;
-
-    await this.cancelOrders([order]);
-    return await this.placeOrder(newOrder);
   };
 
   mapPositions = (data: Array<Record<string, any>>) => {

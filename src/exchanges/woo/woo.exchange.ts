@@ -16,7 +16,6 @@ import type {
   PlaceOrderOpts,
   Position,
   Ticker,
-  UpdateOrderOpts,
   Writable,
 } from '../../types';
 import { OrderSide, OrderType, OrderStatus, PositionSide } from '../../types';
@@ -374,42 +373,6 @@ export class WOOXExchange extends BaseExchange {
     callback: (orderBook: OrderBook) => void
   ) => {
     return this.publicWebsocket.listenOrderBook(symbol, callback);
-  };
-
-  updateOrder = async ({ order, update }: UpdateOrderOpts) => {
-    if (this.isAlgoOrder(order.type)) {
-      return this.updateAlgoOrder({ order, update });
-    }
-
-    const payload: Record<string, any> = { orderId: order.id };
-    if ('price' in update) payload.price = `${update.price}`;
-    if ('amount' in update) payload.quantity = `${update.amount}`;
-
-    try {
-      await this.xhr.put(`${ENDPOINTS.UPDATE_ORDER}/${order.id}`, payload);
-      return [order.id];
-    } catch (err: any) {
-      this.emitter.emit('error', err?.response?.data?.message || err?.message);
-      return [];
-    }
-  };
-
-  updateAlgoOrder = async ({ order, update }: UpdateOrderOpts) => {
-    const payload: Record<string, any> = {};
-
-    if ('price' in update) {
-      payload.childOrders = [
-        { algoOrderId: order.id, triggerPrice: `${update.price}` },
-      ];
-    }
-
-    try {
-      await this.xhr.put(`${ENDPOINTS.ALGO_ORDER}/${order.parentId}`, payload);
-      return [order.id];
-    } catch (err: any) {
-      this.emitter.emit('error', err?.response?.data?.message || err?.message);
-      return [];
-    }
   };
 
   fetchLimitOrders = async () => {

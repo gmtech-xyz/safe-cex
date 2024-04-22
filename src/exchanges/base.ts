@@ -16,6 +16,7 @@ import type {
   OrderBook,
   PlaceOrderOpts,
   UpdateOrderOpts,
+  Writable,
 } from '../types';
 import { LogSeverity, OrderSide, OrderType } from '../types';
 import { createDatafeedAPI } from '../utils/datafeed-api';
@@ -126,9 +127,21 @@ export class BaseExchange implements Exchange {
     return orderIds.flat();
   };
 
-  updateOrder = async (_opts: UpdateOrderOpts) => {
-    await Promise.reject(new Error('Not implemented'));
-    return [] as string[];
+  updateOrder = async ({ order, update }: UpdateOrderOpts) => {
+    const newOrder: Writable<PlaceOrderOpts> = {
+      symbol: order.symbol,
+      side: order.side,
+      type: order.type,
+      price: order.price,
+      amount: order.amount,
+      reduceOnly: order.reduceOnly,
+    };
+
+    if ('price' in update) newOrder.price = update.price;
+    if ('amount' in update) newOrder.amount = update.amount;
+
+    await this.cancelOrders([order]);
+    return await this.placeOrder(newOrder);
   };
 
   cancelOrders = async (_orders: Order[]) => {

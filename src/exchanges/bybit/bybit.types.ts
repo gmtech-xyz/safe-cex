@@ -40,7 +40,6 @@ export const ENDPOINTS = {
   SET_LEVERAGE: '/v5/position/set-leverage',
   SET_TRADING_STOP: '/v5/position/trading-stop',
   CREATE_ORDER: '/v5/order/create',
-  REPLACE_ORDER: '/v5/order/amend',
   SET_POSITION_MODE: '/v5/position/switch-mode',
 };
 
