@@ -321,7 +321,7 @@ export class BinanceExchange extends BaseExchange {
           symbol: p.symbol,
           side,
           entryPrice,
-          notional: Math.abs(contracts) * entryPrice + upnl,
+          notional: Math.abs(contracts * entryPrice + upnl), // this fix wrong calculation for shorts notional
           leverage: parseFloat(p.leverage),
           unrealizedPnl: upnl,
           contracts: Math.abs(contracts),
