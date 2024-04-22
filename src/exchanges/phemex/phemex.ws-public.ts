@@ -1,8 +1,15 @@
 import sumBy from 'lodash/sumBy';
 
 import { PositionSide } from '../../types';
-import type { Position, Candle, OHLCVOptions } from '../../types';
+import type {
+  Position,
+  Candle,
+  OHLCVOptions,
+  OrderBook,
+  OrderBookOrders,
+} from '../../types';
 import { jsonParse } from '../../utils/json-parse';
+import { calcOrderBookTotal, sortOrderBook } from '../../utils/orderbook';
 import { roundUSD } from '../../utils/round-usd';
 import { BaseWebSocket } from '../base.ws';
 
@@ -99,6 +106,23 @@ export class PhemexPublicWebsocket extends BaseWebSocket<PhemexExchange> {
         const topicAsString = JSON.stringify({
           method: 'kline_p.subscribe',
           params: [json.symbol, json.kline_p[0][1]],
+        });
+
+        if (topicAsString in this.messageHandlers) {
+          this.messageHandlers[topicAsString](json);
+        }
+      }
+
+      return;
+    }
+
+    if (data.includes('orderbook_p')) {
+      const json = jsonParse(data);
+
+      if (json) {
+        const topicAsString = JSON.stringify({
+          method: 'orderbook_p.subscribe',
+          params: [json.symbol, true],
         });
 
         if (topicAsString in this.messageHandlers) {
@@ -239,6 +263,117 @@ export class PhemexPublicWebsocket extends BaseWebSocket<PhemexExchange> {
             id: this.id++,
             method: 'kline_p.unsubscribe',
             params: [opts.symbol],
+          })
+        );
+      }
+    };
+  };
+
+  listenOrderBook = (
+    symbol: string,
+    callback: (orderBook: OrderBook) => void
+  ) => {
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    const topic = {
+      method: 'orderbook_p.subscribe',
+      params: [symbol, true],
+    };
+
+    const topicAsString = JSON.stringify(topic);
+
+    const sides = ['bids', 'asks'] as const;
+    const orderBook: OrderBook = { bids: [], asks: [] };
+
+    const waitForConnectedAndSubscribe = () => {
+      if (this.isConnected) {
+        if (!this.isDisposed) {
+          this.messageHandlers[topicAsString] = (data: Data) => {
+            if (data.type === 'snapshot') {
+              sides.forEach((side) => {
+                orderBook[side] = data.orderbook_p[side].reduce(
+                  (acc: OrderBookOrders[], [price, amount]: string[]) => {
+                    if (parseFloat(amount) === 0) return acc;
+                    return [
+                      ...acc,
+                      { price: parseFloat(price), amount: parseFloat(amount) },
+                    ];
+                  },
+                  []
+                );
+              });
+            }
+
+            if (data.type === 'incremental') {
+              sides.forEach((side) => {
+                for (const [rPrice, rAmount] of data.orderbook_p[side]) {
+                  const price = parseFloat(rPrice);
+                  const amount = parseFloat(rAmount);
+
+                  const index = orderBook[side].findIndex(
+                    (order) => order.price === price
+                  );
+
+                  if (amount === 0 && index !== -1) {
+                    orderBook[side].splice(index, 1);
+                    return;
+                  }
+
+                  if (amount !== 0) {
+                    if (index === -1) {
+                      orderBook[side].push({ price, amount, total: 0 });
+                      return;
+                    }
+
+                    orderBook[side][index].amount = amount;
+                  }
+                }
+              });
+            }
+
+            const ticker = this.store.tickers.find((t) => t.symbol === symbol);
+            const lastPrice = ticker?.last || 0;
+            orderBook.asks = orderBook.asks.filter((a) => a.price >= lastPrice);
+            orderBook.bids = orderBook.bids.filter((b) => b.price <= lastPrice);
+
+            sortOrderBook(orderBook);
+            calcOrderBookTotal(orderBook);
+
+            callback(orderBook);
+          };
+
+          this.ws?.send?.(
+            JSON.stringify({
+              id: this.id++,
+              method: topic.method,
+              params: topic.params,
+            })
+          );
+
+          this.topics[topicAsString] = topic;
+        }
+      } else {
+        timeoutId = setTimeout(waitForConnectedAndSubscribe, 100);
+      }
+    };
+
+    waitForConnectedAndSubscribe();
+
+    return () => {
+      delete this.messageHandlers[topicAsString];
+      delete this.topics[topicAsString];
+
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+      }
+
+      if (this.isConnected) {
+        this.ws?.send?.(
+          JSON.stringify({
+            id: this.id++,
+            method: 'orderbook_p.unsubscribe',
+            params: [],
           })
         );
       }

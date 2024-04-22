@@ -15,6 +15,7 @@ import type {
   Ticker,
   Order,
   PlaceOrderOpts,
+  OrderBook,
 } from '../../types';
 import { omitUndefined } from '../../utils/omit-undefined';
 import { roundUSD } from '../../utils/round-usd';
@@ -307,6 +308,13 @@ export class PhemexExchange extends BaseExchange {
 
   listenOHLCV = (opts: OHLCVOptions, callback: (candle: Candle) => void) => {
     return this.publicWebsocket.listenOHLCV(opts, callback);
+  };
+
+  listenOrderBook = (
+    symbol: string,
+    callback: (orderBook: OrderBook) => void
+  ) => {
+    return this.publicWebsocket.listenOrderBook(symbol, callback);
   };
 
   cancelOrders = async (orders: Order[]) => {
