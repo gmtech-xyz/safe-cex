@@ -8,7 +8,7 @@ import { virtualClock } from '../../utils/virtual-clock';
 import { BaseWebSocket } from '../base.ws';
 
 import type { PhemexExchange } from './phemex.exchange';
-import { BASE_WSS_URL, OPEN_PHEMEX_ORDERS, RECV_WINDOW } from './phemex.types';
+import { BASE_WSS_URL, OPEN_ORDERS_TYPES, RECV_WINDOW } from './phemex.types';
 
 type Data = Record<string, any>;
 
@@ -127,7 +127,7 @@ export class PhemexPrivateWebsocket extends BaseWebSocket<PhemexExchange> {
     // 1. handle snapshot of orders
     const dataOrders = data.orders_p || [];
     const openOrders = dataOrders.filter((o: Record<string, any>) =>
-      OPEN_PHEMEX_ORDERS.includes(o.ordStatus)
+      OPEN_ORDERS_TYPES.includes(o.ordStatus)
     );
 
     this.store.update({
@@ -159,7 +159,7 @@ export class PhemexPrivateWebsocket extends BaseWebSocket<PhemexExchange> {
     if (dataOrders.length > 0) {
       dataOrders.forEach((o: Record<string, any>) => {
         // add or update new orders & partially filled
-        if (OPEN_PHEMEX_ORDERS.includes(o.ordStatus)) {
+        if (OPEN_ORDERS_TYPES.includes(o.ordStatus)) {
           this.store.addOrUpdateOrders(this.parent.mapOrders([o]));
         }
 

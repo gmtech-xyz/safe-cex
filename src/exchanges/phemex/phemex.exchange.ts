@@ -1,6 +1,8 @@
 import type { Axios } from 'axios';
 import groupBy from 'lodash/groupBy';
 import sumBy from 'lodash/sumBy';
+import times from 'lodash/times';
+import { map } from 'p-iteration';
 
 import type { Store } from '../../store/store.interface';
 import { OrderSide, OrderStatus, OrderType, PositionSide } from '../../types';
@@ -12,15 +14,17 @@ import type {
   Position,
   Ticker,
   Order,
+  PlaceOrderOpts,
 } from '../../types';
 import { omitUndefined } from '../../utils/omit-undefined';
 import { roundUSD } from '../../utils/round-usd';
-import { multiply, subtract } from '../../utils/safe-math';
+import { adjust, multiply, subtract } from '../../utils/safe-math';
+import { uuid } from '../../utils/uuid';
 import { BaseExchange } from '../base';
 
 import { createAPI } from './phemex.api';
 import type { PhemexApiResponse } from './phemex.types';
-import { ENDPOINTS, INTERVAL } from './phemex.types';
+import { BROKER_ID, ENDPOINTS, INTERVAL, ORDER_TYPE } from './phemex.types';
 import { PhemexPrivateWebsocket } from './phemex.ws-private';
 import { PhemexPublicWebsocket } from './phemex.ws-public';
 
@@ -392,6 +396,98 @@ export class PhemexExchange extends BaseExchange {
     }
   };
 
+  placeOrder = async (opts: PlaceOrderOpts) => {
+    const payloads =
+      opts.type === OrderType.Limit || opts.type === OrderType.Market
+        ? this.formatNormalOrder(opts)
+        : this.formatAlgoOrder(opts);
+
+    const orderIds = await map(payloads, async (payload) => {
+      try {
+        const { data } = await this.xhr.put<
+          PhemexApiResponse<{ data: { orderID: string } }>
+        >(ENDPOINTS.CREATE_ORDER, undefined, { params: payload });
+
+        if (data.code !== 0) {
+          this.emitter.emit('error', data.msg);
+          return null;
+        }
+
+        return data.data.orderID;
+      } catch (err: any) {
+        this.emitter.emit('error', err?.response?.data?.msg || err.message);
+        return null;
+      }
+    });
+
+    return orderIds.filter((id) => id !== null);
+  };
+
+  formatNormalOrder = (opts: PlaceOrderOpts) => {
+    const market = this.store.markets.find((m) => m.symbol === opts.symbol);
+    if (!market) throw new Error(`Market ${opts.symbol} not found`);
+
+    const maxSize = market.limits.amount.max;
+    const pPrice = market.precision.price;
+    const pAmount = market.precision.amount;
+
+    const amount = adjust(opts.amount, pAmount);
+    const price = opts.price ? adjust(opts.price, pPrice) : undefined;
+
+    const req: Record<string, any> = omitUndefined({
+      clOrdID: `${BROKER_ID}_${uuid()}`,
+      symbol: opts.symbol,
+      orderQtyRq: `${amount}`,
+      ordType: ORDER_TYPE[opts.type],
+      priceRp: opts.price ? `${price}` : undefined,
+      side: opts.side === OrderSide.Buy ? 'Buy' : 'Sell',
+      posSide: this.getPosSideFromOrder(opts),
+      reduceOnly: opts.reduceOnly,
+    });
+
+    if (opts.stopLoss) {
+      req.stopLossRp = `${adjust(opts.stopLoss, pPrice)}`;
+    }
+
+    if (opts.takeProfit) {
+      req.takeProfitRp = `${adjust(opts.takeProfit, pPrice)}`;
+    }
+
+    const lots = amount > maxSize ? Math.ceil(amount / maxSize) : 1;
+    const rest = amount > maxSize ? adjust(amount % maxSize, pAmount) : 0;
+
+    const lotSize = adjust((amount - rest) / lots, pAmount);
+    const payloads = times(lots, () => {
+      return { ...req, orderQtyRq: `${lotSize}` };
+    });
+
+    if (rest) payloads.push({ ...req, orderQtyRq: `${rest}` });
+
+    return payloads;
+  };
+
+  formatAlgoOrder = (opts: PlaceOrderOpts) => {
+    const market = this.store.markets.find((m) => m.symbol === opts.symbol);
+    if (!market) throw new Error(`Market ${opts.symbol} not found`);
+
+    const pPrice = market.precision.price;
+    const price = adjust(opts.price ?? 0, pPrice);
+
+    const req: Record<string, any> = omitUndefined({
+      clOrdID: `${BROKER_ID}_${uuid()}`,
+      symbol: opts.symbol,
+      ordType: ORDER_TYPE[opts.type],
+      priceRp: `${price}`,
+      side: opts.side === OrderSide.Buy ? 'Buy' : 'Sell',
+      posSide: this.getPosSideFromOrder(opts),
+      closeOnTrigger: true,
+      triggerType: 'ByMarkPrice',
+      stopPxRp: `${price}`,
+    });
+
+    return [req];
+  };
+
   mapPositions = (data: Array<Record<string, any>>) => {
     return data.reduce((acc: Position[], p: Record<string, any>) => {
       const market = this.store.markets.find((m) => m.id === p.symbol);
@@ -460,9 +556,12 @@ export class PhemexExchange extends BaseExchange {
     }, []);
   };
 
-  private getPosSideFromOrder = (order: Order) => {
+  private getPosSideFromOrder = (
+    order: Pick<Order, 'side' | 'type'> & { reduceOnly?: boolean }
+  ) => {
     if (
-      (order.reduceOnly === true && order.type === OrderType.Limit) ||
+      (order.reduceOnly === true &&
+        (order.type === OrderType.Limit || order.type === OrderType.Market)) ||
       order.type === OrderType.StopLoss ||
       order.type === OrderType.TrailingStopLoss ||
       order.type === OrderType.TakeProfit

@@ -1,4 +1,5 @@
 import type { Timeframe } from '../../types';
+import { OrderType } from '../../types';
 
 export type PhemexApiResponse<T extends Record<string, any>> = T & {
   code: number;
@@ -34,6 +35,7 @@ export const ENDPOINTS = {
   CANCEL_ORDERS: '/g-orders',
   CANCEL_ALL_ORDERS: '/g-orders/all',
   SET_LEVERAGE: '/g-positions/leverage',
+  CREATE_ORDER: '/g-orders/create',
 };
 
 export const PUBLIC_ENDPOINTS = [
@@ -57,4 +59,11 @@ export const INTERVAL: Record<Timeframe, number> = {
   '1w': 604800,
 };
 
-export const OPEN_PHEMEX_ORDERS = ['New', 'PartiallyFilled', 'Untriggered'];
+export const OPEN_ORDERS_TYPES = ['New', 'PartiallyFilled', 'Untriggered'];
+export const ORDER_TYPE: Record<OrderType, string> = {
+  [OrderType.Market]: 'Market',
+  [OrderType.Limit]: 'Limit',
+  [OrderType.StopLoss]: 'Stop',
+  [OrderType.TakeProfit]: 'MarketIfTouched',
+  [OrderType.TrailingStopLoss]: 'MarketIfTouched',
+};
