@@ -224,6 +224,23 @@ export class PhemexExchange extends BaseExchange {
       }
 
       const positions: Position[] = this.mapPositions(data.positions);
+      const fakePositions = this.store.markets.reduce((acc: Position[], m) => {
+        const hasPosition = positions.some((p) => p.symbol === m.symbol);
+        if (hasPosition) return acc;
+
+        const fakeMarketPositions: Position = {
+          symbol: m.symbol,
+          side: PositionSide.Long,
+          entryPrice: 0,
+          notional: 0,
+          leverage: 1,
+          unrealizedPnl: 0,
+          contracts: 0,
+          liquidationPrice: 0,
+        };
+
+        return [...acc, fakeMarketPositions];
+      }, []);
 
       const total = parseFloat(data.account.accountBalanceRv);
       const used = parseFloat(data.account.totalUsedBalanceRv);
@@ -232,7 +249,7 @@ export class PhemexExchange extends BaseExchange {
 
       return {
         balance: { total, free, used, upnl },
-        positions,
+        positions: [...positions, ...fakePositions],
       };
     } catch (err: any) {
       this.emitter.emit('error', err?.response?.data?.msg || err.message);

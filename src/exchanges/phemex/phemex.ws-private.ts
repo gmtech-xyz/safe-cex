@@ -159,13 +159,17 @@ export class PhemexPrivateWebsocket extends BaseWebSocket<PhemexExchange> {
     if (dataOrders.length > 0) {
       dataOrders.forEach((o: Record<string, any>) => {
         // add or update new orders & partially filled
-        if (o.ordStatus === 'New' || o.ordStatus === 'PartiallyFilled') {
+        if (OPEN_PHEMEX_ORDERS.includes(o.ordStatus)) {
           this.store.addOrUpdateOrders(this.parent.mapOrders([o]));
         }
 
         // remove cancelled and filled orders
-        if (o.ordStatus === 'Canceled' || o.ordStatus === 'Filled') {
-          this.store.removeOrder(o.orderID);
+        if (
+          o.ordStatus === 'Canceled' ||
+          o.ordStatus === 'Deactivated' ||
+          o.ordStatus === 'Filled'
+        ) {
+          this.store.removeOrder({ id: o.orderID });
         }
 
         // emit event for filled / partially filled orders
@@ -190,7 +194,7 @@ export class PhemexPrivateWebsocket extends BaseWebSocket<PhemexExchange> {
       );
 
       // update balance upnl after positions update
-      const upnl = sumBy(positions, 'upnl');
+      const upnl = sumBy(positions, 'unrealizedPnl');
       this.store.update({ balance: { ...this.store.balance, upnl } });
     }
   };
