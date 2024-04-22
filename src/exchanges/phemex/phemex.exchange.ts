@@ -29,6 +29,8 @@ import { PhemexPrivateWebsocket } from './phemex.ws-private';
 import { PhemexPublicWebsocket } from './phemex.ws-public';
 
 export class PhemexExchange extends BaseExchange {
+  name = 'PHEMEX';
+
   xhr: Axios;
   publicWebsocket: PhemexPublicWebsocket;
   privateWebsocket: PhemexPrivateWebsocket;
@@ -36,7 +38,6 @@ export class PhemexExchange extends BaseExchange {
   constructor(opts: ExchangeOptions, store: Store) {
     super(opts, store);
 
-    this.name = 'PHEMEX';
     this.xhr = createAPI(opts);
     this.publicWebsocket = new PhemexPublicWebsocket(this);
     this.privateWebsocket = new PhemexPrivateWebsocket(this);
