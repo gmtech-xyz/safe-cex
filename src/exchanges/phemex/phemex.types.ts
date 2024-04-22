@@ -31,6 +31,8 @@ export const ENDPOINTS = {
   POSITIONS: '/g-accounts/accountPositions',
   KLINE: '/exchange/public/md/v2/kline/list',
   ORDERS: '/g-orders/activeList',
+  CANCEL_ORDERS: '/g-orders',
+  CANCEL_ALL_ORDERS: '/g-orders/all',
 };
 
 export const PUBLIC_ENDPOINTS = [

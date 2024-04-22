@@ -1,4 +1,5 @@
 import type { Axios } from 'axios';
+import groupBy from 'lodash/groupBy';
 import sumBy from 'lodash/sumBy';
 
 import type { Store } from '../../store/store.interface';
@@ -303,6 +304,54 @@ export class PhemexExchange extends BaseExchange {
     return this.publicWebsocket.listenOHLCV(opts, callback);
   };
 
+  cancelOrders = async (orders: Order[]) => {
+    const symbolSideGrouped = groupBy(
+      orders,
+      (o) => `${o.symbol}_${this.getPosSideFromOrder(o)}`
+    );
+
+    await Promise.all(
+      Object.keys(symbolSideGrouped).map(async (symbolSide) => {
+        const groupedOrders = symbolSideGrouped[symbolSide];
+        const [symbol, side] = symbolSide.split('_');
+
+        try {
+          const { data } = await this.xhr.delete<PhemexApiResponse<any>>(
+            ENDPOINTS.CANCEL_ORDERS,
+            {
+              params: {
+                symbol,
+                posSide: side,
+                orderID: groupedOrders.map((o) => o.id).join(','),
+              },
+            }
+          );
+
+          if (data.code !== 0) {
+            this.emitter.emit('error', data.msg);
+          }
+        } catch (err: any) {
+          this.emitter.emit('error', err?.response?.data?.msg || err.message);
+        }
+      })
+    );
+  };
+
+  cancelSymbolOrders = async (symbol: string) => {
+    try {
+      const { data } = await this.xhr.delete<PhemexApiResponse<any>>(
+        ENDPOINTS.CANCEL_ALL_ORDERS,
+        { params: { symbol } }
+      );
+
+      if (data.code !== 0) {
+        this.emitter.emit('error', data.msg);
+      }
+    } catch (err: any) {
+      this.emitter.emit('error', err?.response?.data?.msg || err.message);
+    }
+  };
+
   mapPositions = (data: Array<Record<string, any>>) => {
     return data.reduce((acc: Position[], p: Record<string, any>) => {
       const market = this.store.markets.find((m) => m.id === p.symbol);
@@ -369,5 +418,18 @@ export class PhemexExchange extends BaseExchange {
 
       return [...acc, order];
     }, []);
+  };
+
+  private getPosSideFromOrder = (order: Order) => {
+    if (
+      (order.reduceOnly === true && order.type === OrderType.Limit) ||
+      order.type === OrderType.StopLoss ||
+      order.type === OrderType.TrailingStopLoss ||
+      order.type === OrderType.TakeProfit
+    ) {
+      return order.side === OrderSide.Buy ? 'Short' : 'Long';
+    }
+
+    return order.side === OrderSide.Buy ? 'Long' : 'Short';
   };
 }
