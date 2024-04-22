@@ -1,11 +1,14 @@
 import createHmac from 'create-hmac';
+import sumBy from 'lodash/sumBy';
 
+import { OrderSide } from '../../types';
 import { jsonParse } from '../../utils/json-parse';
+import { subtract } from '../../utils/safe-math';
 import { virtualClock } from '../../utils/virtual-clock';
 import { BaseWebSocket } from '../base.ws';
 
 import type { PhemexExchange } from './phemex.exchange';
-import { BASE_WSS_URL, RECV_WINDOW } from './phemex.types';
+import { BASE_WSS_URL, OPEN_PHEMEX_ORDERS, RECV_WINDOW } from './phemex.types';
 
 type Data = Record<string, any>;
 
@@ -91,18 +94,21 @@ export class PhemexPrivateWebsocket extends BaseWebSocket<PhemexExchange> {
       return;
     }
 
-    if (data.includes('result":"pong"')) {
+    if (data.includes('"result":"pong"')) {
       this.handlePongEvent();
       return;
     }
 
-    if (data.includes('type":"snapshot')) {
+    if (data.includes('"type":"snapshot"')) {
       const json = jsonParse(data);
       if (json) this.handleSnapshotEvent(json);
       return;
     }
 
-    console.log(data);
+    if (data.includes('"type":"incremental"')) {
+      const json = jsonParse(data);
+      if (json) this.handleIncrementalEvent(json);
+    }
   };
 
   handlePongEvent = () => {
@@ -118,8 +124,10 @@ export class PhemexPrivateWebsocket extends BaseWebSocket<PhemexExchange> {
   };
 
   handleSnapshotEvent = (data: Data) => {
-    const openOrders = data.orders_p.filter((o: Record<string, any>) =>
-      ['New', 'PartiallyFilled', 'Untriggered'].includes(o.ordStatus)
+    // 1. handle snapshot of orders
+    const dataOrders = data.orders_p || [];
+    const openOrders = dataOrders.filter((o: Record<string, any>) =>
+      OPEN_PHEMEX_ORDERS.includes(o.ordStatus)
     );
 
     this.store.update({
@@ -128,5 +136,62 @@ export class PhemexPrivateWebsocket extends BaseWebSocket<PhemexExchange> {
     });
 
     this.parent.log(`Loaded ${this.store.orders.length} Phemex orders`);
+  };
+
+  handleIncrementalEvent = (data: Data) => {
+    // 1. handle banlance updates
+    const accounts = data.accounts_p || [];
+    const usdtAccount = accounts.find((a: any) => a.currency === 'USDT');
+
+    if (usdtAccount) {
+      const total = parseFloat(usdtAccount.accountBalanceRv);
+      const used = parseFloat(usdtAccount.totalUsedBalanceRv);
+      const free = subtract(total, used);
+
+      this.store.update({
+        balance: { total, free, used, upnl: this.store.balance.upnl },
+      });
+    }
+
+    // 2. handle orders updates
+    const dataOrders = data.orders_p || [];
+
+    if (dataOrders.length > 0) {
+      dataOrders.forEach((o: Record<string, any>) => {
+        // add or update new orders & partially filled
+        if (o.ordStatus === 'New' || o.ordStatus === 'PartiallyFilled') {
+          this.store.addOrUpdateOrders(this.parent.mapOrders([o]));
+        }
+
+        // remove cancelled and filled orders
+        if (o.ordStatus === 'Canceled' || o.ordStatus === 'Filled') {
+          this.store.removeOrder(o.orderID);
+        }
+
+        // emit event for filled / partially filled orders
+        if (o.ordStatus === 'Filled' || o.ordStatus === 'PartiallyFilled') {
+          this.parent.emitter.emit('fill', {
+            side: o.side === 'Sell' ? OrderSide.Sell : OrderSide.Buy,
+            symbol: o.symbol,
+            price: parseFloat(o.priceRp) || parseFloat(o.stopPxRp),
+            amount: parseFloat(o.execQty),
+          });
+        }
+      });
+    }
+
+    // 3. handle positions updates
+    const dataPositions = data.positions_p || [];
+    const positions = this.parent.mapPositions(dataPositions);
+
+    if (positions.length > 0) {
+      this.store.updatePositions(
+        positions.map((p) => [{ symbol: p.symbol, side: p.side }, p])
+      );
+
+      // update balance upnl after positions update
+      const upnl = sumBy(positions, 'upnl');
+      this.store.update({ balance: { ...this.store.balance, upnl } });
+    }
   };
 }

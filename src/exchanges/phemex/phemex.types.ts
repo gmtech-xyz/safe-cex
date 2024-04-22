@@ -53,3 +53,5 @@ export const INTERVAL: Record<Timeframe, number> = {
   '1d': 86400,
   '1w': 604800,
 };
+
+export const OPEN_PHEMEX_ORDERS = ['New', 'PartiallyFilled', 'Untriggered'];
