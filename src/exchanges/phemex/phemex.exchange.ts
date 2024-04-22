@@ -352,6 +352,46 @@ export class PhemexExchange extends BaseExchange {
     }
   };
 
+  setLeverage = async (symbol: string, inputLeverage: number) => {
+    const market = this.store.markets.find((m) => m.id === symbol);
+    const position = this.store.positions.find((p) => p.symbol === symbol);
+
+    if (!market) throw new Error(`Market ${symbol} not found`);
+    if (!position) throw new Error(`Position ${symbol} not found`);
+
+    const leverage = Math.min(
+      Math.max(inputLeverage, market.limits.leverage.min),
+      market.limits.leverage.max
+    );
+
+    if (position.leverage !== leverage) {
+      try {
+        const { data } = await this.xhr.put<PhemexApiResponse<any>>(
+          ENDPOINTS.SET_LEVERAGE,
+          undefined,
+          {
+            params: {
+              symbol,
+              longLeverageRr: leverage,
+              shortLeverageRr: leverage,
+            },
+          }
+        );
+
+        if (data.code !== 0) {
+          this.emitter.emit('error', data.msg);
+        } else {
+          this.store.updatePositions([
+            [{ symbol, side: PositionSide.Long }, { leverage }],
+            [{ symbol, side: PositionSide.Short }, { leverage }],
+          ]);
+        }
+      } catch (err: any) {
+        this.emitter.emit('error', err?.response?.data?.msg || err.message);
+      }
+    }
+  };
+
   mapPositions = (data: Array<Record<string, any>>) => {
     return data.reduce((acc: Position[], p: Record<string, any>) => {
       const market = this.store.markets.find((m) => m.id === p.symbol);

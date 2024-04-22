@@ -33,6 +33,7 @@ export const ENDPOINTS = {
   ORDERS: '/g-orders/activeList',
   CANCEL_ORDERS: '/g-orders',
   CANCEL_ALL_ORDERS: '/g-orders/all',
+  SET_LEVERAGE: '/g-positions/leverage',
 };
 
 export const PUBLIC_ENDPOINTS = [
