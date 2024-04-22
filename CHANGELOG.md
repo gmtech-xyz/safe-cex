@@ -1,3 +1,7 @@
+## [8.4.4](https://github.com/gmtech-xyz/safe-cex/compare/v8.4.3...v8.4.4) (2024-04-22)
+
+
+
 ## [8.4.3](https://github.com/gmtech-xyz/safe-cex/compare/v8.4.2...v8.4.3) (2024-04-15)
 
 
