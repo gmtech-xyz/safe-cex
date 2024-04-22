@@ -234,7 +234,7 @@ export class PhemexExchange extends BaseExchange {
           side: PositionSide.Long,
           entryPrice: 0,
           notional: 0,
-          leverage: 1,
+          leverage: 10,
           unrealizedPnl: 0,
           contracts: 0,
           liquidationPrice: 0,
