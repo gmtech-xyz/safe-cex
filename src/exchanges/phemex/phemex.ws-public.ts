@@ -1,4 +1,7 @@
-import type { Candle, OHLCVOptions } from '../../types';
+import sumBy from 'lodash/sumBy';
+
+import { PositionSide } from '../../types';
+import type { Position, Candle, OHLCVOptions } from '../../types';
 import { jsonParse } from '../../utils/json-parse';
 import { roundUSD } from '../../utils/round-usd';
 import { BaseWebSocket } from '../base.ws';
@@ -146,6 +149,31 @@ export class PhemexPublicWebsocket extends BaseWebSocket<PhemexExchange> {
           fundingRate: parseFloat(fundingRateRr),
         }
       );
+
+      // as phemex is not pushing balance / positions updates
+      // when a ticker is updated, we need to update the balance ourself
+      const tickerPositions = this.store.positions.filter(
+        (p) => p.symbol === symbol && p.contracts > 0
+      );
+
+      if (tickerPositions.length > 0) {
+        const updatedPositions: Position[] = tickerPositions.map((p) => {
+          const unrealizedPnl =
+            p.side === PositionSide.Long
+              ? (last - p.entryPrice) * p.contracts
+              : (p.entryPrice - last) * p.contracts;
+
+          return { ...p, unrealizedPnl };
+        });
+
+        this.store.updatePositions(updatedPositions.map((p) => [p, p]));
+        this.store.update({
+          balance: {
+            ...this.store.balance,
+            upnl: sumBy(this.store.positions, 'unrealizedPnl'),
+          },
+        });
+      }
     }
   };
 
