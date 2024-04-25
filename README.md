@@ -37,7 +37,7 @@ Currently, the library supports Bybit and Binance Futures contracts, OKX Perpetu
 - [OKX](https://www.okx.com/join/TULEEP) Perpetuals unified margin
 - [GateIO](https://www.gate.io/signup/13385879) Futures USDT contracts
 - [Blofin](https://partner.blofin.com/d/tuleeptrade) Futures USDT contracts
-- [Phemex](https://phemex.com) Futures USDT contracts
+- [Phemex](https://phemex.com/account/referral/invite-friends-entry?referralCode=J8KJW5) Futures USDT contracts
 
 ---
 
@@ -474,7 +474,7 @@ If you found this project interesting or useful, create accounts with my referra
 - [WOO X](https://x.woo.org/en/trade?ref=safecex) **Deposit $100 and 0 fees for 14 days!**
 - [Binance](https://accounts.binance.com/en/register?ref=KOLLSXK0)
 - [GateIO](https://www.gate.io/signup/13385879)
-- [Phemex](https://phemex.com)
+- [Phemex](https://phemex.com/account/referral/invite-friends-entry?referralCode=J8KJW5)
 
 Or buy me a coffee with a crypto donation:
 
