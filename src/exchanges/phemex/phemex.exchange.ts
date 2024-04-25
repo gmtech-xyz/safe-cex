@@ -429,7 +429,7 @@ export class PhemexExchange extends BaseExchange {
       }
     });
 
-    return orderIds.filter((id) => id !== null);
+    return orderIds.filter((id) => id !== null) as string[];
   };
 
   formatNormalOrder = (opts: PlaceOrderOpts) => {
