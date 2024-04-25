@@ -1,3 +1,29 @@
+# [8.5.0](https://github.com/gmtech-xyz/safe-cex/compare/v8.4.4...v8.5.0) (2024-04-25)
+
+
+### Bug Fixes
+
+* **phemex:** cast type ([4f55db7](https://github.com/gmtech-xyz/safe-cex/commit/4f55db786b579a31d1b9ae91b2c53fb599a99955))
+* **phemex:** default leverage to 10 ([0f786c6](https://github.com/gmtech-xyz/safe-cex/commit/0f786c623ca1317ffe53c73f155b76ddc1636f8b))
+* **phemex:** update balance upnl, handle tp/sl events ([27db1b2](https://github.com/gmtech-xyz/safe-cex/commit/27db1b21a04d433b25bad9af4076addd196ac0c3))
+* **phemex:** update positions upnl & balance upnl ([2d7e850](https://github.com/gmtech-xyz/safe-cex/commit/2d7e8506adc811a593885271aa91184e33e3b030))
+
+
+### Features
+
+* **phemex.api:** allow override of http endpoint ([d1a4faa](https://github.com/gmtech-xyz/safe-cex/commit/d1a4faa758402bc3f560552dee77b7cd5997f493))
+* **phemex:** bootstrap ([5fbaffd](https://github.com/gmtech-xyz/safe-cex/commit/5fbaffd34d8c397017d25ddbe8ada9fc994a0037))
+* **phemex:** cancel orders ([634aa02](https://github.com/gmtech-xyz/safe-cex/commit/634aa02c0a6fa209417b625a35a706555e71a2f6))
+* **phemex:** create orders ([e023a64](https://github.com/gmtech-xyz/safe-cex/commit/e023a6441a5503279e4b0f7f7cbf24ff0c35d498))
+* **phemex:** listen incremental updates ([4afb4fb](https://github.com/gmtech-xyz/safe-cex/commit/4afb4fb6e8160d60467d6a0a567ab8e1608786a8))
+* **phemex:** listen order book ([b6741d3](https://github.com/gmtech-xyz/safe-cex/commit/b6741d3fffb069df78e1bc31b911735edee0f58b))
+* **phemex:** load orders with snapshot ([3a85c81](https://github.com/gmtech-xyz/safe-cex/commit/3a85c815d136a83a9b2d1a35cbffe02fa48f828b))
+* **phemex:** markets, tickers, positions, kline ([5ec4d90](https://github.com/gmtech-xyz/safe-cex/commit/5ec4d908b10fb45c3a372c8bd686040a1c7122de))
+* **phemex:** set leverage ([06704ed](https://github.com/gmtech-xyz/safe-cex/commit/06704ed5cfdc88ee5dff620ade4736986e434698))
+* **safe-cex:** allow overrid of http endpoints ([12b0570](https://github.com/gmtech-xyz/safe-cex/commit/12b0570094f0a17fdd53dae8fc11435d1f254ac1))
+
+
+
 ## [8.4.4](https://github.com/gmtech-xyz/safe-cex/compare/v8.4.3...v8.4.4) (2024-04-22)
 
 
