@@ -88,7 +88,11 @@ export class BinancePrivateWebsocket extends BaseWebSocket<BinanceExchange> {
         });
       }
 
-      if (data.X === 'CANCELED' || data.X === 'FILLED' || data.X === 'EXPIRED') {
+      if (
+        data.X === 'CANCELED' ||
+        data.X === 'FILLED' ||
+        data.X === 'EXPIRED'
+      ) {
         this.store.removeOrder({ id: data.c });
       }
     });
