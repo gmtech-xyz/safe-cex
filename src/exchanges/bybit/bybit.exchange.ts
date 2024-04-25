@@ -16,7 +16,6 @@ import type {
   Order,
   PlaceOrderOpts,
   OHLCVOptions,
-  UpdateOrderOpts,
   OrderBook,
 } from '../../types';
 import {
@@ -663,114 +662,6 @@ export class BybitExchange extends BaseExchange {
     }
 
     return [data.result.orderId];
-  };
-
-  // eslint-disable-next-line complexity
-  updateOrder = async ({ order, update }: UpdateOrderOpts) => {
-    const updatedOrderIds = [] as string[];
-
-    // Special use-case when position is not open yet
-    // and we want to update the stop loss or take profit
-    // we need to do it on the original ask/bid order
-    const isVirtualSLorTP =
-      order.id.endsWith('__stop_loss') || order.id.endsWith('__take_profit');
-
-    if ('price' in update && isVirtualSLorTP) {
-      const og = this.store.orders.find(
-        (o) =>
-          o.id ===
-          order.id.replace('__stop_loss', '').replace('__take_profit', '')
-      );
-
-      if (og) {
-        const key = order.id.endsWith('__stop_loss')
-          ? 'stopLoss'
-          : 'takeProfit';
-
-        const payload: Record<string, any> = {
-          category: this.accountCategory,
-          orderId: og.id,
-          symbol: order.symbol,
-          [key]: `${update.price}`,
-        };
-
-        try {
-          const { data } = await this.xhr.post(
-            ENDPOINTS.REPLACE_ORDER,
-            payload
-          );
-
-          if (data.retMsg === 'OK') {
-            updatedOrderIds.push(data.result.orderId);
-          } else {
-            this.emitter.emit('error', data.retMsg);
-          }
-        } catch (err: any) {
-          this.emitter.emit(
-            'error',
-            err?.response?.data?.retMsg || err.message
-          );
-        }
-      }
-    }
-
-    // If we want to update the price or amount of a limit order
-    // we can do it directly on the order
-    if (order.type === OrderType.Limit) {
-      const payload: Record<string, any> = {
-        category: this.accountCategory,
-        orderId: order.id,
-        symbol: order.symbol,
-      };
-
-      if ('amount' in update) payload.qty = `${update.amount}`;
-      if ('price' in update) payload.price = `${update.price}`;
-
-      const { data } = await this.xhr.post(ENDPOINTS.REPLACE_ORDER, payload);
-
-      if (data.retMsg === 'OK') {
-        updatedOrderIds.push(data.result.orderId);
-      } else {
-        this.emitter.emit('error', data.retMsg);
-      }
-    }
-
-    // If we want to update the stop loss or take profit order
-    // we need to do it on the opened position
-    if (
-      !isVirtualSLorTP &&
-      (order.type === OrderType.StopLoss || order.type === OrderType.TakeProfit)
-    ) {
-      const payload: Record<string, any> = {
-        category: this.accountCategory,
-        symbol: order.symbol,
-        positionIdx: await this.getOrderPositionIdx(order),
-      };
-
-      if ('price' in update) {
-        if (order.type === OrderType.StopLoss) {
-          payload.stopLoss = `${update.price}`;
-        } else if (order.type === OrderType.TakeProfit) {
-          payload.takeProfit = `${update.price}`;
-        }
-      }
-
-      const { data } = await this.xhr.post(ENDPOINTS.SET_TRADING_STOP, payload);
-
-      if (data.retMsg !== 'OK') {
-        this.emitter.emit('error', data.retMsg);
-      }
-    }
-
-    const storeOrder = this.store.orders.find(
-      (o) => o.id === order.id && o.symbol === order.symbol
-    );
-
-    if (storeOrder) {
-      this.store.updateOrder(storeOrder, storeOrder);
-    }
-
-    return updatedOrderIds;
   };
 
   cancelOrders = async (orders: Order[]) => {

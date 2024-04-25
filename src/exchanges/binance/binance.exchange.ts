@@ -19,7 +19,6 @@ import type {
   PlaceOrderOpts,
   Position,
   Ticker,
-  UpdateOrderOpts,
 } from '../../types';
 import {
   OrderTimeInForce,
@@ -525,23 +524,6 @@ export class BinanceExchange extends BaseExchange {
     } catch (err: any) {
       this.emitter.emit('error', err?.response?.data?.msg || err?.message);
     }
-  };
-
-  updateOrder = async ({ order, update }: UpdateOrderOpts) => {
-    const newOrder = {
-      symbol: order.symbol,
-      type: order.type,
-      side: order.side,
-      price: order.price,
-      amount: order.amount,
-      reduceOnly: order.reduceOnly || false,
-    };
-
-    if ('price' in update) newOrder.price = update.price;
-    if ('amount' in update) newOrder.amount = update.amount;
-
-    await this.cancelOrders([order]);
-    return await this.placeOrder(newOrder);
   };
 
   placeOrder = async (opts: PlaceOrderOpts) => {

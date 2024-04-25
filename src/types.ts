@@ -5,10 +5,15 @@ export type ExchangeName =
   | 'bybit'
   | 'gate'
   | 'okx'
+  | 'phemex'
   | 'woo';
 
 export type ExtraExchangeOptions = {
   [key in ExchangeName]?: {
+    http?: {
+      livenet: string;
+      testnet: string;
+    };
     ws?: {
       public?: {
         testnet: string;

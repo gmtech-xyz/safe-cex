@@ -19,7 +19,6 @@ import type {
   PlaceOrderOpts,
   Position,
   Ticker,
-  UpdateOrderOpts,
   Writable,
 } from '../../types';
 import { inverseObj } from '../../utils/inverse-obj';
@@ -478,80 +477,6 @@ export class OKXExchange extends BaseExchange {
     callback: (orderBook: OrderBook) => void
   ) => {
     return this.publicWebsocket.listenOrderBook(symbol, callback);
-  };
-
-  updateOrder = async ({ order, update }: UpdateOrderOpts) => {
-    if (order.type !== OrderType.Limit) {
-      return this.updateAlgoOrder({ order, update });
-    }
-
-    const market = this.store.markets.find((m) => m.symbol === order.symbol);
-    if (!market) throw new Error(`Market ${order.symbol} not found on OKX`);
-
-    const payload: Record<string, any> = { instId: market.id, ordId: order.id };
-
-    if ('price' in update) {
-      payload.newPx = `${update.price}`;
-    }
-
-    if ('amount' in update) {
-      const pFactor = market.precision.amount;
-      const pAmount = divide(pFactor, pFactor);
-      const amount = adjust(divide(update.amount, pFactor), pAmount);
-
-      if (amount === 0) {
-        this.emitter.emit('error', 'Order amount is too small');
-        return [];
-      }
-
-      payload.newSz = `${amount}`;
-    }
-
-    try {
-      await this.xhr.post(ENDPOINTS.UPDATE_ORDER, payload);
-      return [order.id];
-    } catch (err: any) {
-      this.emitter.emit('error', err?.response?.data?.msg || err?.message);
-      return [];
-    }
-  };
-
-  updateAlgoOrder = async ({ order, update }: UpdateOrderOpts) => {
-    const orders = this.store.orders.filter((o) =>
-      o.id.startsWith(order.id.replace(/_[a-zA-Z]+$/, ''))
-    );
-
-    const newOrder = {
-      symbol: order.symbol,
-      type: order.type,
-      side: order.side,
-      price: order.price,
-      amount: order.amount,
-      reduceOnly: order.reduceOnly || false,
-    };
-
-    if ('price' in update) newOrder.price = update.price;
-    if ('amount' in update) newOrder.amount = update.amount;
-
-    if (
-      newOrder.amount === 0 &&
-      (newOrder.type === OrderType.StopLoss ||
-        newOrder.type === OrderType.TakeProfit)
-    ) {
-      const position = this.store.positions.find(
-        (p) =>
-          p.symbol === order.symbol &&
-          p.side ===
-            (order.side === OrderSide.Buy
-              ? PositionSide.Short
-              : PositionSide.Long)
-      );
-
-      newOrder.amount = position ? position.contracts : 0;
-    }
-
-    await this.cancelAlgoOrders(orders);
-    return await this.placeOrder(newOrder);
   };
 
   cancelOrders = async (orders: Order[]) => {

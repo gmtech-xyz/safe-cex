@@ -26,7 +26,6 @@ export const ENDPOINTS = {
   BALANCE: '/v3/balances',
   POSITIONS: '/v3/positions',
   ALGO_ORDERS: '/v3/algo/orders',
-  UPDATE_ORDER: '/v3/order',
   ALGO_ORDER: '/v3/algo/order',
   CANCEL_ORDERS: '/v3/orders/pending',
   CANCEL_ALGO_ORDERS: '/v3/algo/orders/pending',

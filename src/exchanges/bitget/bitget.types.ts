@@ -32,8 +32,6 @@ export const ENDPOINTS = {
   BATCH_ORDERS: '/api/mix/v1/order/batch-orders',
   ALGO_ORDERS: '/api/mix/v1/plan/currentPlan',
   PLACE_ALGO_ORDER: '/api/mix/v1/plan/placeTPSL',
-  UPDATE_ORDER: '/api/mix/v1/order/modifyOrder',
-  UPDATE_ALGO_ORDER: '/api/mix/v1/plan/modifyTPSLPlan',
   SET_LEVERAGE: '/api/mix/v1/account/setLeverage',
   POSITION_LEVERAGE: '/api/mix/v1/position/singlePosition-v2',
   SET_POSITION_MODE: '/api/mix/v1/account/setPositionMode',

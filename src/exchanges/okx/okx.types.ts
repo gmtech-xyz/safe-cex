@@ -38,7 +38,6 @@ export const ENDPOINTS = {
   LEVERAGE: '/api/v5/account/leverage-info',
   SET_POSITION_MODE: '/api/v5/account/set-position-mode',
   ACCOUNT_CONFIG: '/api/v5/account/config',
-  UPDATE_ORDER: '/api/v5/trade/amend-order',
   ACCOUNT_LEVEL: '/api/v5/account/set-account-level',
 };
 

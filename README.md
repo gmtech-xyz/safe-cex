@@ -37,6 +37,7 @@ Currently, the library supports Bybit and Binance Futures contracts, OKX Perpetu
 - [OKX](https://www.okx.com/join/TULEEP) Perpetuals unified margin
 - [GateIO](https://www.gate.io/signup/13385879) Futures USDT contracts
 - [Blofin](https://partner.blofin.com/d/tuleeptrade) Futures USDT contracts
+- [Phemex](https://phemex.com/account/referral/invite-friends-entry?referralCode=J8KJW5) Futures USDT contracts
 
 ---
 
@@ -56,7 +57,7 @@ import { createExchange } from "safe-cex";
 
 // Initialize exchange class object
 const exchange = createExchange(
-  "bybit" | "binance" | "okx" | "woo" | "gate" | "bitget" | "blofin",
+  "bybit" | "binance" | "okx" | "woo" | "gate" | "bitget" | "blofin" | "phemex",
   {
     key: API_KEY,
     secret: API_SECRET,
@@ -69,6 +70,25 @@ const exchange = createExchange(
       // usefull if you are running a TWAP bot and you don't care about having positions & balance up to the ms updates
       // ex: 5000 (poll every 5s)
       tickInterval?: number;
+      // override exchange endpoints
+      // for instance you have a proxy with a whitelisted IP
+      // or you have access to a "VIP" endpoint with increased limits
+      [exchange]: {
+        http: {
+          livenet: 'xxxx',
+          testnet: 'xxxx'
+        },
+        ws: {
+          public: {
+            livenet: 'xxxx',
+            testnet: 'xxxx',
+          },
+          private: {
+            livenet: 'xxxx',
+            testnet: 'xxxx'
+          }
+        }
+      }
     }
   }
 );
@@ -454,6 +474,7 @@ If you found this project interesting or useful, create accounts with my referra
 - [WOO X](https://x.woo.org/en/trade?ref=safecex) **Deposit $100 and 0 fees for 14 days!**
 - [Binance](https://accounts.binance.com/en/register?ref=KOLLSXK0)
 - [GateIO](https://www.gate.io/signup/13385879)
+- [Phemex](https://phemex.com/account/referral/invite-friends-entry?referralCode=J8KJW5)
 
 Or buy me a coffee with a crypto donation:
 
