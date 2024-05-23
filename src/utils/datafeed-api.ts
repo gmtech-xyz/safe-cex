@@ -145,6 +145,12 @@ export const createDatafeedAPI = (
       periodParams,
       onHistoryCallback
     ) => {
+      // HACK: Phemex doesnt accept end timestamp, we need to remove a day
+      if (exchange.name === 'PHEMEX' && resolution === '1D') {
+        // eslint-disable-next-line no-param-reassign
+        periodParams.to = periodParams.to - 60 * 60 * 24;
+      }
+
       const bars = await exchange.fetchOHLCV({
         symbol: symbolInfo.name,
         interval: TV_INTERVAL_TO_TIMEFRAME[resolution],
