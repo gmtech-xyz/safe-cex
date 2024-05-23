@@ -1,3 +1,13 @@
+## [8.5.1](https://github.com/gmtech-xyz/safe-cex/compare/v8.5.0...v8.5.1) (2024-05-23)
+
+
+### Bug Fixes
+
+* **phemex-tv:** hack for daily candles ([486bb10](https://github.com/gmtech-xyz/safe-cex/commit/486bb10d6bd420977546b72132063536d33da87f))
+* **woo:** reduce rps ([484221a](https://github.com/gmtech-xyz/safe-cex/commit/484221afb0489c0c711cfa86ed73f0529b2ce111))
+
+
+
 # [8.5.0](https://github.com/gmtech-xyz/safe-cex/compare/v8.4.4...v8.5.0) (2024-04-25)
 
 
