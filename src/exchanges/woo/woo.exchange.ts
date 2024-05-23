@@ -48,7 +48,7 @@ export class WOOXExchange extends BaseExchange {
   constructor(opts: ExchangeOptions, store: Store) {
     super(opts, store);
 
-    this.xhr = rateLimit(createAPI(opts), { maxRPS: 10 });
+    this.xhr = rateLimit(createAPI(opts), { maxRPS: 7 });
 
     this.publicWebsocket = new WooPublicWebsocket(this);
     this.privateWebsocket = new WooPrivateWebscoket(this);
