@@ -1,3 +1,12 @@
+## [8.5.2](https://github.com/gmtech-xyz/safe-cex/compare/v8.5.1...v8.5.2) (2024-08-02)
+
+
+### Bug Fixes
+
+* **phemex/orders:** filter out executed orders ([be018c6](https://github.com/gmtech-xyz/safe-cex/commit/be018c6cb27ba6e2c300ffeebf6b405c6ac87660))
+
+
+
 ## [8.5.1](https://github.com/gmtech-xyz/safe-cex/compare/v8.5.0...v8.5.1) (2024-05-23)
 
 
