@@ -385,8 +385,8 @@ export class PhemexExchange extends BaseExchange {
           {
             params: {
               symbol,
-              longLeverageRr: leverage,
-              shortLeverageRr: leverage,
+              longLeverageRr: -leverage,
+              shortLeverageRr: -leverage,
             },
           }
         );
