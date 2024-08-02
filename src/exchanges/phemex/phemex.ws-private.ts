@@ -194,7 +194,7 @@ export class PhemexPrivateWebsocket extends BaseWebSocket<PhemexExchange> {
       this.store.updatePositions(positions.map((p) => [p, p]));
 
       // update balance upnl after positions update
-      const upnl = sumBy(positions, 'unrealizedPnl');
+      const upnl = sumBy(this.store.positions, 'unrealizedPnl');
       this.store.update({ balance: { ...this.store.balance, upnl } });
     }
   };
