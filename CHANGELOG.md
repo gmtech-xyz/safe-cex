@@ -1,9 +1,10 @@
-## [8.5.2](https://github.com/gmtech-xyz/safe-cex/compare/v8.5.1...v8.5.2) (2024-08-02)
+## [8.5.3](https://github.com/gmtech-xyz/safe-cex/compare/v8.5.1...v8.5.3) (2024-08-02)
 
 
 ### Bug Fixes
 
 * **phemex/orders:** filter out executed orders ([be018c6](https://github.com/gmtech-xyz/safe-cex/commit/be018c6cb27ba6e2c300ffeebf6b405c6ac87660))
+* **phemex:** set leverage to cross ([607cb8a](https://github.com/gmtech-xyz/safe-cex/commit/607cb8a8879ab9b0263bb4200f2987b4f13665a2))
 
 
 
