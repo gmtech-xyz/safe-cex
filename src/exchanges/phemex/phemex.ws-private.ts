@@ -126,8 +126,10 @@ export class PhemexPrivateWebsocket extends BaseWebSocket<PhemexExchange> {
   handleSnapshotEvent = (data: Data) => {
     // 1. handle snapshot of orders
     const dataOrders = data.orders_p || [];
-    const openOrders = dataOrders.filter((o: Record<string, any>) =>
-      OPEN_ORDERS_TYPES.includes(o.ordStatus)
+    const openOrders = dataOrders.filter(
+      (o: Record<string, any>) =>
+        OPEN_ORDERS_TYPES.includes(o.ordStatus) &&
+        o.execID === '00000000-0000-0000-0000-000000000000'
     );
 
     this.store.update({
