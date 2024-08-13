@@ -543,7 +543,7 @@ export class PhemexExchange extends BaseExchange {
       const remaining = parseFloat(o.leavesQty);
       const filled = subtract(amount, remaining);
 
-      let reduceOnly = o.reduceOnly || false;
+      let reduceOnly = o.execInst === 'ReduceOnly' || false;
       if (o.ordType === 'Stop' || o.ordType === 'MarketIfTouched') {
         reduceOnly = true;
       }
