@@ -1,10 +1,11 @@
-## [8.5.4](https://github.com/gmtech-xyz/safe-cex/compare/v8.5.1...v8.5.4) (2024-08-02)
+## [8.5.5](https://github.com/gmtech-xyz/safe-cex/compare/v8.5.1...v8.5.5) (2024-08-13)
 
 
 ### Bug Fixes
 
 * **phemex/orders:** filter out executed orders ([be018c6](https://github.com/gmtech-xyz/safe-cex/commit/be018c6cb27ba6e2c300ffeebf6b405c6ac87660))
 * **phemex:** compute uPNL from all positions ([4128be3](https://github.com/gmtech-xyz/safe-cex/commit/4128be3782f75f4a45e2a3e4e122b7ad22d672d1))
+* **phemex:** reduce only orders type ([648e923](https://github.com/gmtech-xyz/safe-cex/commit/648e92392d77d06fa89edff5ed06290469898da2))
 * **phemex:** set leverage to cross ([607cb8a](https://github.com/gmtech-xyz/safe-cex/commit/607cb8a8879ab9b0263bb4200f2987b4f13665a2))
 
 

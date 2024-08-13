@@ -1,6 +1,6 @@
 {
   "name": "safe-cex",
-  "version": "8.5.4",
+  "version": "8.5.5",
   "main": "dist/index.js",
   "license": "MIT",
   "scripts": {
