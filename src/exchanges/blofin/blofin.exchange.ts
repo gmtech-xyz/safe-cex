@@ -469,7 +469,7 @@ export class BlofinExchange extends BaseExchange {
     await this.xhr.post(ENDPOINTS.SET_LEVERAGE, {
       instId: market.id,
       leverage: `${leverage}`,
-      marginmode: 'cross',
+      marginMode: 'cross',
     });
 
     this.leverageHash[market.id] = leverage;
