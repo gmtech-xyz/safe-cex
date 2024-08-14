@@ -4,6 +4,7 @@ export type ExchangeName =
   | 'blofin'
   | 'bybit'
   | 'gate'
+  | 'hyperliquid'
   | 'okx'
   | 'phemex'
   | 'woo';

@@ -4,6 +4,7 @@ import { BitgetExchange } from './exchanges/bitget/bitget.exchange';
 import { BlofinExchange } from './exchanges/blofin/blofin.exchange';
 import { BybitExchange } from './exchanges/bybit/bybit.exchange';
 import { GateExchange } from './exchanges/gate/gate.exchange';
+import { HyperliquidExchange } from './exchanges/hyperliquid/hyperliquid.exchange';
 import { OKXExchange } from './exchanges/okx/okx.exchange';
 import { PhemexExchange } from './exchanges/phemex/phemex.exchange';
 import { WOOXExchange } from './exchanges/woo/woo.exchange';
@@ -21,6 +22,7 @@ const exchanges: Record<ExchangeName, typeof BaseExchange> = {
   bitget: BitgetExchange,
   blofin: BlofinExchange,
   phemex: PhemexExchange,
+  hyperliquid: HyperliquidExchange,
 };
 
 export const createExchange = (
