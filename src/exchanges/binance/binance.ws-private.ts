@@ -100,7 +100,8 @@ export class BinancePrivateWebsocket extends BaseWebSocket<BinanceExchange> {
 
   handleAccountEvents = (events: Array<Record<string, any>>) => {
     events.forEach((event) =>
-      event.a.B.forEach((p: Record<string, any>) => {
+      /// https://binance-docs.github.io/apidocs/futures/en/#event-balance-and-position-update
+      event.a.P.forEach((p: Record<string, any>) => {
         const symbol = p.s;
         const side = POSITION_SIDE[p.ps];
 
