@@ -857,9 +857,16 @@ export class BybitExchange extends BaseExchange {
       try {
         const { data } = await this.unlimitedXHR.post<{
           result: { list: Array<{ orderId: string }> };
+          retExtInfo: { list: Array<{ code: number; msg: string }> };
         }>(ENDPOINTS.CREATE_ORDERS, {
           category: this.accountCategory,
           request: batch,
+        });
+
+        data.retExtInfo.list.forEach((info) => {
+          if (info.msg !== 'OK') {
+            this.emitter.emit('error', info.msg);
+          }
         });
 
         return data.result.list.map((o) => o.orderId);
