@@ -1,5 +1,6 @@
 import type { Axios } from 'axios';
 import rateLimit from 'axios-rate-limit';
+import { chunk, flatten } from 'lodash';
 import omit from 'lodash/omit';
 import orderBy from 'lodash/orderBy';
 import times from 'lodash/times';
@@ -526,87 +527,41 @@ export class BybitExchange extends BaseExchange {
       return this.placeTrailingStopLoss(opts);
     }
 
-    const market = this.store.markets.find(
-      ({ symbol }) => symbol === opts.symbol
+    const payloads = await this.formatCreateOrder(opts);
+    return this.placeOrderBatch(payloads);
+  };
+
+  placeOrders = async (opts: PlaceOrderOpts[]) => {
+    const tslOrders = opts.filter((o) => o.type === OrderType.TrailingStopLoss);
+    const slOrTpOrders = opts.filter(
+      (o) => o.type === OrderType.StopLoss || o.type === OrderType.TakeProfit
     );
 
-    if (!market) {
-      throw new Error(`Market ${opts.symbol} not found`);
-    }
+    const normalOrders = opts.filter(
+      (o) =>
+        o.type !== OrderType.TrailingStopLoss &&
+        o.type !== OrderType.StopLoss &&
+        o.type !== OrderType.TakeProfit
+    );
 
-    const positionIdx = await this.getOrderPositionIdx(opts);
+    const tslOrderIds = flatten(
+      await mapSeries(tslOrders, this.placeTrailingStopLoss)
+    );
 
-    const maxSize = market.limits.amount.max;
-    const pPrice = market.precision.price;
-    const pAmount = market.precision.amount;
+    const slOrTpOrderIds = flatten(
+      await mapSeries(slOrTpOrders, this.placeStopLossOrTakeProfit)
+    );
 
-    const amount = adjust(opts.amount, pAmount);
+    const normalOrdersPayloads = await mapSeries(
+      normalOrders,
+      this.formatCreateOrder
+    );
 
-    const price = opts.price ? adjust(opts.price, pPrice) : null;
-    const stopLoss = opts.stopLoss ? adjust(opts.stopLoss, pPrice) : null;
-    const takeProfit = opts.takeProfit ? adjust(opts.takeProfit, pPrice) : null;
-    const timeInForce =
-      inverseObj(ORDER_TIME_IN_FORCE)[
-        opts.timeInForce || OrderTimeInForce.GoodTillCancel
-      ];
+    const normalOrderIds = await this.placeOrderBatch(
+      flatten(normalOrdersPayloads)
+    );
 
-    const req = omitUndefined({
-      category: this.accountCategory,
-      symbol: opts.symbol,
-      side: inverseObj(ORDER_SIDE)[opts.side],
-      orderType: inverseObj(ORDER_TYPE)[opts.type],
-      qty: `${amount}`,
-      price: opts.type === OrderType.Limit ? `${price}` : undefined,
-      stopLoss: opts.stopLoss ? `${stopLoss}` : undefined,
-      takeProfit: opts.takeProfit ? `${takeProfit}` : undefined,
-      reduceOnly: opts.reduceOnly || false,
-      slTriggerBy: opts.stopLoss ? 'MarkPrice' : undefined,
-      tpTriggerBy: opts.takeProfit ? 'LastPrice' : undefined,
-      timeInForce: opts.type === OrderType.Limit ? timeInForce : undefined,
-      closeOnTrigger: false,
-      positionIdx,
-    });
-
-    const lots = amount > maxSize ? Math.ceil(amount / maxSize) : 1;
-    const rest = amount > maxSize ? adjust(amount % maxSize, pAmount) : 0;
-
-    const lotSize = adjust((amount - rest) / lots, pAmount);
-
-    const payloads = times(lots, (idx) => {
-      // We want to remove stopLoss and takeProfit from the rest of the orders
-      // because they are already set on the first one
-      const payload =
-        idx > 0
-          ? omit(req, ['stopLoss', 'takeProfit', 'slTriggerBy', 'tpTriggerBy'])
-          : req;
-
-      return { ...payload, qty: `${lotSize}` };
-    });
-
-    if (rest) payloads.push({ ...req, qty: `${rest}` });
-
-    const responses = await mapSeries(payloads, async (p) => {
-      try {
-        const { data } = await this.unlimitedXHR.post(
-          ENDPOINTS.CREATE_ORDER,
-          p
-        );
-        return data;
-      } catch (err: any) {
-        this.emitter.emit('error', err?.response?.data?.retMsg || err.message);
-        return undefined;
-      }
-    });
-
-    const fullfilled = responses.filter((r) => r !== undefined);
-
-    fullfilled.forEach((resp) => {
-      if (v(resp, 'retMsg') !== 'OK') {
-        this.emitter.emit('error', v(resp, 'retMsg'));
-      }
-    });
-
-    return fullfilled.map((resp) => resp.result.orderId);
+    return [...normalOrderIds, ...slOrTpOrderIds, ...tslOrderIds];
   };
 
   placeStopLossOrTakeProfit = async (opts: PlaceOrderOpts) => {
@@ -632,7 +587,7 @@ export class BybitExchange extends BaseExchange {
       this.emitter.emit('error', data.retMsg);
     }
 
-    return [data.result.orderId];
+    return [data.result.orderId] as string[];
   };
 
   placeTrailingStopLoss = async (opts: PlaceOrderOpts) => {
@@ -661,22 +616,31 @@ export class BybitExchange extends BaseExchange {
       this.emitter.emit('error', data.retMsg);
     }
 
-    return [data.result.orderId];
+    return [data.result.orderId] as string[];
   };
 
   cancelOrders = async (orders: Order[]) => {
-    await forEachSeries(orders, async (order) => {
-      const { data } = await this.unlimitedXHR.post(ENDPOINTS.CANCEL_ORDER, {
+    await forEachSeries(chunk(orders, 10), async (chunkOrders) => {
+      const { data } = await this.unlimitedXHR.post<{
+        result: { list: Array<{ orderId: string }> };
+        retExtInfo: { list: Array<{ code: number; msg: string }> };
+      }>(ENDPOINTS.CANCEL_ORDERS, {
         category: this.accountCategory,
-        symbol: order.symbol,
-        orderId: order.id,
+        request: chunkOrders.map((o) => ({
+          symbol: o.symbol,
+          orderId: o.id,
+        })),
       });
 
-      if (data.retMsg === 'OK' || data.retMsg.includes('order not exists or')) {
-        this.store.removeOrder(order);
-      } else {
-        this.emitter.emit('error', data.retMsg);
-      }
+      data.result.list.forEach((o, idx) => {
+        const info = data.retExtInfo.list[idx];
+
+        if (info.msg === 'OK' || info.msg.includes('Order does not exist')) {
+          this.store.removeOrder({ id: o.orderId });
+        } else {
+          this.emitter.emit('error', info.msg);
+        }
+      });
     });
   };
 
@@ -824,6 +788,89 @@ export class BybitExchange extends BaseExchange {
 
     return orders;
   }
+
+  private formatCreateOrder = async (opts: PlaceOrderOpts) => {
+    const market = this.store.markets.find(
+      ({ symbol }) => symbol === opts.symbol
+    );
+
+    if (!market) {
+      throw new Error(`Market ${opts.symbol} not found`);
+    }
+
+    const positionIdx = await this.getOrderPositionIdx(opts);
+
+    const maxSize = market.limits.amount.max;
+    const pPrice = market.precision.price;
+    const pAmount = market.precision.amount;
+
+    const amount = adjust(opts.amount, pAmount);
+
+    const price = opts.price ? adjust(opts.price, pPrice) : null;
+    const stopLoss = opts.stopLoss ? adjust(opts.stopLoss, pPrice) : null;
+    const takeProfit = opts.takeProfit ? adjust(opts.takeProfit, pPrice) : null;
+    const timeInForce =
+      inverseObj(ORDER_TIME_IN_FORCE)[
+        opts.timeInForce || OrderTimeInForce.GoodTillCancel
+      ];
+
+    const req = omitUndefined({
+      category: this.accountCategory,
+      symbol: opts.symbol,
+      side: inverseObj(ORDER_SIDE)[opts.side],
+      orderType: inverseObj(ORDER_TYPE)[opts.type],
+      qty: `${amount}`,
+      price: opts.type === OrderType.Limit ? `${price}` : undefined,
+      stopLoss: opts.stopLoss ? `${stopLoss}` : undefined,
+      takeProfit: opts.takeProfit ? `${takeProfit}` : undefined,
+      reduceOnly: opts.reduceOnly || false,
+      slTriggerBy: opts.stopLoss ? 'MarkPrice' : undefined,
+      tpTriggerBy: opts.takeProfit ? 'LastPrice' : undefined,
+      timeInForce: opts.type === OrderType.Limit ? timeInForce : undefined,
+      closeOnTrigger: false,
+      positionIdx,
+    });
+
+    const lots = amount > maxSize ? Math.ceil(amount / maxSize) : 1;
+    const rest = amount > maxSize ? adjust(amount % maxSize, pAmount) : 0;
+
+    const lotSize = adjust((amount - rest) / lots, pAmount);
+
+    const payloads = times(lots, (idx) => {
+      // We want to remove stopLoss and takeProfit from the rest of the orders
+      // because they are already set on the first one
+      const payload =
+        idx > 0
+          ? omit(req, ['stopLoss', 'takeProfit', 'slTriggerBy', 'tpTriggerBy'])
+          : req;
+
+      return { ...payload, qty: `${lotSize}` };
+    });
+
+    if (rest) payloads.push({ ...req, qty: `${rest}` });
+
+    return payloads;
+  };
+
+  private placeOrderBatch = async (payloads: Array<Record<string, any>>) => {
+    const responses = await mapSeries(chunk(payloads, 10), async (batch) => {
+      try {
+        const { data } = await this.unlimitedXHR.post<{
+          result: { list: Array<{ orderId: string }> };
+        }>(ENDPOINTS.CREATE_ORDERS, {
+          category: this.accountCategory,
+          request: batch,
+        });
+
+        return data.result.list.map((o) => o.orderId);
+      } catch (err: any) {
+        this.emitter.emit('error', err?.response?.data?.retMsg || err.message);
+        return [];
+      }
+    });
+
+    return flatten(responses);
+  };
 
   private fetchPositionMode = async (symbol: string) => {
     if (this.store.options.isHedged) return true;

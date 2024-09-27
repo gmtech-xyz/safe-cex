@@ -34,12 +34,14 @@ export const ENDPOINTS = {
   TICKERS: '/v5/market/tickers',
   MARKETS: '/v5/market/instruments-info',
   CANCEL_ORDER: '/v5/order/cancel',
+  CANCEL_ORDERS: '/v5/order/cancel-batch',
   CANCEL_SYMBOL_ORDERS: '/v5/order/cancel-all',
   POSITIONS: '/v5/position/list',
   KLINE: '/v5/market/kline',
   SET_LEVERAGE: '/v5/position/set-leverage',
   SET_TRADING_STOP: '/v5/position/trading-stop',
   CREATE_ORDER: '/v5/order/create',
+  CREATE_ORDERS: '/v5/order/create-batch',
   SET_POSITION_MODE: '/v5/position/switch-mode',
 };
 
