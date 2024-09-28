@@ -1,10 +1,11 @@
-## [8.6.1](https://github.com/gmtech-xyz/safe-cex/compare/v8.5.1...v8.6.1) (2024-09-27)
+## [8.6.2](https://github.com/gmtech-xyz/safe-cex/compare/v8.5.1...v8.6.2) (2024-09-28)
 
 
 ### Bug Fixes
 
 * **blofin:** update leverage ([79c059f](https://github.com/gmtech-xyz/safe-cex/commit/79c059f7541c6282f01e48160d840023be57085b))
 * **bybit:** log err batch orders ([30db69d](https://github.com/gmtech-xyz/safe-cex/commit/30db69d11b1dc77c5244126887821e1fd1a08caf))
+* **bybit:** support legacy contract account ([0c241b2](https://github.com/gmtech-xyz/safe-cex/commit/0c241b21894d690ed2f937d4f0fa9c5ac884fe33))
 * **phemex/orders:** filter out executed orders ([be018c6](https://github.com/gmtech-xyz/safe-cex/commit/be018c6cb27ba6e2c300ffeebf6b405c6ac87660))
 * **phemex:** compute uPNL from all positions ([4128be3](https://github.com/gmtech-xyz/safe-cex/commit/4128be3782f75f4a45e2a3e4e122b7ad22d672d1))
 * **phemex:** reduce only orders type ([648e923](https://github.com/gmtech-xyz/safe-cex/commit/648e92392d77d06fa89edff5ed06290469898da2))
