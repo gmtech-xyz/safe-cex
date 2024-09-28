@@ -853,6 +853,34 @@ export class BybitExchange extends BaseExchange {
   };
 
   private placeOrderBatch = async (payloads: Array<Record<string, any>>) => {
+    if (this.accountType === 'CONTRACT') {
+      const responses = await mapSeries(payloads, async (p) => {
+        try {
+          const { data } = await this.unlimitedXHR.post(
+            ENDPOINTS.CREATE_ORDER,
+            p
+          );
+          return data;
+        } catch (err: any) {
+          this.emitter.emit(
+            'error',
+            err?.response?.data?.retMsg || err.message
+          );
+          return undefined;
+        }
+      });
+
+      const fullfilled = responses.filter((r) => r !== undefined);
+
+      fullfilled.forEach((resp) => {
+        if (v(resp, 'retMsg') !== 'OK') {
+          this.emitter.emit('error', v(resp, 'retMsg'));
+        }
+      });
+
+      return fullfilled.map((resp) => resp.result.orderId);
+    }
+
     const responses = await mapSeries(chunk(payloads, 10), async (batch) => {
       try {
         const { data } = await this.unlimitedXHR.post<{
