@@ -620,28 +620,47 @@ export class BybitExchange extends BaseExchange {
   };
 
   cancelOrders = async (orders: Order[]) => {
-    await forEachSeries(chunk(orders, 10), async (chunkOrders) => {
-      const { data } = await this.unlimitedXHR.post<{
-        result: { list: Array<{ orderId: string }> };
-        retExtInfo: { list: Array<{ code: number; msg: string }> };
-      }>(ENDPOINTS.CANCEL_ORDERS, {
-        category: this.accountCategory,
-        request: chunkOrders.map((o) => ({
-          symbol: o.symbol,
-          orderId: o.id,
-        })),
-      });
+    if (this.accountType === 'CONTRACT') {
+      await forEachSeries(orders, async (order) => {
+        const { data } = await this.unlimitedXHR.post(ENDPOINTS.CANCEL_ORDER, {
+          category: this.accountCategory,
+          symbol: order.symbol,
+          orderId: order.id,
+        });
 
-      data.result.list.forEach((o, idx) => {
-        const info = data.retExtInfo.list[idx];
-
-        if (info.msg === 'OK' || info.msg.includes('Order does not exist')) {
-          this.store.removeOrder({ id: o.orderId });
+        if (
+          data.retMsg === 'OK' ||
+          data.retMsg.includes('order not exists or')
+        ) {
+          this.store.removeOrder(order);
         } else {
-          this.emitter.emit('error', info.msg);
+          this.emitter.emit('error', data.retMsg);
         }
       });
-    });
+    } else {
+      await forEachSeries(chunk(orders, 10), async (chunkOrders) => {
+        const { data } = await this.unlimitedXHR.post<{
+          result: { list: Array<{ orderId: string }> };
+          retExtInfo: { list: Array<{ code: number; msg: string }> };
+        }>(ENDPOINTS.CANCEL_ORDERS, {
+          category: this.accountCategory,
+          request: chunkOrders.map((o) => ({
+            symbol: o.symbol,
+            orderId: o.id,
+          })),
+        });
+
+        data.result.list.forEach((o, idx) => {
+          const info = data.retExtInfo.list[idx];
+
+          if (info.msg === 'OK' || info.msg.includes('Order does not exist')) {
+            this.store.removeOrder({ id: o.orderId });
+          } else {
+            this.emitter.emit('error', info.msg);
+          }
+        });
+      });
+    }
   };
 
   cancelSymbolOrders = async (symbol: string) => {
