@@ -1,4 +1,4 @@
-## [8.6.4](https://github.com/gmtech-xyz/safe-cex/compare/v8.5.1...v8.6.4) (2024-11-25)
+## [8.6.5](https://github.com/gmtech-xyz/safe-cex/compare/v8.5.1...v8.6.5) (2024-12-12)
 
 
 ### Bug Fixes
@@ -16,6 +16,7 @@
 ### Features
 
 * **bybit:** use batch for cancel / place orders ([556eeb5](https://github.com/gmtech-xyz/safe-cex/commit/556eeb592c79f5550099c8c2630d8430933106b6))
+* **woo:** update domains ([5a6bf6a](https://github.com/gmtech-xyz/safe-cex/commit/5a6bf6ab1760317662b690a236e658504fdfdc45))
 
 
 
