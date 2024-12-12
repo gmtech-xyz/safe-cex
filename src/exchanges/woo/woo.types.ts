@@ -5,18 +5,18 @@ export const BROKER_ID = '0527c685-d30d-4a1f-9807-99cc29e930ea';
 export const TESTNET_BROKER_ID = 'e708a644-9ce5-46c6-b50c-74b15f62d8ca';
 
 export const BASE_URL = {
-  livenet: 'https://api.woo.org',
-  testnet: 'https://api.staging.woo.org',
+  livenet: 'https://api.woox.io',
+  testnet: 'https://api.staging.woox.io',
 };
 
 export const BASE_WS_URL = {
   public: {
-    livenet: 'wss://wss.woo.org/ws/stream/',
-    testnet: 'wss://wss.staging.woo.org/ws/stream/',
+    livenet: 'wss://wss.woox.io/ws/stream/',
+    testnet: 'wss://wss.staging.woox.io/ws/stream/',
   },
   private: {
-    livenet: 'wss://wss.woo.org/v2/ws/private/stream/',
-    testnet: 'wss://wss.staging.woo.org/v2/ws/private/stream/',
+    livenet: 'wss://wss.woox.io/v2/ws/private/stream/',
+    testnet: 'wss://wss.staging.woox.io/v2/ws/private/stream/',
   },
 };
 
