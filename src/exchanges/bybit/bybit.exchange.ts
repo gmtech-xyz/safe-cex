@@ -54,13 +54,11 @@ export class BybitExchange extends BaseExchange {
   publicWebsocket: BybitPublicWebsocket;
   privateWebsocket: BybitPrivateWebsocket;
 
-  private unifiedMarginStatus: number = 1;
-
   private hedgedPositionsMap: Record<string, boolean> = {};
   private leverageHash: Record<string, number> = {};
 
   get accountType() {
-    return this.unifiedMarginStatus === 1 ? 'CONTRACT' : 'UNIFIED';
+    return 'UNIFIED';
   }
 
   get accountCategory() {
@@ -119,10 +117,6 @@ export class BybitExchange extends BaseExchange {
   start = async () => {
     const isDemo = !this.options.key || !this.options.secret;
 
-    // first check the account type of the user
-    // this will determine the parameters for the next requests
-    if (!isDemo) await this.fetchMarginAccountInfos();
-
     // load initial market data
     // then we can poll for live data
     const markets = await this.fetchMarkets();
@@ -178,17 +172,6 @@ export class BybitExchange extends BaseExchange {
     // we fetch positions leverage in backggound
     // this is for updating the leverage on the UI
     if (!isDemo) this.fetchLeverage();
-  };
-
-  fetchMarginAccountInfos = async () => {
-    const { data } = await this.xhr.get(ENDPOINTS.ACCOUNT_MARGIN);
-
-    if (data.retMsg !== 'OK') {
-      this.emitter.emit('error', data.retMsg);
-      return;
-    }
-
-    this.unifiedMarginStatus = data?.result?.unifiedMarginStatus;
   };
 
   tick = async () => {
