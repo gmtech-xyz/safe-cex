@@ -49,7 +49,6 @@ export class BybitExchange extends BaseExchange {
   name = 'BYBIT';
 
   xhr: Axios;
-  unlimitedXHR: Axios;
 
   publicWebsocket: BybitPublicWebsocket;
   privateWebsocket: BybitPrivateWebsocket;
@@ -69,7 +68,6 @@ export class BybitExchange extends BaseExchange {
     super(opts, store);
 
     this.xhr = rateLimit(createAPI(opts), { maxRPS: 3 });
-    this.unlimitedXHR = createAPI(opts);
 
     this.publicWebsocket = new BybitPublicWebsocket(this);
     this.privateWebsocket = new BybitPrivateWebsocket(this);
@@ -603,47 +601,32 @@ export class BybitExchange extends BaseExchange {
   };
 
   cancelOrders = async (orders: Order[]) => {
-    if (this.accountType === 'CONTRACT') {
-      await forEachSeries(orders, async (order) => {
-        const { data } = await this.unlimitedXHR.post(ENDPOINTS.CANCEL_ORDER, {
-          category: this.accountCategory,
-          symbol: order.symbol,
-          orderId: order.id,
-        });
+    await forEachSeries(chunk(orders, 10), async (chunkOrders) => {
+      const { data } = await this.xhr.post<{
+        result: { list: Array<{ orderId: string }> };
+        retExtInfo: { list: Array<{ code: number; msg: string }> };
+      }>(ENDPOINTS.CANCEL_ORDERS, {
+        category: this.accountCategory,
+        request: chunkOrders.map((o) => ({
+          symbol: o.symbol,
+          orderId: o.id,
+        })),
+      });
 
-        if (
-          data.retMsg === 'OK' ||
-          data.retMsg.includes('order not exists or')
-        ) {
-          this.store.removeOrder(order);
+      if (!Array.isArray(data.result.list)) {
+        this.emitter.emit('error', 'Invalid response from Bybit API');
+      }
+
+      data.result.list.forEach((o, idx) => {
+        const info = data.retExtInfo.list[idx];
+
+        if (info.msg === 'OK' || info.msg.includes('Order does not exist')) {
+          this.store.removeOrder({ id: o.orderId });
         } else {
-          this.emitter.emit('error', data.retMsg);
+          this.emitter.emit('error', info.msg);
         }
       });
-    } else {
-      await forEachSeries(chunk(orders, 10), async (chunkOrders) => {
-        const { data } = await this.unlimitedXHR.post<{
-          result: { list: Array<{ orderId: string }> };
-          retExtInfo: { list: Array<{ code: number; msg: string }> };
-        }>(ENDPOINTS.CANCEL_ORDERS, {
-          category: this.accountCategory,
-          request: chunkOrders.map((o) => ({
-            symbol: o.symbol,
-            orderId: o.id,
-          })),
-        });
-
-        data.result.list.forEach((o, idx) => {
-          const info = data.retExtInfo.list[idx];
-
-          if (info.msg === 'OK' || info.msg.includes('Order does not exist')) {
-            this.store.removeOrder({ id: o.orderId });
-          } else {
-            this.emitter.emit('error', info.msg);
-          }
-        });
-      });
-    }
+    });
   };
 
   cancelSymbolOrders = async (symbol: string) => {
@@ -651,10 +634,10 @@ export class BybitExchange extends BaseExchange {
       (o) => o.symbol === symbol && o.type !== OrderType.Limit
     );
 
-    const { data } = await this.unlimitedXHR.post(
-      ENDPOINTS.CANCEL_SYMBOL_ORDERS,
-      { category: this.accountCategory, symbol }
-    );
+    const { data } = await this.xhr.post(ENDPOINTS.CANCEL_SYMBOL_ORDERS, {
+      category: this.accountCategory,
+      symbol,
+    });
 
     // we need to re-create TP/SL after cancel all
     // before bybit was not cancelling them
@@ -855,37 +838,9 @@ export class BybitExchange extends BaseExchange {
   };
 
   private placeOrderBatch = async (payloads: Array<Record<string, any>>) => {
-    if (this.accountType === 'CONTRACT') {
-      const responses = await mapSeries(payloads, async (p) => {
-        try {
-          const { data } = await this.unlimitedXHR.post(
-            ENDPOINTS.CREATE_ORDER,
-            p
-          );
-          return data;
-        } catch (err: any) {
-          this.emitter.emit(
-            'error',
-            err?.response?.data?.retMsg || err.message
-          );
-          return undefined;
-        }
-      });
-
-      const fullfilled = responses.filter((r) => r !== undefined);
-
-      fullfilled.forEach((resp) => {
-        if (v(resp, 'retMsg') !== 'OK') {
-          this.emitter.emit('error', v(resp, 'retMsg'));
-        }
-      });
-
-      return fullfilled.map((resp) => resp.result.orderId);
-    }
-
     const responses = await mapSeries(chunk(payloads, 10), async (batch) => {
       try {
-        const { data } = await this.unlimitedXHR.post<{
+        const { data } = await this.xhr.post<{
           result: { list: Array<{ orderId: string }> };
           retExtInfo: { list: Array<{ code: number; msg: string }> };
         }>(ENDPOINTS.CREATE_ORDERS, {
